@@ -46,8 +46,8 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
     // Check if user is already at the bottom
     const isAtBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 5;
 
-    // Only auto-scroll when user is at bottom or when explicitly requested
-    if (isAtBottom || (autoScrollToBottom && !userScrolledUp)) {
+    // Only auto-scroll when user is at bottom or when explicitly requested and user hasn't manually scrolled up
+    if ((isAtBottom || autoScrollToBottom) && !userScrolledUp) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, autoScrollToBottom, userScrolledUp]);

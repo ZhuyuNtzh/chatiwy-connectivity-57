@@ -3,7 +3,6 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import type { ChatMessage } from '@/services/signalR/types';
 
 interface InboxDialogProps {
@@ -20,12 +19,20 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
   onOpenChat
 }) => {
   // Convert Record to array for easier rendering
-  const messagesArray = Object.entries(inboxMessages).map(([userId, messages]) => ({
-    userId: parseInt(userId),
-    messages,
-    lastMessage: messages[messages.length - 1],
-    sender: messages[0]?.sender !== 'You' ? messages[0]?.sender : 'Unknown'
-  }));
+  const messagesArray = Object.entries(inboxMessages)
+    .filter(([_, messages]) => messages && messages.length > 0) // Filter out empty conversations
+    .map(([userId, messages]) => {
+      // Find the sender name (the first message that's not from "You")
+      const senderMessage = messages.find(msg => msg.sender !== 'You');
+      const sender = senderMessage ? senderMessage.sender : 'Unknown';
+      
+      return {
+        userId: parseInt(userId),
+        messages,
+        lastMessage: messages[messages.length - 1],
+        sender
+      };
+    });
 
   const hasMessages = messagesArray.length > 0;
 
