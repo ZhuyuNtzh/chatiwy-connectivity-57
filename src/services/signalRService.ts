@@ -15,43 +15,54 @@ class SignalRService implements ISignalRService {
   private blockedUsers: Set<number> = new Set();
   private chatHistory: Record<number, ChatMessage[]> = {};
   private userName: string = '';
+  private isInitializing: boolean = false;
 
   public async initialize(userId: number, username: string): Promise<void> {
     // Store the username for later use
     this.userName = username;
     
-    // Only initialize if not already connected
-    if (this.connectionStatus === 'connected') {
+    // Only initialize if not already connected or initializing
+    if (this.connectionStatus === 'connected' || this.isInitializing) {
       return;
     }
     
+    this.isInitializing = true;
     this.connectionStatus = 'connecting';
     this.notifyConnectionStatusChanged();
 
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-    this.connection = new MockHubConnection() as unknown as signalR.HubConnection;
-    this.connectionStatus = 'connected';
-    this.notifyConnectionStatusChanged();
-    
-    this.updateConnectedUsersCount();
-    
-    this.connection.on('receiveMessage', (message: ChatMessage) => {
-      // Don't receive messages from blocked users
-      if (this.blockedUsers.has(message.senderId)) {
-        return;
-      }
+      this.connection = new MockHubConnection() as unknown as signalR.HubConnection;
+      this.connectionStatus = 'connected';
+      this.notifyConnectionStatusChanged();
       
-      // Store message in chat history
-      if (!this.chatHistory[message.senderId]) {
-        this.chatHistory[message.senderId] = [];
-      }
-      this.chatHistory[message.senderId].push(message);
+      this.updateConnectedUsersCount();
       
-      this.messageCallbacks.forEach(callback => callback(message));
-    });
+      this.connection.on('receiveMessage', (message: ChatMessage) => {
+        // Don't receive messages from blocked users
+        if (this.blockedUsers.has(message.senderId)) {
+          return;
+        }
+        
+        // Store message in chat history
+        if (!this.chatHistory[message.senderId]) {
+          this.chatHistory[message.senderId] = [];
+        }
+        this.chatHistory[message.senderId].push(message);
+        
+        this.messageCallbacks.forEach(callback => callback(message));
+      });
 
-    toast.success("Connected to chat server!");
+      toast.success("Connected to chat server!");
+    } catch (error) {
+      console.error("Error connecting to chat server:", error);
+      this.connectionStatus = 'disconnected';
+      this.notifyConnectionStatusChanged();
+      toast.error("Failed to connect to chat server. Please try again.");
+    } finally {
+      this.isInitializing = false;
+    }
   }
 
   public onMessageReceived(callback: (message: ChatMessage) => void) {
@@ -72,7 +83,12 @@ class SignalRService implements ISignalRService {
   }
 
   public async sendMessage(recipientId: number, content: string): Promise<void> {
-    if (!this.connection || this.connectionStatus !== 'connected') {
+    // Ensure connection is active
+    if (this.connectionStatus !== 'connected') {
+      await this.reconnectIfNeeded();
+    }
+    
+    if (this.connectionStatus !== 'connected') {
       toast.error("Not connected to chat server!");
       return;
     }
@@ -101,7 +117,12 @@ class SignalRService implements ISignalRService {
   }
 
   public async sendImage(recipientId: number, imageUrl: string, isBlurred: boolean = true): Promise<void> {
-    if (!this.connection || this.connectionStatus !== 'connected') {
+    // Ensure connection is active
+    if (this.connectionStatus !== 'connected') {
+      await this.reconnectIfNeeded();
+    }
+    
+    if (this.connectionStatus !== 'connected') {
       toast.error("Not connected to chat server!");
       return;
     }
@@ -130,6 +151,13 @@ class SignalRService implements ISignalRService {
     
     this.simulateMessageSent(message, recipientId);
     this.messageCallbacks.forEach(callback => callback(message));
+  }
+
+  private async reconnectIfNeeded(): Promise<void> {
+    if (this.connectionStatus === 'disconnected' && !this.isInitializing && this.userName) {
+      console.log("Attempting to reconnect...");
+      await this.initialize(1, this.userName);
+    }
   }
 
   public async disconnect(): Promise<void> {
@@ -305,10 +333,19 @@ class SignalRService implements ISignalRService {
   }
 
   private updateConnectedUsersCount() {
+    // Start with a stable number for better UX
+    const baseCount = 12;
+    
+    // Immediately notify with initial count
+    this.connectedUsersCallbacks.forEach(callback => callback(baseCount));
+    
+    // Then update periodically with slight variations
     setInterval(() => {
-      const count = 5 + Math.floor(Math.random() * 11);
+      // Vary by -2 to +2 from base count, never below 5
+      const variation = Math.floor(Math.random() * 5) - 2;
+      const count = Math.max(5, baseCount + variation);
       this.connectedUsersCallbacks.forEach(callback => callback(count));
-    }, 5000);
+    }, 30000); // Update every 30 seconds for a more stable count
   }
 }
 
