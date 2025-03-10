@@ -6,7 +6,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // List of countries for the country filter
 const countries = [
@@ -56,10 +55,13 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
   };
 
   const handleAgeRangeChange = (value: number[]) => {
+    // Ensure we always have exactly two values for the tuple
+    const ageRangeValue: [number, number] = [value[0], value[1]];
+    
     setFilters((prevFilters) => {
       const newFilters = {
         ...prevFilters,
-        ageRange: [value[0], value[1]],
+        ageRange: ageRangeValue,
       };
       
       onFiltersChange(newFilters);
