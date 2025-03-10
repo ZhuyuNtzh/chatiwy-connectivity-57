@@ -10,15 +10,23 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import FiltersDropdown, { Filters } from "../components/FiltersDropdown";
 
 const mockUsers = [
-  { id: 1, username: 'Reincarnated', gender: 'Female', age: 36, location: 'Turkey, Istanbul', interests: ['cyan interest', 'gold interest'], isOnline: true },
-  { id: 2, username: 'Shinhoff', gender: 'Male', age: 32, location: 'Turkey, Istanbul', interests: ['volcano', 'gold interest', 'lime interest'], isOnline: true },
-  { id: 3, username: 'Naisees', gender: 'Male', age: 32, location: 'Turkey, Istanbul', interests: ['green', 'orange', 'lime interest'], isOnline: true },
-  { id: 4, username: 'Moreor', gender: 'Male', age: 32, location: 'Turkey, Istanbul', interests: ['volcano interest', 'orange interest'], isOnline: true },
-  { id: 5, username: 'Silky', gender: 'Male', age: 32, location: 'Turkey, Istanbul', interests: ['volcano', 'gold interest', 'lime interest'], isOnline: true },
-  { id: 6, username: 'Mason', gender: 'Male', age: 32, location: 'Turkey, Istanbul', interests: ['volcano interest', 'orange interest'], isOnline: true },
-  { id: 7, username: 'Jason', gender: 'Male', age: 32, location: 'Turkey, Istanbul', interests: ['volcano', 'gold interest', 'lime interest'], isOnline: true },
-  { id: 8, username: 'Ludacris', gender: 'Male', age: 32, location: 'Turkey, Istanbul', interests: ['volcano interest', 'orange interest'], isOnline: true },
-];
+  { id: 1, username: "Alice", gender: "Female", age: 28, location: "Australia, Sydney", interests: ["Art", "Photography", "Travel"], isOnline: true },
+  { id: 2, username: "Bob", gender: "Male", age: 35, location: "Canada, Toronto", interests: ["Music", "Technology", "Gaming"], isOnline: false },
+  { id: 3, username: "ChatBot_Alpha", gender: "Other", age: 25, location: "Digital", interests: ["AI", "Learning", "Helping"], isOnline: true },
+  { id: 4, username: "ChatBot_Beta", gender: "Other", age: 30, location: "Digital", interests: ["Psychology", "Counseling", "Support"], isOnline: true },
+  { id: 5, username: "David", gender: "Male", age: 42, location: "France, Paris", interests: ["Cooking", "Wine", "Literature"], isOnline: true },
+  { id: 6, username: "Elena", gender: "Female", age: 31, location: "Spain, Madrid", interests: ["Dance", "Fashion", "Fitness"], isOnline: false },
+].sort((a, b) => {
+  const countryA = a.location.split(',')[0].trim();
+  const countryB = b.location.split(',')[0].trim();
+  const countryCompare = countryA.localeCompare(countryB);
+  
+  if (countryCompare === 0) {
+    return a.username.localeCompare(b.username);
+  }
+  
+  return countryCompare;
+});
 
 const getInterestColor = (interest: string) => {
   if (interest.includes('cyan')) return 'bg-cyan-100 text-cyan-800';
@@ -211,12 +219,9 @@ const ChatInterface = () => {
         </div>
         
         <div className={`md:col-span-2 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 flex flex-col items-center justify-center min-h-[600px]`}>
-          <img 
-            src="/lovable-uploads/c80784b4-1560-465c-ac27-ce7bab7aa1d5.png" 
-            alt="Friends are waiting" 
-            className="w-48 mb-8"
-          />
-          <p className={`text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} font-medium`}>Friends are waiting for you..</p>
+          <p className={`text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} font-medium`}>
+            Select a chat to start messaging
+          </p>
         </div>
       </div>
       

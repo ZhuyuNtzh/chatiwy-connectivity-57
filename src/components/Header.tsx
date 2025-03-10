@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, LogOut, Settings, User, Moon, Sun } from 'lucide-react';
+import { ChevronLeft, LogOut, Settings, User, Moon, Sun, History } from 'lucide-react';
 
 const Header = () => {
   const { currentUser, setCurrentUser, setIsLoggedIn, userRole } = useUser();
@@ -73,7 +72,6 @@ const Header = () => {
                 </span>
               )}
             </div>
-            {/* User icon is now non-clickable (decorative only) */}
             <div className="flex items-center justify-center w-8 h-8">
               <User className="h-5 w-5" />
             </div>
@@ -103,6 +101,26 @@ const Header = () => {
               aria-label="Toggle dark mode"
             >
               {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs flex items-center gap-1 bg-gray-100/10"
+            >
+              <img 
+                src="/lovable-uploads/e3b5491b-50db-4077-a99f-3de3837ccad6.png" 
+                alt="Inbox" 
+                className="h-4 w-4" 
+              />
+              Inbox
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs flex items-center gap-1 bg-gray-100/10"
+            >
+              <History className="h-4 w-4" />
+              History
             </Button>
           </div>
         ) : (

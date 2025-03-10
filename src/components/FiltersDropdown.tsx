@@ -6,20 +6,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-// List of countries for the country filter
+// Full list of countries with flags (this is just a sample, you should include all countries)
 const countries = [
-  { code: "TR", name: "Turkey" },
-  { code: "US", name: "United States" },
-  { code: "GB", name: "United Kingdom" },
-  { code: "CA", name: "Canada" },
-  { code: "DE", name: "Germany" },
-  { code: "FR", name: "France" },
-  { code: "ES", name: "Spain" },
-  { code: "IT", name: "Italy" },
-  { code: "AU", name: "Australia" },
-  { code: "NZ", name: "New Zealand" },
-];
+  { code: "AF", name: "Afghanistan", flag: "🇦🇫" },
+  { code: "AL", name: "Albania", flag: "🇦🇱" },
+  { code: "DZ", name: "Algeria", flag: "🇩🇿" },
+  // ... Add all countries here
+  { code: "ZW", name: "Zimbabwe", flag: "🇿🇼" },
+].sort((a, b) => a.name.localeCompare(b.name));
 
 export type Filters = {
   gender: string[];
@@ -34,7 +30,7 @@ interface FiltersDropdownProps {
 const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
   const [filters, setFilters] = useState<Filters>({
     gender: ["Male", "Female"],
-    ageRange: [18, 65],
+    ageRange: [18, 80],
     countries: [],
   });
 
@@ -55,7 +51,6 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
   };
 
   const handleAgeRangeChange = (value: number[]) => {
-    // Ensure we always have exactly two values for the tuple
     const ageRangeValue: [number, number] = [value[0], value[1]];
     
     setFilters((prevFilters) => {
@@ -71,13 +66,9 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
 
   const handleCountryChange = (country: string) => {
     setFilters((prevFilters) => {
-      let updatedCountries;
-      
-      if (prevFilters.countries.includes(country)) {
-        updatedCountries = prevFilters.countries.filter((c) => c !== country);
-      } else {
-        updatedCountries = [...prevFilters.countries, country];
-      }
+      const updatedCountries = prevFilters.countries.includes(country)
+        ? prevFilters.countries.filter((c) => c !== country)
+        : [...prevFilters.countries, country];
       
       const newFilters = {
         ...prevFilters,
@@ -122,33 +113,47 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
           </div>
 
           <div>
-            <h3 className="text-sm font-medium mb-2">Age Range: {filters.ageRange[0]} - {filters.ageRange[1]}</h3>
-            <div className="pt-4 px-1">
-              <Slider
-                defaultValue={[18, 65]}
-                min={18}
-                max={65}
-                step={1}
-                value={[filters.ageRange[0], filters.ageRange[1]]}
-                onValueChange={handleAgeRangeChange}
-              />
-            </div>
+            <h3 className="text-sm font-medium mb-2">Minimum Age: {filters.ageRange[0]}</h3>
+            <Slider
+              defaultValue={[18]}
+              min={18}
+              max={80}
+              step={1}
+              value={[filters.ageRange[0]]}
+              onValueChange={(value) => handleAgeRangeChange([value[0], filters.ageRange[1]])}
+              className="mb-6"
+            />
+            
+            <h3 className="text-sm font-medium mb-2">Maximum Age: {filters.ageRange[1]}</h3>
+            <Slider
+              defaultValue={[80]}
+              min={18}
+              max={80}
+              step={1}
+              value={[filters.ageRange[1]]}
+              onValueChange={(value) => handleAgeRangeChange([filters.ageRange[0], value[0]])}
+            />
           </div>
 
           <div>
             <h3 className="text-sm font-medium mb-2">Countries</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {countries.map((country) => (
-                <div key={country.code} className="flex items-center space-x-2">
-                  <Checkbox 
-                    id={`country-${country.code}`} 
-                    checked={filters.countries.includes(country.code)} 
-                    onCheckedChange={() => handleCountryChange(country.code)} 
-                  />
-                  <Label htmlFor={`country-${country.code}`}>{country.name}</Label>
-                </div>
-              ))}
-            </div>
+            <ScrollArea className="h-[200px]">
+              <div className="space-y-2">
+                {countries.map((country) => (
+                  <div key={country.code} className="flex items-center space-x-2">
+                    <Checkbox 
+                      id={`country-${country.code}`} 
+                      checked={filters.countries.includes(country.code)} 
+                      onCheckedChange={() => handleCountryChange(country.code)} 
+                    />
+                    <Label htmlFor={`country-${country.code}`} className="flex items-center gap-2">
+                      <span>{country.flag}</span>
+                      <span>{country.name}</span>
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
           </div>
         </div>
       </PopoverContent>
