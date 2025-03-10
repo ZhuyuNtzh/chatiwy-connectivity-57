@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -12,24 +11,32 @@ import FiltersDropdown, { Filters } from "../components/FiltersDropdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import axios from 'axios';
 
-// Enhanced mock users with more details and chatbots
+// List of interests that match the ones on the profile setup page
+const siteInterests = [
+  'Gaming', 'Music', 'Movies', 'Books', 'Travel',
+  'Food', 'Sports', 'Technology', 'Art', 'Fashion',
+  'Fitness', 'Pets', 'Photography', 'Writing', 'Nature',
+  'Cooking', 'Learning languages', 'Current events', 'Hobbies', 'Socializing'
+];
+
+// Enhanced mock users with real countries and valid interests
 const mockUsers = [
   { id: 1, username: "Alice", gender: "Female", age: 28, location: "Australia", interests: ["Art", "Photography", "Travel"], isOnline: true },
   { id: 2, username: "Bob", gender: "Male", age: 35, location: "Canada", interests: ["Music", "Technology", "Gaming"], isOnline: false },
-  { id: 3, username: "Clara", gender: "Female", age: 24, location: "United Kingdom", interests: ["Fashion", "Cooking", "Yoga"], isOnline: true },
-  { id: 4, username: "David", gender: "Male", age: 42, location: "France", interests: ["Cooking", "Wine", "Literature"], isOnline: true },
-  { id: 5, username: "Elena", gender: "Female", age: 31, location: "Spain", interests: ["Dance", "Fashion", "Fitness"], isOnline: false },
-  { id: 6, username: "Feng", gender: "Male", age: 27, location: "China", interests: ["History", "Martial Arts", "Calligraphy"], isOnline: true },
-  { id: 7, username: "Gabriela", gender: "Female", age: 29, location: "Brazil", interests: ["Beach", "Samba", "Soccer"], isOnline: true },
-  { id: 8, username: "Hiroshi", gender: "Male", age: 33, location: "Japan", interests: ["Anime", "Technology", "Ramen"], isOnline: false },
-  { id: 9, username: "Isabella", gender: "Female", age: 26, location: "Italy", interests: ["Opera", "Fashion", "Pasta"], isOnline: true },
-  { id: 10, username: "Jamal", gender: "Male", age: 30, location: "Egypt", interests: ["History", "Soccer", "Photography"], isOnline: true },
-  // Chatbots with diverse interests and personalities
-  { id: 11, username: "ChatBot_Alpha", gender: "Male", age: 25, location: "Digital", interests: ["AI", "Learning", "Helping"], isOnline: true },
-  { id: 12, username: "TherapistBot", gender: "Female", age: 30, location: "Digital", interests: ["Psychology", "Counseling", "Support"], isOnline: true },
-  { id: 13, username: "TravelGuide", gender: "Male", age: 28, location: "Digital", interests: ["Travel", "Geography", "Culture"], isOnline: true },
-  { id: 14, username: "FitnessCoach", gender: "Female", age: 32, location: "Digital", interests: ["Fitness", "Nutrition", "Health"], isOnline: true },
-  { id: 15, username: "LanguageTutor", gender: "Male", age: 27, location: "Digital", interests: ["Languages", "Education", "Communication"], isOnline: true },
+  { id: 3, username: "Clara", gender: "Female", age: 24, location: "United Kingdom", interests: ["Fashion", "Cooking", "Sports"], isOnline: true },
+  { id: 4, username: "David", gender: "Male", age: 42, location: "France", interests: ["Cooking", "Books", "Music"], isOnline: true },
+  { id: 5, username: "Elena", gender: "Female", age: 31, location: "Spain", interests: ["Sports", "Fashion", "Fitness"], isOnline: false },
+  { id: 6, username: "Feng", gender: "Male", age: 27, location: "China", interests: ["Books", "Sports", "Technology"], isOnline: true },
+  { id: 7, username: "Gabriela", gender: "Female", age: 29, location: "Brazil", interests: ["Sports", "Music", "Cooking"], isOnline: true },
+  { id: 8, username: "Hiroshi", gender: "Male", age: 33, location: "Japan", interests: ["Technology", "Gaming", "Food"], isOnline: false },
+  { id: 9, username: "Isabella", gender: "Female", age: 26, location: "Italy", interests: ["Fashion", "Food", "Art"], isOnline: true },
+  { id: 10, username: "Jamal", gender: "Male", age: 30, location: "Egypt", interests: ["Books", "Sports", "Photography"], isOnline: true },
+  // Chatbots with real countries and valid interests
+  { id: 11, username: "TravelBot", gender: "Male", age: 25, location: "Singapore", interests: ["Travel", "Photography", "Food"], isOnline: true },
+  { id: 12, username: "FitnessGuru", gender: "Female", age: 30, location: "Sweden", interests: ["Fitness", "Cooking", "Health"], isOnline: true },
+  { id: 13, username: "BookWorm", gender: "Male", age: 28, location: "Germany", interests: ["Books", "Writing", "Movies"], isOnline: true },
+  { id: 14, username: "TechGeek", gender: "Female", age: 32, location: "South Korea", interests: ["Technology", "Gaming", "Music"], isOnline: true },
+  { id: 15, username: "ArtLover", gender: "Male", age: 27, location: "Mexico", interests: ["Art", "Photography", "Fashion"], isOnline: true },
 ];
 
 const getInterestColor = (interest: string) => {
@@ -81,9 +88,6 @@ const ChatInterface = () => {
           flagsMap[country.name.common] = country.flags.svg;
         });
         
-        // Add Digital flag
-        flagsMap['Digital'] = '🌐';
-        
         setCountryFlags(flagsMap);
       } catch (error) {
         console.error('Error fetching country flags:', error);
@@ -126,17 +130,16 @@ const ChatInterface = () => {
     const matchesAge = user.age >= activeFilters.ageRange[0] && user.age <= activeFilters.ageRange[1];
     
     const matchesCountry = activeFilters.countries.length === 0 || 
-      activeFilters.countries.includes(user.location) ||
-      (user.location === "Digital" && activeFilters.countries.includes("Digital"));
+      activeFilters.countries.includes(user.location);
     
     return matchesSearch && matchesGender && matchesAge && matchesCountry;
   }).sort((a, b) => {
-    // First sort by country
+    // First sort by country alphabetically
     const countryA = a.location;
     const countryB = b.location;
     const countryCompare = countryA.localeCompare(countryB);
     
-    // If countries are the same, sort by username
+    // If countries are the same, sort by username alphabetically
     if (countryCompare === 0) {
       return a.username.localeCompare(b.username);
     }
@@ -254,12 +257,11 @@ const ChatInterface = () => {
                       <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-1 flex items-center`}>
                         {countryFlags[user.location] && (
                           <img 
-                            src={user.location !== 'Digital' ? countryFlags[user.location] : undefined}
+                            src={countryFlags[user.location]}
                             alt={`${user.location} flag`}
                             className="w-4 h-3 mr-1 object-cover"
                           />
                         )}
-                        {user.location === 'Digital' && <span className="mr-1">🌐</span>}
                         <span>{user.location}</span>
                       </p>
                       

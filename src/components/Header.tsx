@@ -30,6 +30,8 @@ const Header = () => {
 
   const showBackButton = location.pathname !== '/' && location.pathname !== '/user-selection';
   const showUserControls = currentUser && location.pathname !== '/';
+  // Hide inbox and history buttons on profile-setup page
+  const hideExtraButtons = location.pathname === '/profile-setup';
 
   return (
     <header 
@@ -103,27 +105,32 @@ const Header = () => {
             >
               {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs flex items-center gap-1 bg-gray-100/10"
-            >
-              <img 
-                src="/lovable-uploads/e3b5491b-50db-4077-a99f-3de3837ccad6.png" 
-                alt="Inbox" 
-                className="h-4 w-4" 
-              />
-              Inbox
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs flex items-center gap-1 bg-gray-100/10"
-              onClick={() => navigate('/chat-history')}
-            >
-              <History className="h-4 w-4" />
-              History
-            </Button>
+            
+            {!hideExtraButtons && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs flex items-center gap-1 bg-gray-100/10"
+                >
+                  <img 
+                    src="/lovable-uploads/e3b5491b-50db-4077-a99f-3de3837ccad6.png" 
+                    alt="Inbox" 
+                    className="h-4 w-4" 
+                  />
+                  Inbox
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs flex items-center gap-1 bg-gray-100/10"
+                  onClick={() => navigate('/chat-history')}
+                >
+                  <History className="h-4 w-4" />
+                  History
+                </Button>
+              </>
+            )}
           </div>
         ) : (
           location.pathname === '/' && (
