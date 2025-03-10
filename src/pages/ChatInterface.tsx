@@ -1,10 +1,13 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import FiltersDropdown, { Filters } from "../components/FiltersDropdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { User as UserIcon } from 'lucide-react';
 import axios from 'axios';
 import ChatWindow from '../components/ChatWindow';
 import { signalRService } from '../services/signalRService';

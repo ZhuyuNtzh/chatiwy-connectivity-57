@@ -1,16 +1,15 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
-  Send, Image, Mic, X, MoreVertical, Flag, Ban, Smile 
+  Send, Image, Mic, X, MoreVertical, Flag, Ban, Smile, User
 } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
-import { signalRService, ChatMessage } from '../services/signalRService';
+import { signalRService } from '../services/signalRService';
+import { ChatMessage } from '../services/signalR/types';
 
-// Emoji data
 const commonEmojis = [
   '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
   '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚',
@@ -46,7 +45,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const maxChars = userRole === 'vip' ? 200 : 140;
   
-  // Register for messages
   useEffect(() => {
     const handleNewMessage = (msg: ChatMessage) => {
       setMessages(prev => [...prev, msg]);
@@ -54,7 +52,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
     
     signalRService.onMessageReceived(handleNewMessage);
     
-    // Send a welcome message
     setTimeout(() => {
       signalRService.simulateReceiveMessage(
         user.id,
@@ -66,12 +63,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
     }, 1000);
     
     return () => {
-      // This would unregister in a real implementation
     };
   }, [user]);
   
   useEffect(() => {
-    // Scroll to bottom when messages change
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
   
@@ -100,18 +95,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
   const handleBlockUser = () => {
     console.log('Blocking user', user.username);
     setShowOptions(false);
-    // In a real app, this would call an API to block the user
   };
   
   const handleReportUser = () => {
     console.log('Reporting user', user.username);
     setShowOptions(false);
-    // In a real app, this would open a report dialog
   };
   
   return (
     <div className="flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden h-[500px] max-w-xl w-full border border-gray-200 dark:border-gray-700">
-      {/* Chat header */}
       <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
         <div className="flex items-start">
           <div className="mr-3 flex items-center justify-center w-10 h-10 rounded-full bg-orange-100">
@@ -180,7 +172,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         </div>
       </div>
       
-      {/* Chat messages */}
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {messages.map((msg) => (
@@ -214,7 +205,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         </div>
       </ScrollArea>
       
-      {/* Chat input */}
       <div className="p-3 border-t border-gray-200 dark:border-gray-700">
         <form onSubmit={handleSendMessage} className="flex items-center gap-2">
           <Popover>
@@ -281,8 +271,5 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
     </div>
   );
 };
-
-// Import for the User icon
-import { User } from 'lucide-react';
 
 export default ChatWindow;

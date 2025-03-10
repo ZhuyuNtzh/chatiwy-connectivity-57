@@ -1,8 +1,9 @@
-
 import * as signalR from '@microsoft/signalr';
 import { toast } from "sonner";
 import { MockHubConnection } from './signalR/mockConnection';
 import { ChatMessage, ConnectionStatus, ISignalRService } from './signalR/types';
+
+export { ChatMessage } from './signalR/types';
 
 class SignalRService implements ISignalRService {
   private connection: signalR.HubConnection | null = null;
