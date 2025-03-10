@@ -1,11 +1,13 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Inbox, User, Filter } from 'lucide-react';
+import { Search, User, Filter } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
 import { useTheme } from '../contexts/ThemeContext';
 import RulesModal from '../components/RulesModal';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const mockUsers = [
   { id: 1, username: 'Reincarnated', gender: 'Female', age: 36, location: 'Turkey, Istanbul', interests: ['cyan interest', 'gold interest'], isOnline: true },
@@ -34,6 +36,7 @@ const ChatInterface = () => {
   const { isDarkMode, toggleDarkMode } = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(!rulesAccepted);
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   
   useEffect(() => {
     if (!currentUser) {
@@ -46,9 +49,18 @@ const ChatInterface = () => {
   }, [currentUser, navigate, rulesAccepted]);
   
   const handleLogout = () => {
+    setIsLogoutDialogOpen(true);
+  };
+  
+  const confirmLogout = () => {
     setCurrentUser(null);
     setIsLoggedIn(false);
+    setIsLogoutDialogOpen(false);
     navigate('/');
+  };
+  
+  const cancelLogout = () => {
+    setIsLogoutDialogOpen(false);
   };
   
   const handleRulesAccepted = () => {
@@ -62,14 +74,18 @@ const ChatInterface = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#f2f7f9]">
-      <header className="fixed top-0 left-0 right-0 h-16 z-50 bg-white shadow-sm flex items-center justify-between px-4 md:px-6">
+    <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-[#f2f7f9]'}`}>
+      <header className={`fixed top-0 left-0 right-0 h-16 z-50 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm flex items-center justify-between px-4 md:px-6`}>
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-900">chativy.</h1>
+          <h1 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>chativy.</h1>
         </div>
         
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={`flex items-center gap-2 bg-gray-200 hover:bg-gray-300 ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : ''}`}
+          >
             <img 
               src="/lovable-uploads/e3b5491b-50db-4077-a99f-3de3837ccad6.png" 
               alt="Inbox" 
@@ -114,23 +130,23 @@ const ChatInterface = () => {
         </div>
       </header>
       
-      <div className="pt-20 px-4 md:px-6 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1 bg-white rounded-lg shadow-sm overflow-hidden">
+      <div className={`pt-20 px-4 md:px-6 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6`}>
+        <div className={`md:col-span-1 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden`}>
           <div className="p-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
                 type="text"
                 placeholder="Search Keyword"
-                className="pl-9 pr-4 py-2 w-full border rounded-md"
+                className={`pl-9 pr-4 py-2 w-full border rounded-md ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             
             <div className="mt-6 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-[#FB9E41]">People <span className="text-sm text-gray-500">({filteredUsers.length})</span></h2>
-              <Button variant="outline" size="sm" className="text-xs">
+              <h2 className={`text-lg font-semibold text-[#FB9E41]`}>People <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>({filteredUsers.length})</span></h2>
+              <Button variant="outline" size="sm" className={`text-xs ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}>
                 <Filter className="h-3 w-3 mr-1" />
                 Filters
               </Button>
@@ -139,7 +155,7 @@ const ChatInterface = () => {
           
           <div className="divide-y">
             {filteredUsers.map(user => (
-              <div key={user.id} className="p-4 hover:bg-gray-50 transition cursor-pointer">
+              <div key={user.id} className={`p-4 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition cursor-pointer`}>
                 <div className="flex items-start gap-3">
                   <div className="relative">
                     <div className="flex items-center justify-center w-10 h-10 rounded-full bg-orange-100">
@@ -152,11 +168,11 @@ const ChatInterface = () => {
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-medium text-gray-900">{user.username}</h3>
-                      <p className="text-xs text-gray-500">{user.gender}, {user.age}</p>
+                      <h3 className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{user.username}</h3>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user.gender}, {user.age}</p>
                     </div>
                     
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
                       <span className="inline-flex items-center">
                         {user.location}
                       </span>
@@ -179,13 +195,13 @@ const ChatInterface = () => {
           </div>
         </div>
         
-        <div className="md:col-span-2 bg-white rounded-lg shadow-sm p-6 flex flex-col items-center justify-center min-h-[600px]">
+        <div className={`md:col-span-2 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 flex flex-col items-center justify-center min-h-[600px]`}>
           <img 
-            src="/lovable-uploads/9a6ed40f-710f-4003-99eb-25bde492a5e8.png" 
+            src="/lovable-uploads/a427c90b-f62b-48e5-b2f6-e705879e6bba.png" 
             alt="Empty state illustration" 
             className="w-48 mb-8"
           />
-          <p className="text-xl text-gray-500 font-medium">Friends are waiting for you..</p>
+          <p className={`text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} font-medium`}>Friends are waiting for you..</p>
         </div>
       </div>
       
@@ -194,6 +210,33 @@ const ChatInterface = () => {
         onOpenChange={setIsRulesModalOpen} 
         onAccept={handleRulesAccepted}
       />
+
+      <Dialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Logout Confirmation</DialogTitle>
+            <DialogDescription>
+              Do you want to leave the chat? We will miss you
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex justify-between mt-6">
+            <Button
+              variant="outline"
+              onClick={cancelLogout}
+            >
+              No
+            </Button>
+            <Button
+              variant="destructive"
+              className="hover:bg-red-600"
+              onClick={confirmLogout}
+            >
+              Yes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

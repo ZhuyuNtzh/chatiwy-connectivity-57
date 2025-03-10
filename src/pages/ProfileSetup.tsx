@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -40,11 +41,13 @@ const ProfileSetup = () => {
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
   const [country, setCountry] = useState<Country | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   const maxInterests = userRole === 'vip' ? 5 : 3;
   
   useEffect(() => {
     const getCountryFromIP = async () => {
+      setIsLoading(true);
       try {
         const ipResponse = await axios.get('https://api.ipify.org?format=json');
         const countryResponse = await axios.get(`https://ipapi.co/${ipResponse.data.ip}/json/`);
@@ -54,12 +57,12 @@ const ProfileSetup = () => {
       } catch (error) {
         console.error('Error fetching country:', error);
         setCountry(null);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    if (userRole === 'standard') {
-      getCountryFromIP();
-    }
+    getCountryFromIP();
   }, [userRole]);
   
   const handleInterestChange = (interest: string, checked: boolean) => {
@@ -95,18 +98,18 @@ const ProfileSetup = () => {
     
     // Navigate to chat interface and then show the rules modal
     navigate('/chat-interface');
-    setIsRulesModalOpen(true);
+    setRulesAccepted(false); // To ensure rules modal shows up
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className={`min-h-screen flex flex-col ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-white'}`}>
       <Header />
       
       <main className="flex-1 container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16">
         <div className="max-w-md mx-auto">
           <div className="text-center mb-8 animate-fade-in-down">
             <h1 className="text-3xl font-bold mb-2">Create Your Profile</h1>
-            <p className="text-muted-foreground">
+            <p className={`${isDarkMode ? 'text-gray-300' : 'text-muted-foreground'}`}>
               {userRole === 'vip' 
                 ? 'Set up your VIP profile to get started' 
                 : 'Quick profile setup to get chatting'}
@@ -121,13 +124,48 @@ const ProfileSetup = () => {
                   id="nickname"
                   value={nickname}
                   readOnly
-                  className="glass-input bg-white/70 text-gray-800 placeholder:text-gray-500"
+                  className="glass-input bg-gray-100 text-gray-800 placeholder:text-gray-500"
                   required
                 />
-                <p className="text-xs text-gray-600">
-                  Your nickname cannot be changed after setup
-                </p>
               </div>
+
+              {isLoading ? (
+                <div className="space-y-2">
+                  <Label htmlFor="location" className="text-gray-800">Country (Loading...)</Label>
+                  <div className="bg-white/70 rounded-md px-3 py-2 border border-input flex items-center space-x-2">
+                    <div className="w-6 h-4 bg-gray-200 animate-pulse"></div>
+                    <span className="text-gray-400">Loading country information...</span>
+                  </div>
+                </div>
+              ) : country ? (
+                <div className="space-y-2">
+                  <Label htmlFor="location" className="text-gray-800">Country (Detected)</Label>
+                  <div className="flex items-center space-x-2 bg-white/70 rounded-md px-3 py-2 border border-input">
+                    <img 
+                      src={country.flags.svg} 
+                      alt={`${country.name.common} flag`} 
+                      className="w-6 h-4 object-cover"
+                    />
+                    <span className="text-gray-800">{country.name.common}</span>
+                  </div>
+                  {userRole === 'standard' && (
+                    <p className="text-xs text-gray-600">
+                      Based on your IP address (Standard users cannot change)
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="location" className="text-gray-800">Country</Label>
+                  <Input
+                    id="location"
+                    value="Unable to detect country"
+                    readOnly
+                    className="glass-input bg-white/70 text-gray-800 placeholder:text-gray-500"
+                    placeholder="Enter your location"
+                  />
+                </div>
+              )}
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -170,23 +208,6 @@ const ProfileSetup = () => {
                     className="glass-input bg-white/70 text-gray-800 placeholder:text-gray-500"
                     placeholder="Enter your location"
                   />
-                </div>
-              )}
-              
-              {userRole === 'standard' && country && (
-                <div className="space-y-2">
-                  <Label htmlFor="location" className="text-gray-800">Location (Detected)</Label>
-                  <div className="flex items-center space-x-2 bg-white/70 rounded-md px-3 py-2 border border-input">
-                    <img 
-                      src={country.flags.svg} 
-                      alt={`${country.name.common} flag`} 
-                      className="w-6 h-4 object-cover"
-                    />
-                    <span className="text-gray-800">{country.name.common}</span>
-                  </div>
-                  <p className="text-xs text-gray-600">
-                    Based on your IP address (Standard users cannot change)
-                  </p>
                 </div>
               )}
               
