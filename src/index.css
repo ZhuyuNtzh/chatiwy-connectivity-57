@@ -5,7 +5,7 @@
 
 @layer base {
   :root {
-    --background: 180 33% 98%;
+    --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
 
     --card: 0 0% 100%;
@@ -23,7 +23,7 @@
     --muted: 240 4% 16%;
     --muted-foreground: 240 5% 64.9%;
 
-    --accent: 349 71% 52%;
+    --accent: 14 100% 45%;
     --accent-foreground: 0 0% 98%;
 
     --destructive: 0 63% 31%;
@@ -34,6 +34,9 @@
     --ring: 174 77% 31%;
 
     --radius: 0.75rem;
+
+    --tiffany-blue: 177 94% 36%;
+    --orange: 22 100% 45%;
 
     --sidebar-background: 240 10% 3.9%;
     --sidebar-foreground: 0 0% 98%;
