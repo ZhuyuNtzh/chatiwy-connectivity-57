@@ -14,8 +14,17 @@ class SignalRService implements ISignalRService {
   private connectedUsersCallbacks: ((count: number) => void)[] = [];
   private blockedUsers: Set<number> = new Set();
   private chatHistory: Record<number, ChatMessage[]> = {};
+  private userName: string = '';
 
   public async initialize(userId: number, username: string): Promise<void> {
+    // Store the username for later use
+    this.userName = username;
+    
+    // Only initialize if not already connected
+    if (this.connectionStatus === 'connected') {
+      return;
+    }
+    
     this.connectionStatus = 'connecting';
     this.notifyConnectionStatusChanged();
 
@@ -87,7 +96,7 @@ class SignalRService implements ISignalRService {
     }
     this.chatHistory[recipientId].push(message);
     
-    this.simulateMessageSent(message);
+    this.simulateMessageSent(message, recipientId);
     this.messageCallbacks.forEach(callback => callback(message));
   }
 
@@ -119,7 +128,7 @@ class SignalRService implements ISignalRService {
     }
     this.chatHistory[recipientId].push(message);
     
-    this.simulateMessageSent(message);
+    this.simulateMessageSent(message, recipientId);
     this.messageCallbacks.forEach(callback => callback(message));
   }
 
@@ -153,7 +162,16 @@ class SignalRService implements ISignalRService {
   }
   
   public getAllChatHistory(): Record<number, ChatMessage[]> {
-    return this.chatHistory;
+    // Filter out empty histories
+    const filteredHistory: Record<number, ChatMessage[]> = {};
+    
+    Object.entries(this.chatHistory).forEach(([userId, messages]) => {
+      if (messages.length > 0) {
+        filteredHistory[parseInt(userId)] = messages;
+      }
+    });
+    
+    return filteredHistory;
   }
 
   public simulateReceiveMessage(fromUserId: number, username: string, content: string, isImage = false, imageUrl = '', isBlurred = false) {
@@ -187,17 +205,103 @@ class SignalRService implements ISignalRService {
     }, realisticDelay);
   }
 
-  private simulateMessageSent(message: ChatMessage) {
+  private simulateMessageSent(message: ChatMessage, recipientId: number) {
     // Only respond if the message is from the user (not from a bot)
-    if (Math.random() > 0.4) {
+    // And don't auto-respond with a random message - make it contextual
+    
+    const mockUser = this.getMockUserById(recipientId);
+    if (!mockUser) return;
+    
+    const responseOptions = this.getContextualResponses(message, mockUser);
+    
+    if (responseOptions.length > 0) {
+      const randomResponse = responseOptions[Math.floor(Math.random() * responseOptions.length)];
+      
       this.simulateReceiveMessage(
-        1,
-        "Alice",
-        "Thanks for your message! How are you doing today?",
+        recipientId,
+        mockUser.username,
+        randomResponse,
         false,
-        ""
+        "",
+        false
       );
     }
+  }
+  
+  private getMockUserById(userId: number) {
+    // Mock user data - this would come from a real database in production
+    const mockUsers = [
+      { id: 1, username: "Alice", interests: ["Art", "Photography", "Travel"] },
+      { id: 2, username: "Bob", interests: ["Music", "Technology", "Gaming"] },
+      { id: 3, username: "Clara", interests: ["Fashion", "Cooking", "Sports"] },
+      { id: 4, username: "David", interests: ["Cooking", "Books", "Music"] },
+      { id: 5, username: "Elena", interests: ["Sports", "Fashion", "Fitness"] },
+      { id: 11, username: "TravelBot", interests: ["Travel", "Photography", "Food"] },
+      { id: 12, username: "FitnessGuru", interests: ["Fitness", "Cooking", "Health"] },
+      { id: 13, username: "BookWorm", interests: ["Books", "Writing", "Movies"] },
+      { id: 14, username: "TechGeek", interests: ["Technology", "Gaming", "Music"] },
+      { id: 15, username: "ArtLover", interests: ["Art", "Photography", "Fashion"] }
+    ];
+    
+    return mockUsers.find(user => user.id === userId);
+  }
+  
+  private getContextualResponses(message: ChatMessage, user: {id: number, username: string, interests: string[]}) {
+    // Simple contextual responses based on message content and user interests
+    const content = message.content.toLowerCase();
+    const responses: string[] = [];
+    
+    // Image responses
+    if (message.isImage) {
+      return [
+        "Thanks for sharing the image!",
+        "Nice picture, thanks for sharing!",
+        "That's an interesting image.",
+        `As someone interested in ${user.interests[0]}, I appreciate this visual.`,
+        "I like your photo. Would you like to share more?",
+      ];
+    }
+    
+    // Greeting responses
+    if (content.includes('hi') || content.includes('hello') || content.includes('hey')) {
+      responses.push(
+        `Hi ${this.userName}! How are you doing today?`,
+        `Hello there! Nice to meet you, ${this.userName}.`,
+        `Hey ${this.userName}! How's your day going?`
+      );
+    }
+    
+    // Interest-based responses
+    user.interests.forEach(interest => {
+      if (content.includes(interest.toLowerCase())) {
+        responses.push(
+          `I'm really passionate about ${interest} too! What aspects do you enjoy most?`,
+          `${interest} is one of my favorite topics! I'd love to hear more about your interest in it.`,
+          `It's great to meet someone else interested in ${interest}!`
+        );
+      }
+    });
+    
+    // Question responses
+    if (content.includes('?')) {
+      responses.push(
+        "That's an interesting question. Let me think about it...",
+        "Good question! I'd need to consider that carefully.",
+        "I'm not sure I have a definitive answer to that, but I'd like to discuss it more."
+      );
+    }
+    
+    // Default responses if nothing specific was detected
+    if (responses.length === 0) {
+      responses.push(
+        `That's interesting! Tell me more about yourself.`,
+        `I see. By the way, I'm really into ${user.interests.join(', ')}. What about you?`,
+        `Thanks for sharing. What else would you like to talk about?`,
+        `I appreciate your message. Would you like to hear about my interest in ${user.interests[0]}?`
+      );
+    }
+    
+    return responses;
   }
 
   private updateConnectedUsersCount() {

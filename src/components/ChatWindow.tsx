@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { 
-  Send, Image, Mic, X, MoreVertical, Flag, Ban, Smile, User, Eye, EyeOff
+  Send, Image, Mic, X, MoreVertical, Flag, Ban, Smile, User, Eye, EyeOff, 
+  Maximize2
 } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
 import { signalRService } from '../services/signalRService';
@@ -64,6 +65,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [blockedUsers, setBlockedUsers] = useState<number[]>([]);
   const [isBlockedUsersDialogOpen, setIsBlockedUsersDialogOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const maxChars = userRole === 'vip' ? 200 : 140;
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -75,7 +77,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
     
     signalRService.onMessageReceived(handleNewMessage);
     
-    // Don't automatically send a welcome message - wait for user to initiate
+    // Load existing messages for this user
+    const existingMessages = signalRService.getChatHistory(user.id);
+    if (existingMessages && existingMessages.length > 0) {
+      setMessages(existingMessages);
+    }
     
     return () => {
       // Cleanup
@@ -202,6 +208,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
       msg.id === messageId ? { ...msg, isBlurred: !msg.isBlurred } : msg
     ));
   };
+  
+  const openImagePreview = (imageUrl: string) => {
+    setPreviewImage(imageUrl);
+  };
 
   const showBlockedUsersList = () => {
     setIsBlockedUsersDialogOpen(true);
@@ -305,17 +315,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
                     <img 
                       src={msg.imageUrl} 
                       alt="Shared image" 
-                      className={`max-w-full rounded ${msg.isBlurred ? 'blur-md' : ''}`}
+                      className={`max-w-full rounded cursor-pointer ${msg.isBlurred ? 'blur-xl' : ''}`}
+                      onClick={() => !msg.isBlurred && openImagePreview(msg.imageUrl || '')}
                     />
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="absolute bottom-2 right-2"
-                      onClick={() => toggleImageBlur(msg.id)}
-                    >
-                      {msg.isBlurred ? <Eye className="h-4 w-4 mr-1" /> : <EyeOff className="h-4 w-4 mr-1" />}
-                      {msg.isBlurred ? 'Reveal' : 'Blur'}
-                    </Button>
+                    <div className="absolute bottom-2 right-2 flex gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => toggleImageBlur(msg.id)}
+                      >
+                        {msg.isBlurred ? <Eye className="h-4 w-4 mr-1" /> : <EyeOff className="h-4 w-4 mr-1" />}
+                        {msg.isBlurred ? 'Reveal' : 'Blur'}
+                      </Button>
+                      {!msg.isBlurred && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => openImagePreview(msg.imageUrl || '')}
+                        >
+                          <Maximize2 className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <p className="text-sm">{msg.content}</p>
@@ -485,7 +507,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
               <img 
                 src={imagePreview} 
                 alt="Selected image preview" 
-                className="w-full h-auto max-h-80 object-contain rounded-md blur-md"
+                className="w-full h-auto max-h-80 object-contain rounded-md blur-xl"
               />
             </div>
           )}
@@ -528,6 +550,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
               </div>
             ) : (
               <p className="text-center text-muted-foreground">No blocked users</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Full-size Image Preview */}
+      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden">
+          <div className="relative">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="absolute top-2 right-2 bg-black/20 hover:bg-black/40 text-white z-10"
+              onClick={() => setPreviewImage(null)}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+            {previewImage && (
+              <img 
+                src={previewImage} 
+                alt="Full size preview" 
+                className="w-full h-auto max-h-[80vh] object-contain"
+              />
             )}
           </div>
         </DialogContent>
