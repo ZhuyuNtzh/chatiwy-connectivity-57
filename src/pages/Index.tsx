@@ -5,14 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { useUser } from '@/contexts/UserContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Shuffle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 const Index = () => {
   const navigate = useNavigate();
   const { setCurrentUser, setIsLoggedIn } = useUser();
+  const { isDarkMode, toggleDarkMode } = useTheme();
   const [username, setUsername] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const generateRandomUsername = () => {
     const adjectives = ['Happy', 'Sunny', 'Quick', 'Clever', 'Brave', 'Calm', 'Eager', 'Gentle'];
@@ -40,12 +42,14 @@ const Index = () => {
       role: 'standard'
     });
     setIsLoggedIn(true);
-    navigate('/chat');
-  };
-
-  const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-    // Apply dark mode in a real implementation
+    
+    // Navigate to profile setup page
+    navigate('/profile-setup');
+    
+    toast({
+      title: "Welcome!",
+      description: "Let's set up your profile"
+    });
   };
 
   return (
@@ -69,20 +73,21 @@ const Index = () => {
         {/* Left side - Chat bubbles */}
         <div className="w-full md:w-1/2 flex items-center justify-center relative">
           <div className="w-full max-w-md relative">
-            <div className="chat-bubble chat-bubble-teal w-64 h-44 absolute top-0 left-0 transform rotate-6"></div>
-            <div className="chat-bubble chat-bubble-red w-16 h-16 rounded-full absolute top-16 right-12"></div>
-            <div className="chat-bubble chat-bubble-orange w-24 h-10 absolute top-8 right-24 transform -rotate-12"></div>
-            <div className="chat-bubble chat-bubble-teal w-72 h-40 absolute bottom-8 right-4 transform -rotate-12"></div>
-            <div className="chat-bubble chat-bubble-orange w-20 h-12 absolute bottom-32 left-12"></div>
-            <div className="chat-bubble chat-bubble-red w-8 h-8 rounded-full absolute bottom-12 left-32"></div>
-            <div className="chat-bubble chat-bubble-red w-4 h-4 rounded-full absolute bottom-24 left-8"></div>
-            <div className="w-3 h-3 bg-primary rounded-full absolute top-1/3 right-1/3"></div>
+            {/* Animated chat bubbles */}
+            <div className="chat-bubble chat-bubble-teal w-64 h-44 absolute top-0 left-0 transform rotate-6 animate-float-slow"></div>
+            <div className="chat-bubble chat-bubble-red w-16 h-16 rounded-full absolute top-16 right-12 animate-pulse-subtle"></div>
+            <div className="chat-bubble chat-bubble-orange w-24 h-10 absolute top-8 right-24 transform -rotate-12 animate-float"></div>
+            <div className="chat-bubble chat-bubble-teal w-72 h-40 absolute bottom-8 right-4 transform -rotate-12 animate-float-reverse"></div>
+            <div className="chat-bubble chat-bubble-orange w-20 h-12 absolute bottom-32 left-12 animate-pulse-slow"></div>
+            <div className="chat-bubble chat-bubble-red w-8 h-8 rounded-full absolute bottom-12 left-32 animate-bounce-subtle"></div>
+            <div className="chat-bubble chat-bubble-red w-4 h-4 rounded-full absolute bottom-24 left-8 animate-ping-subtle"></div>
+            <div className="w-3 h-3 bg-primary rounded-full absolute top-1/3 right-1/3 animate-pulse"></div>
           </div>
         </div>
 
         {/* Right side - Text and input */}
         <div className="w-full md:w-1/2 flex items-center">
-          <div className="w-full max-w-lg bg-white rounded-2xl p-8 shadow-sm">
+          <div className="w-full max-w-lg bg-card rounded-2xl p-8 shadow-sm">
             <div className="mb-8">
               <h1 className="text-4xl font-bold mb-2">
                 Text <span className="text-secondary">Anonymously</span>
@@ -114,7 +119,7 @@ const Index = () => {
             </div>
             
             <Button 
-              className="w-full h-12 bg-secondary hover:bg-secondary/90 text-white"
+              className="w-full h-12 bg-secondary hover:bg-secondary/90 text-white animate-pulse-subtle-hover"
               onClick={handleStartChat}
             >
               Start Chat
@@ -123,14 +128,14 @@ const Index = () => {
         </div>
 
         {/* Right side ad placeholder */}
-        <div className="hidden lg:block w-32 h-[530px] ad-placeholder">
+        <div className="hidden lg:block w-32 h-[530px] ad-placeholder animate-pulse-slow">
           Ad place holder
         </div>
       </main>
 
       {/* Bottom ad placeholder */}
       <div className="w-full max-w-4xl mx-auto p-4">
-        <div className="w-full h-20 ad-placeholder mb-4">
+        <div className="w-full h-20 ad-placeholder mb-4 animate-pulse-subtle">
           Ad place holder
         </div>
       </div>
