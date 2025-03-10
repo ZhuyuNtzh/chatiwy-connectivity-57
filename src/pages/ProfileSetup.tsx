@@ -1,28 +1,31 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Moon, Sun } from 'lucide-react';
 import Header from '../components/Header';
 import RulesModal from '../components/RulesModal';
 import { useUser, UserProfile } from '../contexts/UserContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { generateUsername } from '@/utils/helpers';
 
 const interests = [
-  'Music', 'Movies', 'Books', 'Art', 'Gaming',
-  'Sports', 'Travel', 'Food', 'Photography', 'Technology',
-  'Science', 'History', 'Fashion', 'Nature', 'Fitness',
-  'Politics', 'Languages', 'Pets', 'Dance', 'Writing'
+  'Gaming', 'Music', 'Movies', 'Books', 'Travel',
+  'Food', 'Sports', 'Technology', 'Art', 'Fashion',
+  'Fitness', 'Pets', 'Photography', 'Writing', 'Nature',
+  'Cooking', 'Learning languages', 'Current events', 'Hobbies', 'Socializing'
 ];
 
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { userRole, setCurrentUser, setIsLoggedIn, setRulesAccepted, rulesAccepted } = useUser();
+  const { isDarkMode, toggleDarkMode } = useTheme();
   
-  const [username, setUsername] = useState(generateUsername());
+  const [nickname, setNickname] = useState(generateUsername());
   const [age, setAge] = useState('25');
   const [gender, setGender] = useState('');
   const [location, setLocation] = useState('');
@@ -48,21 +51,12 @@ const ProfileSetup = () => {
     }
   };
   
-  const handleUsernameGenerate = () => {
-    setUsername(generateUsername());
-  };
-  
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     
-    if (!rulesAccepted) {
-      setIsRulesModalOpen(true);
-      return;
-    }
-    
     // Create user profile
     const userProfile: UserProfile = {
-      username,
+      username: nickname,
       age: parseInt(age),
       gender,
       interests: selectedInterests,
@@ -78,8 +72,9 @@ const ProfileSetup = () => {
     setCurrentUser(userProfile);
     setIsLoggedIn(true);
     
-    // Navigate to user list/chat screen
+    // Navigate to user list/chat screen and then show the rules modal
     navigate('/user-list');
+    setIsRulesModalOpen(true);
   };
 
   return (
@@ -95,32 +90,30 @@ const ProfileSetup = () => {
                 ? 'Set up your VIP profile to get started' 
                 : 'Quick profile setup to get chatting'}
             </p>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleDarkMode}
+              className="mt-2 hover:bg-accent/10"
+              aria-label="Toggle dark mode"
+            >
+              {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
           </div>
           
           <form onSubmit={handleSubmit} className="glass-card p-6 animate-fade-in">
             <div className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    maxLength={20}
-                    className="glass-input flex-1"
-                    required
-                  />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={handleUsernameGenerate}
-                    className="flex-shrink-0"
-                  >
-                    Generate
-                  </Button>
-                </div>
+                <Label htmlFor="nickname">Nickname</Label>
+                <Input
+                  id="nickname"
+                  value={nickname}
+                  readOnly
+                  className="glass-input bg-muted/30"
+                  required
+                />
                 <p className="text-xs text-muted-foreground">
-                  Max 20 characters, alphanumeric with max 2 numbers
+                  Your nickname cannot be changed after setup
                 </p>
               </div>
               
@@ -150,8 +143,6 @@ const ProfileSetup = () => {
                     <SelectContent>
                       <SelectItem value="Male">Male</SelectItem>
                       <SelectItem value="Female">Female</SelectItem>
-                      <SelectItem value="Non-binary">Non-binary</SelectItem>
-                      <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -216,7 +207,7 @@ const ProfileSetup = () => {
               </div>
               
               <Button type="submit" className="w-full">
-                {rulesAccepted ? 'Start Chatting' : 'Continue to Site Rules'}
+                Start Chatting
               </Button>
             </div>
           </form>

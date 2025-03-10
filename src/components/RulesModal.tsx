@@ -30,11 +30,17 @@ const RulesModal = ({ open, onOpenChange }: RulesModalProps) => {
 
   const handleDecline = () => {
     if (declining) {
+      // User confirmed they want to exit (clicked "OK")
       navigate('/');
       onOpenChange(false);
     } else {
+      // First click on Decline button - show warning
       setDeclining(true);
     }
+  };
+
+  const handleBackToRules = () => {
+    setDeclining(false);
   };
 
   const rules = [
@@ -59,42 +65,62 @@ const RulesModal = ({ open, onOpenChange }: RulesModalProps) => {
         </DialogHeader>
         
         <div className="p-6 max-h-[60vh] overflow-y-auto">
-          <ul className="space-y-4">
-            {rules.map((rule, index) => (
-              <li key={index} className="flex items-start gap-3">
-                <div className="mt-1 flex-shrink-0 h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                  <Check className="h-3 w-3" />
-                </div>
-                <span className="text-sm">{rule}</span>
-              </li>
-            ))}
-          </ul>
+          {declining ? (
+            <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <p className="text-sm">You'll be kicked out for declining to follow the rules.</p>
+            </div>
+          ) : (
+            <ul className="space-y-4">
+              {rules.map((rule, index) => (
+                <li key={index} className="flex items-start gap-3">
+                  <div className="mt-1 flex-shrink-0 h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                    <Check className="h-3 w-3" />
+                  </div>
+                  <span className="text-sm">{rule}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <DialogFooter className="p-6 pt-2 border-t border-border/50 flex flex-col sm:flex-row gap-2">
-          {declining ? (
-            <div className="w-full p-4 mb-4 bg-destructive/10 border border-destructive/30 rounded-lg flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              <p className="text-sm">You will be kicked out if you don't follow the rules.</p>
-            </div>
-          ) : null}
-          
           <div className="flex w-full gap-3">
-            <Button 
-              variant="outline" 
-              onClick={handleDecline} 
-              className={`flex-1 ${declining ? 'border-destructive text-destructive' : ''}`}
-            >
-              {declining ? 'Yes, Exit' : 'Decline'}
-              {declining ? <X className="ml-2 h-4 w-4" /> : null}
-            </Button>
-            <Button 
-              onClick={handleAccept} 
-              className="flex-1"
-            >
-              {declining ? 'Back to Rules' : 'Accept'}
-              {declining ? null : <Check className="ml-2 h-4 w-4" />}
-            </Button>
+            {declining ? (
+              <>
+                <Button 
+                  variant="outline" 
+                  onClick={handleDecline} 
+                  className="flex-1 border-destructive text-destructive"
+                >
+                  OK
+                  <X className="ml-2 h-4 w-4" />
+                </Button>
+                <Button 
+                  onClick={handleBackToRules} 
+                  className="flex-1"
+                >
+                  Back
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button 
+                  variant="outline" 
+                  onClick={handleDecline} 
+                  className="flex-1"
+                >
+                  Decline
+                </Button>
+                <Button 
+                  onClick={handleAccept} 
+                  className="flex-1"
+                >
+                  Accept
+                  <Check className="ml-2 h-4 w-4" />
+                </Button>
+              </>
+            )}
           </div>
         </DialogFooter>
       </DialogContent>

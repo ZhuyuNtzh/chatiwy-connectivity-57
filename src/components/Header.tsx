@@ -1,11 +1,14 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, LogOut, Settings, User } from 'lucide-react';
+import { ChevronLeft, LogOut, Settings, User, Moon, Sun } from 'lucide-react';
 
 const Header = () => {
   const { currentUser, setCurrentUser, setIsLoggedIn, userRole } = useUser();
+  const { isDarkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
@@ -70,14 +73,10 @@ const Header = () => {
                 </span>
               )}
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="transition-all duration-300 hover:bg-white/20"
-              onClick={() => navigate('/profile')}
-            >
+            {/* User icon is now non-clickable (decorative only) */}
+            <div className="flex items-center justify-center w-8 h-8">
               <User className="h-5 w-5" />
-            </Button>
+            </div>
             {userRole === 'admin' && (
               <Button
                 variant="ghost"
@@ -96,16 +95,36 @@ const Header = () => {
             >
               <LogOut className="h-5 w-5" />
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleDarkMode}
+              className="transition-all duration-300 hover:bg-white/20"
+              aria-label="Toggle dark mode"
+            >
+              {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
           </div>
         ) : (
           location.pathname === '/' && (
-            <Button
-              variant="ghost"
-              className="transition-all duration-300 hover:bg-white/20"
-              onClick={() => navigate('/user-selection')}
-            >
-              Get Started
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleDarkMode}
+                className="transition-all duration-300 hover:bg-white/20"
+                aria-label="Toggle dark mode"
+              >
+                {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </Button>
+              <Button
+                variant="ghost"
+                className="transition-all duration-300 hover:bg-white/20"
+                onClick={() => navigate('/user-selection')}
+              >
+                Get Started
+              </Button>
+            </div>
           )
         )}
       </div>
