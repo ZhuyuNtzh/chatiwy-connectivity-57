@@ -72,7 +72,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
   
   useEffect(() => {
     const handleNewMessage = (msg: ChatMessage) => {
-      setMessages(prev => [...prev, msg]);
+      if (msg.senderId === user.id || msg.senderId === 0) {
+        setMessages(prev => [...prev, msg]);
+      }
     };
     
     signalRService.onMessageReceived(handleNewMessage);
@@ -83,10 +85,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
       setMessages(existingMessages);
     }
     
+    // Check if this user is already blocked
+    if (signalRService.isUserBlocked(user.id)) {
+      setBlockedUsers(prev => [...prev, user.id]);
+    }
+    
     return () => {
       // Cleanup
     };
-  }, [user]);
+  }, [user.id]);
   
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -125,7 +132,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
   };
   
   const confirmBlockUser = () => {
-    console.log('Blocking user', user.username);
     signalRService.blockUser(user.id);
     setBlockedUsers(prev => [...prev, user.id]);
     toast.success(`${user.username} has been blocked.`);
@@ -214,6 +220,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
   };
 
   const showBlockedUsersList = () => {
+    // Get the current blocked users from the service
+    const blockedIds = signalRService.getBlockedUsers();
+    setBlockedUsers(blockedIds);
     setIsBlockedUsersDialogOpen(true);
     setShowOptions(false);
   };

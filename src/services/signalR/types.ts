@@ -1,3 +1,4 @@
+
 import * as signalR from '@microsoft/signalr';
 
 export interface ChatMessage {
@@ -24,6 +25,6 @@ export interface ISignalRService {
   onConnectionStatusChanged(callback: ConnectionStatusCallback): void;
   onConnectedUsersCountChanged(callback: ConnectedUsersCallback): void;
   sendMessage(recipientId: number, content: string): Promise<void>;
-  sendImage(recipientId: number, imageUrl: string): Promise<void>;
+  sendImage(recipientId: number, imageUrl: string, isBlurred?: boolean): Promise<void>;
   disconnect(): Promise<void>;
 }
