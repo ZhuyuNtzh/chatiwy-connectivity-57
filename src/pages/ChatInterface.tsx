@@ -1,18 +1,16 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search, User as UserIcon, History } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
 import { useTheme } from '../contexts/ThemeContext';
-import RulesModal from '../components/RulesModal';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import FiltersDropdown, { Filters } from "../components/FiltersDropdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import axios from 'axios';
 import ChatWindow from '../components/ChatWindow';
 import { signalRService } from '../services/signalRService';
+import Header from '../components/chat/Header';
+import SearchBar from '../components/chat/SearchBar';
+import RulesModal from '../components/RulesModal';
 
 // List of interests that match the ones on the profile setup page
 const siteInterests = [
@@ -186,84 +184,20 @@ const ChatInterface = () => {
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-[#f2f7f9]'}`}>
-      <header className={`fixed top-0 left-0 right-0 h-16 z-50 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm flex items-center justify-between px-4 md:px-6`}>
-        <div className="flex-1">
-          <h1 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>chativy.</h1>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className={`flex items-center gap-2 bg-gray-200 hover:bg-gray-300 ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : ''}`}
-          >
-            <img 
-              src="/lovable-uploads/e3b5491b-50db-4077-a99f-3de3837ccad6.png" 
-              alt="Inbox" 
-              className="h-5 w-5 invert" 
-            />
-            <span>Inbox</span>
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className={`flex items-center gap-2 bg-gray-200 hover:bg-gray-300 ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : ''}`}
-            onClick={() => navigate('/chat-history')}
-          >
-            <History className="h-5 w-5" />
-            <span>History</span>
-          </Button>
-          
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Dark mode</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={isDarkMode}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                isDarkMode ? 'bg-primary' : 'bg-gray-200'
-              }`}
-              onClick={toggleDarkMode}
-            >
-              <span
-                className={`pointer-events-none relative inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                  isDarkMode ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
-              <UserIcon className="h-5 w-5 text-gray-600" />
-            </div>
-            <span className="text-sm font-medium">{currentUser?.username || "Nickname"}</span>
-          </div>
-          
-          <Button 
-            onClick={handleLogout}
-            variant="destructive"
-            className="bg-red-500 hover:bg-red-600 text-white"
-          >
-            Logout
-          </Button>
-        </div>
-      </header>
+      <Header 
+        username={currentUser?.username || "Nickname"}
+        isDarkMode={isDarkMode}
+        toggleDarkMode={toggleDarkMode}
+        onLogout={handleLogout}
+      />
       
       <div className={`pt-20 px-4 md:px-6 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6`}>
         <div className={`md:col-span-1 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden`}>
           <div className="p-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Search Keyword"
-                className={`pl-9 pr-4 py-2 w-full border rounded-md ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+            <SearchBar 
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+            />
             
             <div className="mt-6 flex items-center justify-between">
               <h2 className={`text-lg font-semibold text-[#FB9E41]`}>
