@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -9,24 +10,25 @@ import RulesModal from '../components/RulesModal';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import FiltersDropdown, { Filters } from "../components/FiltersDropdown";
 
+// Enhanced mock users with more details and chatbots
 const mockUsers = [
   { id: 1, username: "Alice", gender: "Female", age: 28, location: "Australia, Sydney", interests: ["Art", "Photography", "Travel"], isOnline: true },
   { id: 2, username: "Bob", gender: "Male", age: 35, location: "Canada, Toronto", interests: ["Music", "Technology", "Gaming"], isOnline: false },
-  { id: 3, username: "ChatBot_Alpha", gender: "Other", age: 25, location: "Digital", interests: ["AI", "Learning", "Helping"], isOnline: true },
-  { id: 4, username: "ChatBot_Beta", gender: "Other", age: 30, location: "Digital", interests: ["Psychology", "Counseling", "Support"], isOnline: true },
-  { id: 5, username: "David", gender: "Male", age: 42, location: "France, Paris", interests: ["Cooking", "Wine", "Literature"], isOnline: true },
-  { id: 6, username: "Elena", gender: "Female", age: 31, location: "Spain, Madrid", interests: ["Dance", "Fashion", "Fitness"], isOnline: false },
-].sort((a, b) => {
-  const countryA = a.location.split(',')[0].trim();
-  const countryB = b.location.split(',')[0].trim();
-  const countryCompare = countryA.localeCompare(countryB);
-  
-  if (countryCompare === 0) {
-    return a.username.localeCompare(b.username);
-  }
-  
-  return countryCompare;
-});
+  { id: 3, username: "Clara", gender: "Female", age: 24, location: "United Kingdom, London", interests: ["Fashion", "Cooking", "Yoga"], isOnline: true },
+  { id: 4, username: "David", gender: "Male", age: 42, location: "France, Paris", interests: ["Cooking", "Wine", "Literature"], isOnline: true },
+  { id: 5, username: "Elena", gender: "Female", age: 31, location: "Spain, Madrid", interests: ["Dance", "Fashion", "Fitness"], isOnline: false },
+  { id: 6, username: "Feng", gender: "Male", age: 27, location: "China, Beijing", interests: ["History", "Martial Arts", "Calligraphy"], isOnline: true },
+  { id: 7, username: "Gabriela", gender: "Female", age: 29, location: "Brazil, Rio de Janeiro", interests: ["Beach", "Samba", "Soccer"], isOnline: true },
+  { id: 8, username: "Hiroshi", gender: "Male", age: 33, location: "Japan, Tokyo", interests: ["Anime", "Technology", "Ramen"], isOnline: false },
+  { id: 9, username: "Isabella", gender: "Female", age: 26, location: "Italy, Rome", interests: ["Opera", "Fashion", "Pasta"], isOnline: true },
+  { id: 10, username: "Jamal", gender: "Male", age: 30, location: "Egypt, Cairo", interests: ["History", "Soccer", "Photography"], isOnline: true },
+  // Chatbots with diverse interests and personalities
+  { id: 11, username: "ChatBot_Alpha", gender: "Other", age: 25, location: "Digital", interests: ["AI", "Learning", "Helping"], isOnline: true },
+  { id: 12, username: "TherapistBot", gender: "Other", age: 30, location: "Digital", interests: ["Psychology", "Counseling", "Support"], isOnline: true },
+  { id: 13, username: "TravelGuide", gender: "Other", age: 28, location: "Digital", interests: ["Travel", "Geography", "Culture"], isOnline: true },
+  { id: 14, username: "FitnessCoach", gender: "Other", age: 32, location: "Digital", interests: ["Fitness", "Nutrition", "Health"], isOnline: true },
+  { id: 15, username: "LanguageTutor", gender: "Other", age: 27, location: "Digital", interests: ["Languages", "Education", "Communication"], isOnline: true },
+];
 
 const getInterestColor = (interest: string) => {
   if (interest.includes('cyan')) return 'bg-cyan-100 text-cyan-800';
@@ -46,8 +48,8 @@ const ChatInterface = () => {
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(!rulesAccepted);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState<Filters>({
-    gender: ["Male", "Female"],
-    ageRange: [18, 65],
+    gender: ["Male", "Female", "Other"],
+    ageRange: [18, 80],
     countries: [],
   });
   
@@ -94,9 +96,25 @@ const ChatInterface = () => {
     const matchesAge = user.age >= activeFilters.ageRange[0] && user.age <= activeFilters.ageRange[1];
     
     const matchesCountry = activeFilters.countries.length === 0 || 
-      activeFilters.countries.some(country => user.location.includes(country));
+      activeFilters.countries.some(country => {
+        const countryCode = countries.find(c => c.name === user.location.split(',')[0].trim())?.code;
+        return countryCode ? activeFilters.countries.includes(countryCode) : false;
+      }) ||
+      (user.location === "Digital" && activeFilters.countries.includes("Digital"));
     
     return matchesSearch && matchesGender && matchesAge && matchesCountry;
+  }).sort((a, b) => {
+    // First sort by country
+    const countryA = a.location.split(',')[0].trim();
+    const countryB = b.location.split(',')[0].trim();
+    const countryCompare = countryA.localeCompare(countryB);
+    
+    // If countries are the same, sort by username
+    if (countryCompare === 0) {
+      return a.username.localeCompare(b.username);
+    }
+    
+    return countryCompare;
   });
 
   return (
@@ -118,6 +136,15 @@ const ChatInterface = () => {
               className="h-5 w-5 invert" 
             />
             <span>Inbox</span>
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={`flex items-center gap-2 bg-gray-200 hover:bg-gray-300 ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : ''}`}
+          >
+            <History className="h-5 w-5" />
+            <span>History</span>
           </Button>
           
           <div className="flex items-center gap-2">

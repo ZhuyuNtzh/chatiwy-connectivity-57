@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
@@ -118,6 +119,7 @@ const Header = () => {
               variant="outline"
               size="sm"
               className="text-xs flex items-center gap-1 bg-gray-100/10"
+              onClick={() => navigate('/chat-history')}
             >
               <History className="h-4 w-4" />
               History
