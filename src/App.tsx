@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ProfileSetup from "./pages/ProfileSetup";
 import ChatInterface from "./pages/ChatInterface";
+import ChatHistory from "./pages/ChatHistory";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/profile-setup" element={<ProfileSetup />} />
                 <Route path="/chat-interface" element={<ChatInterface />} />
+                <Route path="/chat-history" element={<ChatHistory />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

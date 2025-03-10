@@ -9,28 +9,27 @@ import { useTheme } from '../contexts/ThemeContext';
 import RulesModal from '../components/RulesModal';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import FiltersDropdown, { Filters } from "../components/FiltersDropdown";
-
-// Import the countries array from FiltersDropdown.tsx
-import { countries } from "../components/FiltersDropdown";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import axios from 'axios';
 
 // Enhanced mock users with more details and chatbots
 const mockUsers = [
-  { id: 1, username: "Alice", gender: "Female", age: 28, location: "Australia, Sydney", interests: ["Art", "Photography", "Travel"], isOnline: true },
-  { id: 2, username: "Bob", gender: "Male", age: 35, location: "Canada, Toronto", interests: ["Music", "Technology", "Gaming"], isOnline: false },
-  { id: 3, username: "Clara", gender: "Female", age: 24, location: "United Kingdom, London", interests: ["Fashion", "Cooking", "Yoga"], isOnline: true },
-  { id: 4, username: "David", gender: "Male", age: 42, location: "France, Paris", interests: ["Cooking", "Wine", "Literature"], isOnline: true },
-  { id: 5, username: "Elena", gender: "Female", age: 31, location: "Spain, Madrid", interests: ["Dance", "Fashion", "Fitness"], isOnline: false },
-  { id: 6, username: "Feng", gender: "Male", age: 27, location: "China, Beijing", interests: ["History", "Martial Arts", "Calligraphy"], isOnline: true },
-  { id: 7, username: "Gabriela", gender: "Female", age: 29, location: "Brazil, Rio de Janeiro", interests: ["Beach", "Samba", "Soccer"], isOnline: true },
-  { id: 8, username: "Hiroshi", gender: "Male", age: 33, location: "Japan, Tokyo", interests: ["Anime", "Technology", "Ramen"], isOnline: false },
-  { id: 9, username: "Isabella", gender: "Female", age: 26, location: "Italy, Rome", interests: ["Opera", "Fashion", "Pasta"], isOnline: true },
-  { id: 10, username: "Jamal", gender: "Male", age: 30, location: "Egypt, Cairo", interests: ["History", "Soccer", "Photography"], isOnline: true },
+  { id: 1, username: "Alice", gender: "Female", age: 28, location: "Australia", interests: ["Art", "Photography", "Travel"], isOnline: true },
+  { id: 2, username: "Bob", gender: "Male", age: 35, location: "Canada", interests: ["Music", "Technology", "Gaming"], isOnline: false },
+  { id: 3, username: "Clara", gender: "Female", age: 24, location: "United Kingdom", interests: ["Fashion", "Cooking", "Yoga"], isOnline: true },
+  { id: 4, username: "David", gender: "Male", age: 42, location: "France", interests: ["Cooking", "Wine", "Literature"], isOnline: true },
+  { id: 5, username: "Elena", gender: "Female", age: 31, location: "Spain", interests: ["Dance", "Fashion", "Fitness"], isOnline: false },
+  { id: 6, username: "Feng", gender: "Male", age: 27, location: "China", interests: ["History", "Martial Arts", "Calligraphy"], isOnline: true },
+  { id: 7, username: "Gabriela", gender: "Female", age: 29, location: "Brazil", interests: ["Beach", "Samba", "Soccer"], isOnline: true },
+  { id: 8, username: "Hiroshi", gender: "Male", age: 33, location: "Japan", interests: ["Anime", "Technology", "Ramen"], isOnline: false },
+  { id: 9, username: "Isabella", gender: "Female", age: 26, location: "Italy", interests: ["Opera", "Fashion", "Pasta"], isOnline: true },
+  { id: 10, username: "Jamal", gender: "Male", age: 30, location: "Egypt", interests: ["History", "Soccer", "Photography"], isOnline: true },
   // Chatbots with diverse interests and personalities
-  { id: 11, username: "ChatBot_Alpha", gender: "Other", age: 25, location: "Digital", interests: ["AI", "Learning", "Helping"], isOnline: true },
-  { id: 12, username: "TherapistBot", gender: "Other", age: 30, location: "Digital", interests: ["Psychology", "Counseling", "Support"], isOnline: true },
-  { id: 13, username: "TravelGuide", gender: "Other", age: 28, location: "Digital", interests: ["Travel", "Geography", "Culture"], isOnline: true },
-  { id: 14, username: "FitnessCoach", gender: "Other", age: 32, location: "Digital", interests: ["Fitness", "Nutrition", "Health"], isOnline: true },
-  { id: 15, username: "LanguageTutor", gender: "Other", age: 27, location: "Digital", interests: ["Languages", "Education", "Communication"], isOnline: true },
+  { id: 11, username: "ChatBot_Alpha", gender: "Male", age: 25, location: "Digital", interests: ["AI", "Learning", "Helping"], isOnline: true },
+  { id: 12, username: "TherapistBot", gender: "Female", age: 30, location: "Digital", interests: ["Psychology", "Counseling", "Support"], isOnline: true },
+  { id: 13, username: "TravelGuide", gender: "Male", age: 28, location: "Digital", interests: ["Travel", "Geography", "Culture"], isOnline: true },
+  { id: 14, username: "FitnessCoach", gender: "Female", age: 32, location: "Digital", interests: ["Fitness", "Nutrition", "Health"], isOnline: true },
+  { id: 15, username: "LanguageTutor", gender: "Male", age: 27, location: "Digital", interests: ["Languages", "Education", "Communication"], isOnline: true },
 ];
 
 const getInterestColor = (interest: string) => {
@@ -43,6 +42,12 @@ const getInterestColor = (interest: string) => {
   return 'bg-gray-100 text-gray-800';
 };
 
+interface CountryInfo {
+  code: string;
+  name: string;
+  flag: string;
+}
+
 const ChatInterface = () => {
   const navigate = useNavigate();
   const { currentUser, setCurrentUser, setIsLoggedIn, rulesAccepted, setRulesAccepted } = useUser();
@@ -50,8 +55,9 @@ const ChatInterface = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(!rulesAccepted);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [countryFlags, setCountryFlags] = useState<Record<string, string>>({});
   const [activeFilters, setActiveFilters] = useState<Filters>({
-    gender: ["Male", "Female", "Other"],
+    gender: ["Male", "Female"],
     ageRange: [18, 80],
     countries: [],
   });
@@ -64,6 +70,27 @@ const ChatInterface = () => {
     if (!rulesAccepted) {
       setIsRulesModalOpen(true);
     }
+
+    // Fetch country flags
+    const fetchCountryFlags = async () => {
+      try {
+        const response = await axios.get('https://restcountries.com/v3.1/all?fields=name,flags');
+        const flagsMap: Record<string, string> = {};
+        
+        response.data.forEach((country: any) => {
+          flagsMap[country.name.common] = country.flags.svg;
+        });
+        
+        // Add Digital flag
+        flagsMap['Digital'] = '🌐';
+        
+        setCountryFlags(flagsMap);
+      } catch (error) {
+        console.error('Error fetching country flags:', error);
+      }
+    };
+
+    fetchCountryFlags();
   }, [currentUser, navigate, rulesAccepted]);
   
   const handleLogout = () => {
@@ -99,17 +126,14 @@ const ChatInterface = () => {
     const matchesAge = user.age >= activeFilters.ageRange[0] && user.age <= activeFilters.ageRange[1];
     
     const matchesCountry = activeFilters.countries.length === 0 || 
-      activeFilters.countries.some(country => {
-        const countryCode = countries.find(c => c.name === user.location.split(',')[0].trim())?.code;
-        return countryCode ? activeFilters.countries.includes(countryCode) : false;
-      }) ||
+      activeFilters.countries.includes(user.location) ||
       (user.location === "Digital" && activeFilters.countries.includes("Digital"));
     
     return matchesSearch && matchesGender && matchesAge && matchesCountry;
   }).sort((a, b) => {
     // First sort by country
-    const countryA = a.location.split(',')[0].trim();
-    const countryB = b.location.split(',')[0].trim();
+    const countryA = a.location;
+    const countryB = b.location;
     const countryCompare = countryA.localeCompare(countryB);
     
     // If countries are the same, sort by username
@@ -207,46 +231,54 @@ const ChatInterface = () => {
             </div>
           </div>
           
-          <div className="divide-y">
-            {filteredUsers.map(user => (
-              <div key={user.id} className={`p-4 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition cursor-pointer`}>
-                <div className="flex items-start gap-3">
-                  <div className="relative">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-orange-100">
-                      <User className="h-6 w-6 text-orange-600" />
-                    </div>
-                    {user.isOnline && (
-                      <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-white" />
-                    )}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{user.username}</h3>
-                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user.gender}, {user.age}</p>
+          <ScrollArea className="h-[calc(100vh-230px)]">
+            <div className="divide-y">
+              {filteredUsers.map(user => (
+                <div key={user.id} className={`p-4 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition cursor-pointer`}>
+                  <div className="flex items-start gap-3">
+                    <div className="relative">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-orange-100">
+                        <User className="h-6 w-6 text-orange-600" />
+                      </div>
+                      {user.isOnline && (
+                        <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-white" />
+                      )}
                     </div>
                     
-                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
-                      <span className="inline-flex items-center">
-                        {user.location}
-                      </span>
-                    </p>
-                    
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {user.interests.map((interest, idx) => (
-                        <span 
-                          key={idx} 
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getInterestColor(interest)}`}
-                        >
-                          {interest}
-                        </span>
-                      ))}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <h3 className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{user.username}</h3>
+                        <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user.gender}, {user.age}</p>
+                      </div>
+                      
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-1 flex items-center`}>
+                        {countryFlags[user.location] && (
+                          <img 
+                            src={user.location !== 'Digital' ? countryFlags[user.location] : undefined}
+                            alt={`${user.location} flag`}
+                            className="w-4 h-3 mr-1 object-cover"
+                          />
+                        )}
+                        {user.location === 'Digital' && <span className="mr-1">🌐</span>}
+                        <span>{user.location}</span>
+                      </p>
+                      
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {user.interests.map((interest, idx) => (
+                          <span 
+                            key={idx} 
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getInterestColor(interest)}`}
+                          >
+                            {interest}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </ScrollArea>
         </div>
         
         <div className={`md:col-span-2 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 flex flex-col items-center justify-center min-h-[600px]`}>
