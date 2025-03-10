@@ -67,18 +67,9 @@ class SignalRService implements ISignalRService {
   public onMessageReceived(callback: (message: ChatMessage) => void) {
     this.messageCallbacks.push(callback);
   }
-
-  public onConnectionStatusChanged(callback: (status: ConnectionStatus) => void) {
-    this.connectionStatusCallbacks.push(callback);
-    callback(this.connectionStatus);
-  }
-
-  public onConnectedUsersCountChanged(callback: (count: number) => void) {
-    this.connectedUsersCallbacks.push(callback);
-  }
-
-  private notifyConnectionStatusChanged() {
-    this.connectionStatusCallbacks.forEach(callback => callback(this.connectionStatus));
+  
+  public offMessageReceived(callback: (message: ChatMessage) => void) {
+    this.messageCallbacks = this.messageCallbacks.filter(cb => cb !== callback);
   }
 
   public async sendMessage(recipientId: number, content: string): Promise<void> {
@@ -98,10 +89,11 @@ class SignalRService implements ISignalRService {
     }
 
     const message: ChatMessage = {
-      id: `msg_${Date.now()}`,
+      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       content,
       sender: 'You',
       senderId: 0,
+      recipientId: recipientId,
       timestamp: new Date()
     };
     
@@ -115,7 +107,6 @@ class SignalRService implements ISignalRService {
     
     // Only notify about messages intended for this recipient
     this.messageCallbacks.forEach(callback => {
-      // Check if the message is for the current conversation
       callback(message);
     });
   }
@@ -137,10 +128,11 @@ class SignalRService implements ISignalRService {
     }
 
     const message: ChatMessage = {
-      id: `img_${Date.now()}`,
+      id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       content: 'Image',
       sender: 'You',
       senderId: 0,
+      recipientId: recipientId,
       timestamp: new Date(),
       isImage: true,
       imageUrl,
@@ -155,7 +147,7 @@ class SignalRService implements ISignalRService {
     
     this.simulateMessageSent(message, recipientId);
     
-    // Only notify about messages intended for this recipient
+    // Notify about the message
     this.messageCallbacks.forEach(callback => {
       callback(message);
     });
@@ -210,7 +202,7 @@ class SignalRService implements ISignalRService {
     return filteredHistory;
   }
 
-  private simulateReceiveMessage(fromUserId: number, username: string, content: string, isImage = false, imageUrl = '', isBlurred = false) {
+  private simulateReceiveMessage(fromUserId: number, username: string, content: string, isImage = false, imageUrl = '', isBlurred = false, recipientId = 0) {
     // If user is blocked, don't simulate receiving a message
     if (this.blockedUsers.has(fromUserId)) {
       return;
@@ -221,10 +213,11 @@ class SignalRService implements ISignalRService {
     
     setTimeout(() => {
       const message: ChatMessage = {
-        id: `msg_${Date.now()}`,
+        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         content,
         sender: username,
         senderId: fromUserId,
+        recipientId: recipientId,
         timestamp: new Date(),
         isImage,
         imageUrl,
@@ -262,7 +255,8 @@ class SignalRService implements ISignalRService {
         randomResponse,
         false,
         "",
-        false
+        false,
+        0
       );
     }
   }

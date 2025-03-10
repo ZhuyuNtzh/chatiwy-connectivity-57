@@ -18,7 +18,7 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
   inboxMessages,
   onOpenChat
 }) => {
-  // Convert Record to array for easier rendering
+  // Convert Record to array for easier rendering and ensure each conversation is distinct
   const messagesArray = Object.entries(inboxMessages)
     .filter(([_, messages]) => messages && messages.length > 0) // Filter out empty conversations
     .map(([userId, messages]) => {

@@ -1,6 +1,5 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import type { ChatMessage } from '../../services/signalR/types';
 import MessageItem from './MessageItem';
 
@@ -36,7 +35,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
     return () => scrollContainer.removeEventListener("scroll", handleScroll);
   }, []);
   
-  // Scroll to bottom only when new messages arrive and user hasn't scrolled up
+  // Scroll to bottom only when new messages arrive and user hasn't scrolled up or autoScroll is triggered
   useEffect(() => {
     if ((!userScrolledUp || autoScrollToBottom) && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -51,7 +50,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
       >
         {messages.map((msg) => (
           <MessageItem 
-            key={msg.id}
+            key={`${msg.id}-${msg.senderId}`}
             message={msg}
             toggleImageBlur={toggleImageBlur}
             openImagePreview={openImagePreview}
