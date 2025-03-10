@@ -45,7 +45,7 @@ const UserList: React.FC<UserListProps> = ({
   isDarkMode 
 }) => {
   return (
-    <ScrollArea className="h-[calc(100vh-230px)]">
+    <ScrollArea className="h-full">
       <div className="divide-y">
         {users.map(user => (
           <div 

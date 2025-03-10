@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -213,8 +212,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
   };
   
   return (
-    <div className="flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden h-full w-full border border-gray-200 dark:border-gray-700">
-      <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+    <div className="flex flex-col bg-white dark:bg-gray-800 h-full w-full border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
+      <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
         <UserInfo user={user} countryFlags={countryFlags} />
         
         <div className="flex items-center gap-2">
@@ -273,7 +272,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         </div>
       </ScrollArea>
       
-      <div className="p-3 border-t border-gray-200 dark:border-gray-700">
+      <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
         <MessageInput 
           message={message}
           setMessage={setMessage}
