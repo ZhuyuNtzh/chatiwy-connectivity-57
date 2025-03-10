@@ -1,13 +1,13 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, User, Filter } from 'lucide-react';
+import { Search, User } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
 import { useTheme } from '../contexts/ThemeContext';
 import RulesModal from '../components/RulesModal';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import FiltersDropdown, { Filters } from "../components/FiltersDropdown";
 
 const mockUsers = [
   { id: 1, username: 'Reincarnated', gender: 'Female', age: 36, location: 'Turkey, Istanbul', interests: ['cyan interest', 'gold interest'], isOnline: true },
@@ -37,6 +37,11 @@ const ChatInterface = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(!rulesAccepted);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<Filters>({
+    gender: ["Male", "Female"],
+    ageRange: [18, 65],
+    countries: [],
+  });
   
   useEffect(() => {
     if (!currentUser) {
@@ -68,10 +73,23 @@ const ChatInterface = () => {
     setIsRulesModalOpen(false);
   };
   
-  const filteredUsers = mockUsers.filter(user => 
-    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.interests.some(interest => interest.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const handleFiltersChange = (newFilters: Filters) => {
+    setActiveFilters(newFilters);
+  };
+  
+  const filteredUsers = mockUsers.filter(user => {
+    const matchesSearch = user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.interests.some(interest => interest.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesGender = activeFilters.gender.includes(user.gender);
+    
+    const matchesAge = user.age >= activeFilters.ageRange[0] && user.age <= activeFilters.ageRange[1];
+    
+    const matchesCountry = activeFilters.countries.length === 0 || 
+      activeFilters.countries.some(country => user.location.includes(country));
+    
+    return matchesSearch && matchesGender && matchesAge && matchesCountry;
+  });
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-[#f2f7f9]'}`}>
@@ -146,10 +164,7 @@ const ChatInterface = () => {
             
             <div className="mt-6 flex items-center justify-between">
               <h2 className={`text-lg font-semibold text-[#FB9E41]`}>People <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>({filteredUsers.length})</span></h2>
-              <Button variant="outline" size="sm" className={`text-xs ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}>
-                <Filter className="h-3 w-3 mr-1" />
-                Filters
-              </Button>
+              <FiltersDropdown onFiltersChange={handleFiltersChange} />
             </div>
           </div>
           
@@ -197,8 +212,8 @@ const ChatInterface = () => {
         
         <div className={`md:col-span-2 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 flex flex-col items-center justify-center min-h-[600px]`}>
           <img 
-            src="/lovable-uploads/a427c90b-f62b-48e5-b2f6-e705879e6bba.png" 
-            alt="Empty state illustration" 
+            src="/lovable-uploads/c80784b4-1560-465c-ac27-ce7bab7aa1d5.png" 
+            alt="Friends are waiting" 
             className="w-48 mb-8"
           />
           <p className={`text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} font-medium`}>Friends are waiting for you..</p>
