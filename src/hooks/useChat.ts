@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '../services/signalRService';
 import type { ChatMessage } from '../services/signalR/types';
@@ -20,14 +19,25 @@ export const useChat = (userId: number, userRole: string) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const maxChars = userRole === 'vip' ? 200 : 140;
   
-  // This should be true only when user clicks a button to manually scroll down
-  // Not automated on message receipt
+  // This state should only be true when manually triggered (like when new messages arrive
+  // and we're already at bottom, or when user clicks a "scroll to bottom" button)
   const [autoScrollToBottom, setAutoScrollToBottom] = useState(false);
   
   useEffect(() => {
     const handleNewMessage = (msg: ChatMessage) => {
       if (msg.senderId === userId || msg.senderId === 0) {
         setMessages(prev => [...prev, msg]);
+        
+        // Only auto-scroll when we receive a message that we sent
+        // This prevents constantly scrolling when receiving messages
+        if (msg.sender === 'You') {
+          setAutoScrollToBottom(true);
+          
+          // Reset auto-scroll after a short delay
+          setTimeout(() => {
+            setAutoScrollToBottom(false);
+          }, 100);
+        }
       }
     };
     
