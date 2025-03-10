@@ -18,55 +18,47 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   autoScrollToBottom
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   
-  // Track when user scrolls up manually
+  // Detect when user scrolls up manually
   useEffect(() => {
-    const scrollContainer = messagesEndRef.current?.parentElement;
+    const scrollContainer = scrollContainerRef.current;
     if (!scrollContainer) return;
 
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
-      const isUserAtBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 5;
-      
-      setUserScrolledUp(!isUserAtBottom);
+      const isAtBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 5;
+      setUserScrolledUp(!isAtBottom);
     };
 
     scrollContainer.addEventListener("scroll", handleScroll);
     return () => scrollContainer.removeEventListener("scroll", handleScroll);
   }, []);
   
-  // Handle scrolling when messages change
+  // Scroll to bottom only when new messages arrive and user hasn't scrolled up
   useEffect(() => {
-    const scrollContainer = messagesEndRef.current?.parentElement;
-    if (!scrollContainer) return;
-
-    const { scrollHeight, scrollTop, clientHeight } = scrollContainer;
-
-    // Check if user is already at the bottom
-    const isAtBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 5;
-
-    // Only auto-scroll when user is at bottom or when explicitly requested and user hasn't manually scrolled up
-    if ((isAtBottom || autoScrollToBottom) && !userScrolledUp) {
+    if ((!userScrolledUp || autoScrollToBottom) && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, autoScrollToBottom, userScrolledUp]);
+  }, [messages, userScrolledUp, autoScrollToBottom]);
 
   return (
     <div className="flex-1 overflow-hidden">
-      <ScrollArea className="h-full scroll-area">
-        <div className="p-4 space-y-4">
-          {messages.map((msg) => (
-            <MessageItem 
-              key={msg.id}
-              message={msg}
-              toggleImageBlur={toggleImageBlur}
-              openImagePreview={openImagePreview}
-            />
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-      </ScrollArea>
+      <div 
+        ref={scrollContainerRef} 
+        className="h-full overflow-y-auto p-4 space-y-4"
+      >
+        {messages.map((msg) => (
+          <MessageItem 
+            key={msg.id}
+            message={msg}
+            toggleImageBlur={toggleImageBlur}
+            openImagePreview={openImagePreview}
+          />
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
     </div>
   );
 };

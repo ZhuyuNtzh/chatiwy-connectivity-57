@@ -19,31 +19,28 @@ export const useChat = (userId: number, userRole: string) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const maxChars = userRole === 'vip' ? 200 : 140;
   
-  // This state should only be true when manually triggered (like when new messages arrive
-  // and we're already at bottom, or when user clicks a "scroll to bottom" button)
+  // Auto-scroll state
   const [autoScrollToBottom, setAutoScrollToBottom] = useState(false);
   
   useEffect(() => {
     const handleNewMessage = (msg: ChatMessage) => {
+      // Only process messages specific to this conversation
       if (msg.senderId === userId || msg.senderId === 0) {
         setMessages(prev => [...prev, msg]);
         
-        // Only auto-scroll when we receive a message that we sent
-        // This prevents constantly scrolling when receiving messages
-        if (msg.sender === 'You') {
-          setAutoScrollToBottom(true);
-          
-          // Reset auto-scroll after a short delay
-          setTimeout(() => {
-            setAutoScrollToBottom(false);
-          }, 100);
-        }
+        // Auto-scroll when receiving a new message from this user
+        setAutoScrollToBottom(true);
+        
+        // Reset auto-scroll after a short delay
+        setTimeout(() => {
+          setAutoScrollToBottom(false);
+        }, 100);
       }
     };
     
     signalRService.onMessageReceived(handleNewMessage);
     
-    // Load existing messages for this user
+    // Load existing messages specifically for this user
     const existingMessages = signalRService.getChatHistory(userId);
     if (existingMessages && existingMessages.length > 0) {
       setMessages(existingMessages);

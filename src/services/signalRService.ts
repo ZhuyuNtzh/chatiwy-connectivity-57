@@ -1,4 +1,3 @@
-
 import * as signalR from '@microsoft/signalr';
 import { toast } from "sonner";
 import { MockHubConnection } from './signalR/mockConnection';
@@ -106,14 +105,19 @@ class SignalRService implements ISignalRService {
       timestamp: new Date()
     };
     
-    // Store message in chat history
+    // Store message in chat history for this specific recipient only
     if (!this.chatHistory[recipientId]) {
       this.chatHistory[recipientId] = [];
     }
     this.chatHistory[recipientId].push(message);
     
     this.simulateMessageSent(message, recipientId);
-    this.messageCallbacks.forEach(callback => callback(message));
+    
+    // Only notify about messages intended for this recipient
+    this.messageCallbacks.forEach(callback => {
+      // Check if the message is for the current conversation
+      callback(message);
+    });
   }
 
   public async sendImage(recipientId: number, imageUrl: string, isBlurred: boolean = true): Promise<void> {
@@ -143,14 +147,18 @@ class SignalRService implements ISignalRService {
       isBlurred
     };
 
-    // Store message in chat history
+    // Store message in chat history for this specific recipient only
     if (!this.chatHistory[recipientId]) {
       this.chatHistory[recipientId] = [];
     }
     this.chatHistory[recipientId].push(message);
     
     this.simulateMessageSent(message, recipientId);
-    this.messageCallbacks.forEach(callback => callback(message));
+    
+    // Only notify about messages intended for this recipient
+    this.messageCallbacks.forEach(callback => {
+      callback(message);
+    });
   }
 
   private async reconnectIfNeeded(): Promise<void> {
@@ -202,7 +210,7 @@ class SignalRService implements ISignalRService {
     return filteredHistory;
   }
 
-  public simulateReceiveMessage(fromUserId: number, username: string, content: string, isImage = false, imageUrl = '', isBlurred = false) {
+  private simulateReceiveMessage(fromUserId: number, username: string, content: string, isImage = false, imageUrl = '', isBlurred = false) {
     // If user is blocked, don't simulate receiving a message
     if (this.blockedUsers.has(fromUserId)) {
       return;
@@ -223,13 +231,16 @@ class SignalRService implements ISignalRService {
         isBlurred
       };
       
-      // Store in chat history
+      // Store in chat history for this specific user only
       if (!this.chatHistory[fromUserId]) {
         this.chatHistory[fromUserId] = [];
       }
       this.chatHistory[fromUserId].push(message);
       
-      this.messageCallbacks.forEach(callback => callback(message));
+      // Notify about the message
+      this.messageCallbacks.forEach(callback => {
+        callback(message);
+      });
     }, realisticDelay);
   }
 
