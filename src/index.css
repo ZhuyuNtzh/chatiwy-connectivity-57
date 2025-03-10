@@ -1,37 +1,36 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    --background: 180 33% 98%;
+    --foreground: 240 10% 3.9%;
 
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
 
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
 
-    --primary: 8 97% 64%;
+    --primary: 174 77% 31%;
     --primary-foreground: 0 0% 98%;
 
-    --secondary: 240 4% 16%;
+    --secondary: 30 96% 62%;
     --secondary-foreground: 0 0% 98%;
 
     --muted: 240 4% 16%;
-    --muted-foreground: 0 0% 63%;
+    --muted-foreground: 240 5% 64.9%;
 
-    --accent: 8 97% 64%;
+    --accent: 349 71% 52%;
     --accent-foreground: 0 0% 98%;
 
     --destructive: 0 63% 31%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 4% 16%;
-    --input: 240 4% 16%;
-    --ring: 240 5% 65%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 174 77% 31%;
 
     --radius: 0.75rem;
 
@@ -79,7 +78,7 @@
     --border: 240 4% 16%;
     --input: 240 4% 16%;
     --ring: 240 5% 65%;
-    
+
     --sidebar-background: 240 10% 3.9%;
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 8 97% 64%;
@@ -109,6 +108,7 @@
 
   body {
     @apply bg-background text-foreground font-sans;
+    @apply min-h-screen;
   }
 
   .glass {
@@ -174,3 +174,24 @@
 .staggered-fade-in > *:nth-child(6) { animation-delay: 0.6s; }
 .staggered-fade-in > *:nth-child(7) { animation-delay: 0.7s; }
 .staggered-fade-in > *:nth-child(8) { animation-delay: 0.8s; }
+
+/* New classes for the landing page */
+.ad-placeholder {
+  @apply bg-primary/80 text-white font-medium flex items-center justify-center rounded-lg;
+}
+
+.chat-bubble {
+  @apply rounded-3xl;
+}
+
+.chat-bubble-teal {
+  @apply bg-primary text-white;
+}
+
+.chat-bubble-orange {
+  @apply bg-secondary text-white;
+}
+
+.chat-bubble-red {
+  @apply bg-accent text-white;
+}
