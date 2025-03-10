@@ -74,7 +74,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-  
+
   const handleSendMessage = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
@@ -258,19 +258,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         </div>
       </div>
       
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
-          {messages.map((msg) => (
-            <MessageItem 
-              key={msg.id}
-              message={msg}
-              toggleImageBlur={toggleImageBlur}
-              openImagePreview={openImagePreview}
-            />
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-      </ScrollArea>
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-4">
+            {messages.map((msg) => (
+              <MessageItem 
+                key={msg.id}
+                message={msg}
+                toggleImageBlur={toggleImageBlur}
+                openImagePreview={openImagePreview}
+              />
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
+      </div>
       
       <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
         <MessageInput 
