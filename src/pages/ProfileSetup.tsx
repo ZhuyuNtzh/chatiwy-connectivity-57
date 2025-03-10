@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,16 @@ import RulesModal from '../components/RulesModal';
 import { useUser, UserProfile } from '../contexts/UserContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { generateUsername } from '@/utils/helpers';
+import axios from 'axios';
+
+interface Country {
+  name: {
+    common: string;
+  };
+  flags: {
+    svg: string;
+  };
+}
 
 const interests = [
   'Gaming', 'Music', 'Movies', 'Books', 'Travel',
@@ -30,13 +39,26 @@ const ProfileSetup = () => {
   const [location, setLocation] = useState('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
+  const [country, setCountry] = useState<Country | null>(null);
   
   const maxInterests = userRole === 'vip' ? 5 : 3;
   
   useEffect(() => {
-    // Simulate location detection for standard users
+    const getCountryFromIP = async () => {
+      try {
+        const ipResponse = await axios.get('https://api.ipify.org?format=json');
+        const countryResponse = await axios.get(`https://ipapi.co/${ipResponse.data.ip}/json/`);
+        const countryData = await axios.get(`https://restcountries.com/v3.1/alpha/${countryResponse.data.country_code}`);
+        setCountry(countryData.data[0]);
+        setLocation(countryData.data[0].name.common);
+      } catch (error) {
+        console.error('Error fetching country:', error);
+        setCountry(null);
+      }
+    };
+
     if (userRole === 'standard') {
-      setLocation('United States');
+      getCountryFromIP();
     }
   }, [userRole]);
   
@@ -151,15 +173,17 @@ const ProfileSetup = () => {
                 </div>
               )}
               
-              {userRole === 'standard' && (
+              {userRole === 'standard' && country && (
                 <div className="space-y-2">
                   <Label htmlFor="location" className="text-gray-800">Location (Detected)</Label>
-                  <Input
-                    id="location"
-                    value={location}
-                    readOnly
-                    className="glass-input bg-white/70 text-gray-800"
-                  />
+                  <div className="flex items-center space-x-2 bg-white/70 rounded-md px-3 py-2 border border-input">
+                    <img 
+                      src={country.flags.svg} 
+                      alt={`${country.name.common} flag`} 
+                      className="w-6 h-4 object-cover"
+                    />
+                    <span className="text-gray-800">{country.name.common}</span>
+                  </div>
                   <p className="text-xs text-gray-600">
                     Based on your IP address (Standard users cannot change)
                   </p>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,6 @@ import { useUser } from '../contexts/UserContext';
 import { useTheme } from '../contexts/ThemeContext';
 import RulesModal from '../components/RulesModal';
 
-// Mock data for user list
 const mockUsers = [
   { id: 1, username: 'Reincarnated', gender: 'Female', age: 36, location: 'Turkey, Istanbul', interests: ['cyan interest', 'gold interest'], isOnline: true },
   { id: 2, username: 'Shinhoff', gender: 'Male', age: 32, location: 'Turkey, Istanbul', interests: ['volcano', 'gold interest', 'lime interest'], isOnline: true },
@@ -38,12 +36,10 @@ const ChatInterface = () => {
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(!rulesAccepted);
   
   useEffect(() => {
-    // If user is not logged in, redirect to user selection
     if (!currentUser) {
       navigate('/');
     }
     
-    // Show rules modal if rules not accepted
     if (!rulesAccepted) {
       setIsRulesModalOpen(true);
     }
@@ -67,7 +63,6 @@ const ChatInterface = () => {
 
   return (
     <div className="min-h-screen bg-[#f2f7f9]">
-      {/* Header */}
       <header className="fixed top-0 left-0 right-0 h-16 z-50 bg-white shadow-sm flex items-center justify-between px-4 md:px-6">
         <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-900">chativy.</h1>
@@ -75,7 +70,11 @@ const ChatInterface = () => {
         
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" className="flex items-center gap-2">
-            <Inbox className="h-5 w-5" />
+            <img 
+              src="/lovable-uploads/e3b5491b-50db-4077-a99f-3de3837ccad6.png" 
+              alt="Inbox" 
+              className="h-5 w-5 invert" 
+            />
             <span>Inbox</span>
           </Button>
           
@@ -116,7 +115,6 @@ const ChatInterface = () => {
       </header>
       
       <div className="pt-20 px-4 md:px-6 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Left sidebar: User list */}
         <div className="md:col-span-1 bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="p-4">
             <div className="relative">
@@ -181,10 +179,9 @@ const ChatInterface = () => {
           </div>
         </div>
         
-        {/* Right content: Empty state */}
         <div className="md:col-span-2 bg-white rounded-lg shadow-sm p-6 flex flex-col items-center justify-center min-h-[600px]">
           <img 
-            src="/lovable-uploads/a1551f2b-73e8-42c5-b33d-842ef4dd9fd8.png" 
+            src="/lovable-uploads/9a6ed40f-710f-4003-99eb-25bde492a5e8.png" 
             alt="Empty state illustration" 
             className="w-48 mb-8"
           />
