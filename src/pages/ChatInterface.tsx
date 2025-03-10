@@ -31,6 +31,7 @@ const mockUsers = [
 
 const ChatInterface = () => {
   const { isDarkMode, toggleDarkMode } = useTheme();
+  const { currentUser } = useUser();
   const {
     searchTerm,
     setSearchTerm,
@@ -59,8 +60,6 @@ const ChatInterface = () => {
     handleShowInbox,
     handleContinueChat
   } = useChatInterface(mockUsers);
-
-  const { currentUser } = useUser();
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-[#f2f7f9]'}`}>
@@ -121,6 +120,7 @@ const ChatInterface = () => {
         isOpen={showInbox}
         onOpenChange={setShowInbox}
         inboxMessages={inboxMessages}
+        onOpenChat={handleContinueChat}
       />
     </div>
   );

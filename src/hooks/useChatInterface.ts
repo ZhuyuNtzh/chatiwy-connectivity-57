@@ -174,6 +174,7 @@ export const useChatInterface = (mockUsers: User[]) => {
   
   const handleUserClick = (user: User) => {
     setSelectedUser(user);
+    // Get chat history for this user
     const userHistory = signalRService.getChatHistory(user.id) || [];
     if (userHistory.length > 0) {
       setChatHistory(prev => ({
@@ -194,7 +195,10 @@ export const useChatInterface = (mockUsers: User[]) => {
   };
   
   const handleShowInbox = () => {
-    setShowInbox(!showInbox);
+    // Get all chat history when opening inbox
+    const allHistory = signalRService.getAllChatHistory();
+    setInboxMessages(allHistory);
+    setShowInbox(true);
   };
 
   const handleContinueChat = (userId: number) => {
@@ -202,6 +206,7 @@ export const useChatInterface = (mockUsers: User[]) => {
     if (foundUser) {
       handleUserClick(foundUser);
       setIsHistoryDialogOpen(false);
+      setShowInbox(false); // Close inbox if it was open
     }
   };
 

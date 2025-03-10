@@ -20,51 +20,35 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   
-  // Track user scroll events
+  // Track when user scrolls up manually
   useEffect(() => {
-    const handleScroll = (e: Event) => {
-      if (!messagesEndRef.current) return;
+    const scrollContainer = messagesEndRef.current?.parentElement;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+      const isUserAtBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 5;
       
-      const scrollContainer = (e.target as HTMLElement);
-      const { scrollHeight, scrollTop, clientHeight } = scrollContainer;
-      
-      // If user scrolls up manually, mark it
-      if (scrollHeight - scrollTop - clientHeight > 50) {
-        setUserScrolledUp(true);
-      } else {
-        setUserScrolledUp(false);
-      }
+      setUserScrolledUp(!isUserAtBottom);
     };
-    
-    const scrollArea = document.querySelector('.scroll-area-viewport');
-    if (scrollArea) {
-      scrollArea.addEventListener('scroll', handleScroll);
-    }
-    
-    return () => {
-      if (scrollArea) {
-        scrollArea.removeEventListener('scroll', handleScroll);
-      }
-    };
+
+    scrollContainer.addEventListener("scroll", handleScroll);
+    return () => scrollContainer.removeEventListener("scroll", handleScroll);
   }, []);
   
+  // Handle scrolling when messages change
   useEffect(() => {
-    if (autoScrollToBottom && messagesEndRef.current) {
-      const scrollContainer = messagesEndRef.current.parentElement;
-      if (scrollContainer) {
-        const { scrollHeight, scrollTop, clientHeight } = scrollContainer;
+    const scrollContainer = messagesEndRef.current?.parentElement;
+    if (!scrollContainer) return;
 
-        // Revised "near bottom" check (within 5% of the bottom)
-        const bottomThreshold = scrollHeight * 0.05; // 5% of total height
-        const isNearBottom = scrollHeight - scrollTop - clientHeight <= bottomThreshold;
+    const { scrollHeight, scrollTop, clientHeight } = scrollContainer;
 
-        if (isNearBottom && !userScrolledUp) {
-          // Only scroll if near bottom AND user hasn't scrolled up
-          if((scrollHeight - scrollTop - clientHeight) !== 0){
-            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-          }
-        }
-      }
+    // Check if user is already at the bottom
+    const isAtBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 5;
+
+    // Only auto-scroll when user is at bottom or when explicitly requested
+    if (isAtBottom || (autoScrollToBottom && !userScrolledUp)) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, autoScrollToBottom, userScrolledUp]);
 
