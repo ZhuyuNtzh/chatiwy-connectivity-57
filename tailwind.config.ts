@@ -134,10 +134,6 @@ export default {
         'slide-in-right': 'slide-in-right 0.3s ease-out',
         'slide-in-left': 'slide-in-left 0.3s ease-out',
       },
-      backdropFilter: {
-        'none': 'none',
-        'blur': 'blur(8px)',
-      },
     }
   },
   plugins: [require("tailwindcss-animate")],
