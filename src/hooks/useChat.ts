@@ -19,7 +19,10 @@ export const useChat = (userId: number, userRole: string) => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const maxChars = userRole === 'vip' ? 200 : 140;
-  const [autoScrollToBottom, setAutoScrollToBottom] = useState(true);
+  
+  // This should be true only when user clicks a button to manually scroll down
+  // Not automated on message receipt
+  const [autoScrollToBottom, setAutoScrollToBottom] = useState(false);
   
   useEffect(() => {
     const handleNewMessage = (msg: ChatMessage) => {

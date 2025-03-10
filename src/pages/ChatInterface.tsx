@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { useUser } from '../contexts/UserContext'; // Add the missing import
+import { useUser } from '../contexts/UserContext';
 import Header from '../components/chat/Header';
 import RulesModal from '../components/RulesModal';
 import LogoutDialog from '../components/chat/LogoutDialog';

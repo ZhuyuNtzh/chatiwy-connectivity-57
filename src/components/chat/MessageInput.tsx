@@ -65,13 +65,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
         </PopoverContent>
       </Popover>
       
-      <input 
-        type="file" 
-        ref={fileInputRef}
-        accept="image/*"
-        className="hidden"
-      />
-      
       <Button 
         type="button" 
         variant="ghost" 
@@ -90,7 +83,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
         disabled={!isVipUser}
         title={!isVipUser ? "VIP feature" : "Voice message"}
       >
-        <Mic className="h-5 w-5" />
+        <Mic className={`h-5 w-5 ${!isVipUser ? "opacity-50" : ""}`} />
       </Button>
       
       <div className="relative flex-1">

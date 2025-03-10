@@ -20,23 +20,16 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
+    // Only scroll if specifically requested by user action
+    // This prevents forcing scroll on every new message
     if (autoScrollToBottom && messagesEndRef.current) {
-      // Only scroll if we're near the bottom already
-      const scrollContainer = messagesEndRef.current.parentElement;
-      if (scrollContainer) {
-        const { scrollHeight, scrollTop, clientHeight } = scrollContainer;
-        const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
-        
-        if (isNearBottom) {
-          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-      }
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, autoScrollToBottom]);
+  }, [autoScrollToBottom]);
 
   return (
-    <div className="flex-1 overflow-hidden flex flex-col">
-      <ScrollArea className="flex-1 relative">
+    <div className="flex-1 overflow-hidden">
+      <ScrollArea className="h-full">
         <div className="p-4 space-y-4">
           {messages.map((msg) => (
             <MessageItem 
