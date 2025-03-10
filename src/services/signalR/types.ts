@@ -1,4 +1,3 @@
-
 import * as signalR from '@microsoft/signalr';
 
 export interface ChatMessage {
@@ -10,6 +9,7 @@ export interface ChatMessage {
   isImage?: boolean;
   imageUrl?: string;
   senderRole?: string;
+  isBlurred?: boolean;
 }
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
