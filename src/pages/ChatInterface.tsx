@@ -7,10 +7,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import FiltersDropdown, { Filters } from "../components/FiltersDropdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { User as UserIcon } from 'lucide-react';
+import { User as UserIcon, History, Inbox } from 'lucide-react';
 import axios from 'axios';
 import ChatWindow from '../components/ChatWindow';
 import { signalRService } from '../services/signalRService';
+import type { ChatMessage } from '../services/signalR/types';
 import Header from '../components/chat/Header';
 import SearchBar from '../components/chat/SearchBar';
 import RulesModal from '../components/RulesModal';
@@ -82,6 +83,10 @@ const ChatInterface = () => {
   });
   const [selectedUser, setSelectedUser] = useState<typeof mockUsers[0] | null>(null);
   const [connectedUsersCount, setConnectedUsersCount] = useState(0);
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  const [chatHistory, setChatHistory] = useState<Record<number, ChatMessage[]>>({});
+  const [inboxMessages, setInboxMessages] = useState<Record<number, ChatMessage[]>>({});
+  const [showInbox, setShowInbox] = useState(false);
   
   useEffect(() => {
     if (!currentUser) {
@@ -179,14 +184,54 @@ const ChatInterface = () => {
   
   const handleUserClick = (user: typeof mockUsers[0]) => {
     setSelectedUser(user);
+    // Load chat history for this user
+    const userHistory = signalRService.getChatHistory(user.id) || [];
+    if (userHistory.length > 0) {
+      setChatHistory(prev => ({
+        ...prev,
+        [user.id]: userHistory
+      }));
+    }
   };
   
   const handleCloseChat = () => {
     setSelectedUser(null);
   };
+  
+  const handleShowHistory = () => {
+    const allHistory = signalRService.getAllChatHistory();
+    setChatHistory(allHistory);
+    setIsHistoryDialogOpen(true);
+  };
+  
+  const handleShowInbox = () => {
+    setShowInbox(!showInbox);
+  };
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-[#f2f7f9]'}`}>
+      <div className="flex items-center gap-2 absolute top-2 right-4 z-10">
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="flex items-center gap-1"
+          onClick={handleShowHistory}
+        >
+          <History className="h-4 w-4" />
+          History
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="flex items-center gap-1"
+          onClick={handleShowInbox}
+        >
+          <Inbox className="h-4 w-4" />
+          Inbox
+        </Button>
+      </div>
+      
       <Header 
         username={currentUser?.username || "Nickname"}
         isDarkMode={isDarkMode}
@@ -194,90 +239,97 @@ const ChatInterface = () => {
         onLogout={handleLogout}
       />
       
-      <div className={`pt-20 px-4 md:px-6 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6`}>
-        <div className={`md:col-span-1 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden`}>
-          <div className="p-4">
-            <SearchBar 
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-            />
+      <div className={`pt-16 px-4 md:px-6 max-w-7xl mx-auto relative ${selectedUser ? 'grid-cols-1' : 'grid grid-cols-1 md:grid-cols-3 gap-6'}`}>
+        {!selectedUser ? (
+          <>
+            <div className={`md:col-span-1 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden`}>
+              <div className="p-4">
+                <SearchBar 
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
+                />
+                
+                <div className="mt-6 flex items-center justify-between">
+                  <h2 className={`text-lg font-semibold text-[#FB9E41]`}>
+                    People <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>({connectedUsersCount})</span>
+                  </h2>
+                  <FiltersDropdown onFiltersChange={handleFiltersChange} />
+                </div>
+              </div>
+              
+              <ScrollArea className="h-[calc(100vh-230px)]">
+                <div className="divide-y">
+                  {filteredUsers.map(user => (
+                    <div 
+                      key={user.id} 
+                      className={`p-4 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition cursor-pointer ${
+                        selectedUser?.id === user.id ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-100') : ''
+                      }`}
+                      onClick={() => handleUserClick(user)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="relative">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-orange-100">
+                            <UserIcon className="h-6 w-6 text-orange-600" />
+                          </div>
+                          {user.isOnline && (
+                            <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-white" />
+                          )}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <h3 className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{user.username}</h3>
+                            <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user.gender}, {user.age}</p>
+                          </div>
+                          
+                          <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-1 flex items-center`}>
+                            {countryFlags[user.location] && (
+                              <img 
+                                src={countryFlags[user.location]}
+                                alt={`${user.location} flag`}
+                                className="w-4 h-3 mr-1 object-cover"
+                              />
+                            )}
+                            <span>{user.location}</span>
+                          </p>
+                          
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {user.interests.map((interest, idx) => (
+                              <span 
+                                key={idx} 
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getInterestColor(interest)}`}
+                              >
+                                {interest}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
             
-            <div className="mt-6 flex items-center justify-between">
-              <h2 className={`text-lg font-semibold text-[#FB9E41]`}>
-                People <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>({connectedUsersCount})</span>
-              </h2>
-              <FiltersDropdown onFiltersChange={handleFiltersChange} />
+            <div className={`md:col-span-2 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 flex flex-col items-center justify-center min-h-[600px]`}>
+              <p className={`text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} font-medium`}>
+                Select a chat to start messaging
+              </p>
+            </div>
+          </>
+        ) : (
+          <div className="fixed inset-0 z-20 flex items-center justify-center p-4 pt-16">
+            <div className="absolute inset-0 bg-black/50" onClick={handleCloseChat}></div>
+            <div className="relative z-30 w-full max-w-5xl h-[80vh]">
+              <ChatWindow 
+                user={selectedUser}
+                countryFlags={countryFlags}
+                onClose={handleCloseChat}
+              />
             </div>
           </div>
-          
-          <ScrollArea className="h-[calc(100vh-230px)]">
-            <div className="divide-y">
-              {filteredUsers.map(user => (
-                <div 
-                  key={user.id} 
-                  className={`p-4 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition cursor-pointer ${
-                    selectedUser?.id === user.id ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-100') : ''
-                  }`}
-                  onClick={() => handleUserClick(user)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="relative">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-orange-100">
-                        <UserIcon className="h-6 w-6 text-orange-600" />
-                      </div>
-                      {user.isOnline && (
-                        <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-white" />
-                      )}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h3 className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{user.username}</h3>
-                        <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user.gender}, {user.age}</p>
-                      </div>
-                      
-                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-1 flex items-center`}>
-                        {countryFlags[user.location] && (
-                          <img 
-                            src={countryFlags[user.location]}
-                            alt={`${user.location} flag`}
-                            className="w-4 h-3 mr-1 object-cover"
-                          />
-                        )}
-                        <span>{user.location}</span>
-                      </p>
-                      
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {user.interests.map((interest, idx) => (
-                          <span 
-                            key={idx} 
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getInterestColor(interest)}`}
-                          >
-                            {interest}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        </div>
-        
-        <div className={`md:col-span-2 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 flex flex-col items-center justify-center min-h-[600px]`}>
-          {selectedUser ? (
-            <ChatWindow 
-              user={selectedUser}
-              countryFlags={countryFlags}
-              onClose={handleCloseChat}
-            />
-          ) : (
-            <p className={`text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} font-medium`}>
-              Select a chat to start messaging
-            </p>
-          )}
-        </div>
+        )}
       </div>
       
       <RulesModal 
@@ -310,6 +362,86 @@ const ChatInterface = () => {
               Yes
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Chat History Dialog */}
+      <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Chat History</DialogTitle>
+            <DialogDescription>
+              Your recent conversations
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="mt-6 h-96">
+            {Object.keys(chatHistory).length > 0 ? (
+              <div className="space-y-8">
+                {Object.entries(chatHistory).map(([userIdStr, messages]) => {
+                  const userId = parseInt(userIdStr);
+                  const user = mockUsers.find(u => u.id === userId) || { id: userId, username: `Unknown User ${userId}` };
+                  
+                  return (
+                    <div key={userId} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-medium">{user.username}</h3>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            const foundUser = mockUsers.find(u => u.id === userId);
+                            if (foundUser) {
+                              handleUserClick(foundUser);
+                              setIsHistoryDialogOpen(false);
+                            }
+                          }}
+                        >
+                          Continue Chat
+                        </Button>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        {messages.slice(-3).map((msg) => (
+                          <div 
+                            key={msg.id} 
+                            className={`flex ${msg.sender === 'You' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div 
+                              className={`max-w-[80%] rounded-lg p-2 text-sm ${
+                                msg.sender === 'You' 
+                                  ? 'bg-primary text-white' 
+                                  : 'bg-gray-100 dark:bg-gray-700'
+                              }`}
+                            >
+                              {msg.isImage ? (
+                                <p className="italic">Image message</p>
+                              ) : (
+                                <p>{msg.content.length > 80 ? msg.content.substring(0, 80) + '...' : msg.content}</p>
+                              )}
+                              <div className="text-xs opacity-70 mt-1 text-right">
+                                {new Date(msg.timestamp).toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {messages.length > 3 && (
+                          <p className="text-center text-xs text-muted-foreground">
+                            Showing {messages.length > 3 ? 'last 3 of ' + messages.length : messages.length} messages
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64">
+                <p className="text-muted-foreground">No chat history yet</p>
+                <p className="text-sm text-muted-foreground mt-2">Start a conversation to see it here</p>
+              </div>
+            )}
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>
