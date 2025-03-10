@@ -71,8 +71,8 @@ const ProfileSetup = () => {
     setCurrentUser(userProfile);
     setIsLoggedIn(true);
     
-    // Navigate to user list/chat screen and then show the rules modal
-    navigate('/user-list');
+    // Navigate to chat interface and then show the rules modal
+    navigate('/chat-interface');
     setIsRulesModalOpen(true);
   };
 
@@ -91,27 +91,27 @@ const ProfileSetup = () => {
             </p>
           </div>
           
-          <form onSubmit={handleSubmit} className="bg-gradient-to-br from-[#0ABAB5] to-[#0ABAB5]/80 rounded-lg p-6 animate-fade-in">
+          <form onSubmit={handleSubmit} className="bg-gradient-to-br from-[#EDE8D0] to-[#EDE8D0]/90 rounded-lg p-6 animate-fade-in">
             <div className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="nickname" className="text-white">Nickname</Label>
+                <Label htmlFor="nickname" className="text-gray-800">Nickname</Label>
                 <Input
                   id="nickname"
                   value={nickname}
                   readOnly
-                  className="glass-input bg-white/30 text-white placeholder:text-white/70"
+                  className="glass-input bg-white/70 text-gray-800 placeholder:text-gray-500"
                   required
                 />
-                <p className="text-xs text-white/80">
+                <p className="text-xs text-gray-600">
                   Your nickname cannot be changed after setup
                 </p>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="age" className="text-white">Age</Label>
+                  <Label htmlFor="age" className="text-gray-800">Age</Label>
                   <Select value={age} onValueChange={setAge}>
-                    <SelectTrigger className="glass-input bg-white/30 text-white">
+                    <SelectTrigger className="glass-input bg-white/70 text-gray-800">
                       <SelectValue placeholder="Select your age" />
                     </SelectTrigger>
                     <SelectContent>
@@ -125,9 +125,9 @@ const ProfileSetup = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="gender" className="text-white">Gender</Label>
+                  <Label htmlFor="gender" className="text-gray-800">Gender</Label>
                   <Select value={gender} onValueChange={setGender}>
-                    <SelectTrigger className="glass-input bg-white/30 text-white">
+                    <SelectTrigger className="glass-input bg-white/70 text-gray-800">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
@@ -140,12 +140,12 @@ const ProfileSetup = () => {
               
               {userRole === 'vip' && (
                 <div className="space-y-2">
-                  <Label htmlFor="location" className="text-white">Location</Label>
+                  <Label htmlFor="location" className="text-gray-800">Location</Label>
                   <Input
                     id="location"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    className="glass-input bg-white/30 text-white placeholder:text-white/70"
+                    className="glass-input bg-white/70 text-gray-800 placeholder:text-gray-500"
                     placeholder="Enter your location"
                   />
                 </div>
@@ -153,21 +153,21 @@ const ProfileSetup = () => {
               
               {userRole === 'standard' && (
                 <div className="space-y-2">
-                  <Label htmlFor="location" className="text-white">Location (Detected)</Label>
+                  <Label htmlFor="location" className="text-gray-800">Location (Detected)</Label>
                   <Input
                     id="location"
                     value={location}
                     readOnly
-                    className="glass-input bg-white/30 text-white"
+                    className="glass-input bg-white/70 text-gray-800"
                   />
-                  <p className="text-xs text-white/80">
+                  <p className="text-xs text-gray-600">
                     Based on your IP address (Standard users cannot change)
                   </p>
                 </div>
               )}
               
               <div className="space-y-2">
-                <Label className="text-white">Interests (Select up to {maxInterests})</Label>
+                <Label className="text-gray-800">Interests (Select up to {maxInterests})</Label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
                   {interests.map((interest) => (
                     <div key={interest} className="flex items-center space-x-2">
@@ -181,23 +181,23 @@ const ProfileSetup = () => {
                           !selectedInterests.includes(interest) && 
                           selectedInterests.length >= maxInterests
                         }
-                        className="border-[#E25500] text-[#E25500] data-[state=checked]:bg-[#E25500] data-[state=checked]:text-white"
+                        className="border-[#FB9E41] text-[#FB9E41] data-[state=checked]:bg-[#FB9E41] data-[state=checked]:text-white"
                       />
                       <label
                         htmlFor={`interest-${interest}`}
-                        className="text-sm font-medium leading-none text-white peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        className="text-sm font-medium leading-none text-gray-800 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
                         {interest}
                       </label>
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-white/80">
+                <p className="text-xs text-gray-600">
                   Selected: {selectedInterests.length}/{maxInterests}
                 </p>
               </div>
               
-              <Button type="submit" className="w-full bg-[#E25500] hover:bg-[#E25500]/90 text-white">
+              <Button type="submit" className="w-full bg-[#FB9E41] hover:bg-[#FB9E41]/90 text-white">
                 Start Chatting
               </Button>
             </div>

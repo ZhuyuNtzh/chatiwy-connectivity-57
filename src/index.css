@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -37,6 +36,8 @@
 
     --tiffany-blue: 177 94% 36%;
     --orange: 22 100% 45%;
+    --profile-orange: 29 96% 62%;
+    --form-beige: 43 41% 90%;
 
     --sidebar-background: 240 10% 3.9%;
     --sidebar-foreground: 0 0% 98%;
