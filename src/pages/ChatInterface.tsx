@@ -3,12 +3,15 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, User } from 'lucide-react';
+import { Search, User, History as HistoryIcon } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
 import { useTheme } from '../contexts/ThemeContext';
 import RulesModal from '../components/RulesModal';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import FiltersDropdown, { Filters } from "../components/FiltersDropdown";
+
+// Import the countries array from FiltersDropdown.tsx
+import { countries } from "../components/FiltersDropdown";
 
 // Enhanced mock users with more details and chatbots
 const mockUsers = [
@@ -142,8 +145,9 @@ const ChatInterface = () => {
             variant="ghost" 
             size="sm" 
             className={`flex items-center gap-2 bg-gray-200 hover:bg-gray-300 ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : ''}`}
+            onClick={() => navigate('/chat-history')}
           >
-            <History className="h-5 w-5" />
+            <HistoryIcon className="h-5 w-5" />
             <span>History</span>
           </Button>
           

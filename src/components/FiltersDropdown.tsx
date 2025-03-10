@@ -9,7 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Complete list of countries with flags (ISO 3166-1 alpha-2)
-const countries = [
+export const countries = [
   { code: "AF", name: "Afghanistan", flag: "🇦🇫" },
   { code: "AL", name: "Albania", flag: "🇦🇱" },
   { code: "DZ", name: "Algeria", flag: "🇩🇿" },
@@ -220,7 +220,7 @@ interface FiltersDropdownProps {
 
 const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
   const [filters, setFilters] = useState<Filters>({
-    gender: ["Male", "Female"],
+    gender: ["Male", "Female", "Other"],
     ageRange: [18, 80],
     countries: [],
   });
