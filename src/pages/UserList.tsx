@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -8,7 +7,7 @@ import Header from '../components/Header';
 import UserCard from '../components/UserCard';
 import RulesModal from '../components/RulesModal';
 import { useUser, UserProfile } from '../contexts/UserContext';
-import { Search, UserPlus, RefreshCw } from 'lucide-react';
+import { Search, UserPlus, RefreshCw, X } from 'lucide-react';
 
 const UserList = () => {
   const navigate = useNavigate();
@@ -21,7 +20,6 @@ const UserList = () => {
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(!rulesAccepted);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Mock data for demonstration
   useEffect(() => {
     const mockUsers: UserProfile[] = [
       {
@@ -80,7 +78,6 @@ const UserList = () => {
       },
     ];
     
-    // Simulate API delay
     setTimeout(() => {
       setUsers(mockUsers);
       setFilteredUsers(mockUsers);
@@ -95,12 +92,10 @@ const UserList = () => {
   const handleFilterUsers = () => {
     let filtered = [...users];
     
-    // Filter by tab
     if (activeTab === 'online') {
       filtered = filtered.filter(user => user.isOnline);
     }
     
-    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(user => 
@@ -110,7 +105,6 @@ const UserList = () => {
       );
     }
     
-    // Never show current user
     filtered = filtered.filter(user => user.username !== currentUser?.username);
     
     setFilteredUsers(filtered);
