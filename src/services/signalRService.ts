@@ -1,15 +1,14 @@
-
 import * as signalR from '@microsoft/signalr';
 import { toast } from "sonner";
 import { MockHubConnection } from './signalR/mockConnection';
-import { ChatMessage, ConnectionStatus, ISignalRService, ConnectionStatusCallback, ConnectedUsersCallback } from './signalR/types';
+import { ChatMessage, ConnectionStatus, ISignalRService, MessageCallback, ConnectionStatusCallback, ConnectedUsersCallback } from './signalR/types';
 
 export type { ChatMessage } from './signalR/types';
 
 class SignalRService implements ISignalRService {
   private connection: signalR.HubConnection | null = null;
   private connectionStatus: ConnectionStatus = 'disconnected';
-  private messageCallbacks: ((message: ChatMessage) => void)[] = [];
+  private messageCallbacks: MessageCallback[] = [];
   private connectionStatusCallbacks: ConnectionStatusCallback[] = [];
   private connectedUsersCallbacks: ConnectedUsersCallback[] = [];
   private blockedUsers: Set<number> = new Set();
@@ -65,11 +64,11 @@ class SignalRService implements ISignalRService {
     }
   }
 
-  public onMessageReceived(callback: (message: ChatMessage) => void) {
+  public onMessageReceived(callback: MessageCallback): void {
     this.messageCallbacks.push(callback);
   }
   
-  public offMessageReceived(callback: (message: ChatMessage) => void) {
+  public offMessageReceived(callback: MessageCallback): void {
     this.messageCallbacks = this.messageCallbacks.filter(cb => cb !== callback);
   }
 
