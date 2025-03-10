@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -11,16 +10,6 @@ import Header from '../components/Header';
 import RulesModal from '../components/RulesModal';
 import { useUser, UserProfile } from '../contexts/UserContext';
 import { generateUsername } from '@/utils/helpers';
-
-// This function would typically be in a separate helper file
-function generateUsername(): string {
-  const adjectives = ['Happy', 'Clever', 'Brave', 'Calm', 'Gentle', 'Eager', 'Kind', 'Smart', 'Swift', 'Jolly'];
-  const nouns = ['Eagle', 'Tiger', 'Panda', 'Wolf', 'Dolphin', 'Phoenix', 'Dragon', 'Lion', 'Falcon', 'Fox'];
-  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const noun = nouns[Math.floor(Math.random() * nouns.length)];
-  const number = Math.floor(Math.random() * 100);
-  return `${adj}${noun}${number}`;
-}
 
 const interests = [
   'Music', 'Movies', 'Books', 'Art', 'Gaming',
