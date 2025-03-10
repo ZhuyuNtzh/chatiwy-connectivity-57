@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, User, History as HistoryIcon } from 'lucide-react';
+import { Search, User as UserIcon, History } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
 import { useTheme } from '../contexts/ThemeContext';
 import RulesModal from '../components/RulesModal';
@@ -10,6 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import FiltersDropdown, { Filters } from "../components/FiltersDropdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import axios from 'axios';
+import ChatWindow from '../components/ChatWindow';
+import { signalRService } from '../services/signalRService';
 
 // List of interests that match the ones on the profile setup page
 const siteInterests = [
@@ -40,13 +43,21 @@ const mockUsers = [
 ];
 
 const getInterestColor = (interest: string) => {
-  if (interest.includes('cyan')) return 'bg-cyan-100 text-cyan-800';
-  if (interest.includes('gold')) return 'bg-yellow-100 text-yellow-800';
-  if (interest.includes('volcano')) return 'bg-red-100 text-red-800';
-  if (interest.includes('lime')) return 'bg-lime-100 text-lime-800';
-  if (interest.includes('green')) return 'bg-green-100 text-green-800';
-  if (interest.includes('orange')) return 'bg-orange-100 text-orange-800';
-  return 'bg-gray-100 text-gray-800';
+  const colors = [
+    'bg-cyan-100 text-cyan-800',
+    'bg-yellow-100 text-yellow-800',
+    'bg-red-100 text-red-800',
+    'bg-lime-100 text-lime-800',
+    'bg-green-100 text-green-800',
+    'bg-orange-100 text-orange-800',
+    'bg-purple-100 text-purple-800',
+    'bg-pink-100 text-pink-800',
+    'bg-blue-100 text-blue-800',
+  ];
+  
+  // Generate consistent colors based on interest name
+  const hash = interest.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return colors[hash % colors.length];
 };
 
 interface CountryInfo {
@@ -68,6 +79,8 @@ const ChatInterface = () => {
     ageRange: [18, 80],
     countries: [],
   });
+  const [selectedUser, setSelectedUser] = useState<typeof mockUsers[0] | null>(null);
+  const [connectedUsersCount, setConnectedUsersCount] = useState(0);
   
   useEffect(() => {
     if (!currentUser) {
@@ -95,6 +108,22 @@ const ChatInterface = () => {
     };
 
     fetchCountryFlags();
+    
+    // Initialize SignalR
+    if (currentUser) {
+      signalRService.initialize(
+        1, // Mock user ID
+        currentUser.username
+      );
+      
+      signalRService.onConnectedUsersCountChanged(count => {
+        setConnectedUsersCount(count);
+      });
+    }
+    
+    return () => {
+      signalRService.disconnect();
+    };
   }, [currentUser, navigate, rulesAccepted]);
   
   const handleLogout = () => {
@@ -146,6 +175,14 @@ const ChatInterface = () => {
     
     return countryCompare;
   });
+  
+  const handleUserClick = (user: typeof mockUsers[0]) => {
+    setSelectedUser(user);
+  };
+  
+  const handleCloseChat = () => {
+    setSelectedUser(null);
+  };
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-[#f2f7f9]'}`}>
@@ -174,7 +211,7 @@ const ChatInterface = () => {
             className={`flex items-center gap-2 bg-gray-200 hover:bg-gray-300 ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : ''}`}
             onClick={() => navigate('/chat-history')}
           >
-            <HistoryIcon className="h-5 w-5" />
+            <History className="h-5 w-5" />
             <span>History</span>
           </Button>
           
@@ -199,7 +236,7 @@ const ChatInterface = () => {
           
           <div className="flex items-center gap-2">
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
-              <User className="h-5 w-5 text-gray-600" />
+              <UserIcon className="h-5 w-5 text-gray-600" />
             </div>
             <span className="text-sm font-medium">{currentUser?.username || "Nickname"}</span>
           </div>
@@ -229,7 +266,9 @@ const ChatInterface = () => {
             </div>
             
             <div className="mt-6 flex items-center justify-between">
-              <h2 className={`text-lg font-semibold text-[#FB9E41]`}>People <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>({filteredUsers.length})</span></h2>
+              <h2 className={`text-lg font-semibold text-[#FB9E41]`}>
+                People <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>({connectedUsersCount})</span>
+              </h2>
               <FiltersDropdown onFiltersChange={handleFiltersChange} />
             </div>
           </div>
@@ -237,11 +276,17 @@ const ChatInterface = () => {
           <ScrollArea className="h-[calc(100vh-230px)]">
             <div className="divide-y">
               {filteredUsers.map(user => (
-                <div key={user.id} className={`p-4 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition cursor-pointer`}>
+                <div 
+                  key={user.id} 
+                  className={`p-4 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition cursor-pointer ${
+                    selectedUser?.id === user.id ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-100') : ''
+                  }`}
+                  onClick={() => handleUserClick(user)}
+                >
                   <div className="flex items-start gap-3">
                     <div className="relative">
                       <div className="flex items-center justify-center w-10 h-10 rounded-full bg-orange-100">
-                        <User className="h-6 w-6 text-orange-600" />
+                        <UserIcon className="h-6 w-6 text-orange-600" />
                       </div>
                       {user.isOnline && (
                         <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-white" />
@@ -284,9 +329,17 @@ const ChatInterface = () => {
         </div>
         
         <div className={`md:col-span-2 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 flex flex-col items-center justify-center min-h-[600px]`}>
-          <p className={`text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} font-medium`}>
-            Select a chat to start messaging
-          </p>
+          {selectedUser ? (
+            <ChatWindow 
+              user={selectedUser}
+              countryFlags={countryFlags}
+              onClose={handleCloseChat}
+            />
+          ) : (
+            <p className={`text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} font-medium`}>
+              Select a chat to start messaging
+            </p>
+          )}
         </div>
       </div>
       
