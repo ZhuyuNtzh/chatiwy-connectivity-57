@@ -1,7 +1,8 @@
+
 import * as signalR from '@microsoft/signalr';
 import { toast } from "sonner";
 import { MockHubConnection } from './signalR/mockConnection';
-import { ChatMessage, ConnectionStatus, ISignalRService } from './signalR/types';
+import { ChatMessage, ConnectionStatus, ISignalRService, ConnectionStatusCallback, ConnectedUsersCallback } from './signalR/types';
 
 export type { ChatMessage } from './signalR/types';
 
@@ -9,8 +10,8 @@ class SignalRService implements ISignalRService {
   private connection: signalR.HubConnection | null = null;
   private connectionStatus: ConnectionStatus = 'disconnected';
   private messageCallbacks: ((message: ChatMessage) => void)[] = [];
-  private connectionStatusCallbacks: ((status: ConnectionStatus) => void)[] = [];
-  private connectedUsersCallbacks: ((count: number) => void)[] = [];
+  private connectionStatusCallbacks: ConnectionStatusCallback[] = [];
+  private connectedUsersCallbacks: ConnectedUsersCallback[] = [];
   private blockedUsers: Set<number> = new Set();
   private chatHistory: Record<number, ChatMessage[]> = {};
   private userName: string = '';
@@ -72,6 +73,18 @@ class SignalRService implements ISignalRService {
     this.messageCallbacks = this.messageCallbacks.filter(cb => cb !== callback);
   }
 
+  public onConnectionStatusChanged(callback: ConnectionStatusCallback): void {
+    this.connectionStatusCallbacks.push(callback);
+  }
+
+  public onConnectedUsersCountChanged(callback: ConnectedUsersCallback): void {
+    this.connectedUsersCallbacks.push(callback);
+  }
+
+  private notifyConnectionStatusChanged(): void {
+    this.connectionStatusCallbacks.forEach(callback => callback(this.connectionStatus));
+  }
+
   public async sendMessage(recipientId: number, content: string): Promise<void> {
     // Ensure connection is active
     if (this.connectionStatus !== 'connected') {
@@ -93,7 +106,7 @@ class SignalRService implements ISignalRService {
       content,
       sender: 'You',
       senderId: 0,
-      recipientId: recipientId,
+      recipientId,
       timestamp: new Date()
     };
     
@@ -132,7 +145,7 @@ class SignalRService implements ISignalRService {
       content: 'Image',
       sender: 'You',
       senderId: 0,
-      recipientId: recipientId,
+      recipientId,
       timestamp: new Date(),
       isImage: true,
       imageUrl,
@@ -217,7 +230,7 @@ class SignalRService implements ISignalRService {
         content,
         sender: username,
         senderId: fromUserId,
-        recipientId: recipientId,
+        recipientId,
         timestamp: new Date(),
         isImage,
         imageUrl,

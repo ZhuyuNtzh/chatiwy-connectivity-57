@@ -50,7 +50,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
       >
         {messages.map((msg) => (
           <MessageItem 
-            key={`${msg.id}-${msg.senderId}`}
+            key={msg.id}
             message={msg}
             toggleImageBlur={toggleImageBlur}
             openImagePreview={openImagePreview}

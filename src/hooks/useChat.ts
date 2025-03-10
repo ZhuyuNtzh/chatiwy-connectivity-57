@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '../services/signalRService';
 import type { ChatMessage } from '../services/signalR/types';
@@ -26,8 +25,8 @@ export const useChat = (userId: number, userRole: string) => {
   useEffect(() => {
     const handleNewMessage = (msg: ChatMessage) => {
       // Only process messages specific to this conversation
-      // This ensures messages only show up in the chat with the correct senderId
-      if (msg.senderId === userId || (msg.senderId === 0 && userId === msg.recipientId)) {
+      // Check if the message is from this user to us or from us to this user
+      if (msg.senderId === userId || (msg.senderId === 0 && msg.recipientId === userId)) {
         setMessages(prev => [...prev, msg]);
         
         // Auto-scroll when receiving a new message from this user

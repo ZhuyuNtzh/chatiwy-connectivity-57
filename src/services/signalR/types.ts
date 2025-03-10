@@ -11,6 +11,7 @@ export interface ChatMessage {
   imageUrl?: string;
   senderRole?: string;
   isBlurred?: boolean;
+  recipientId?: number;
 }
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
