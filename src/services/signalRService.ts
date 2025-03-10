@@ -34,7 +34,7 @@ class SignalRService {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Create a mock connection for demonstration
-    this.connection = new MockHubConnection();
+    this.connection = new MockHubConnection() as unknown as signalR.HubConnection;
     this.connectionStatus = 'connected';
     this.notifyConnectionStatusChanged();
     
@@ -167,7 +167,7 @@ class SignalRService {
 }
 
 // Mock hub connection for demonstration without an actual server
-class MockHubConnection implements signalR.HubConnection {
+class MockHubConnection {
   private callbacks: Record<string, ((...args: any[]) => void)[]> = {};
   
   on(methodName: string, newMethod: (...args: any[]) => void): void {
@@ -177,35 +177,74 @@ class MockHubConnection implements signalR.HubConnection {
     this.callbacks[methodName].push(newMethod);
   }
 
-  off(methodName: string, method: (...args: any[]) => void): void {
+  off(methodName: string, method?: (...args: any[]) => void): void {
+    if (!method) {
+      // If no method is provided, remove all callbacks for the methodName
+      delete this.callbacks[methodName];
+      return;
+    }
+    
     if (!this.callbacks[methodName]) return;
     this.callbacks[methodName] = this.callbacks[methodName].filter(m => m !== method);
   }
 
-  // Implementing the interface methods with empty implementations
+  // Implementing minimal methods needed
   invoke<T = any>(methodName: string, ...args: any[]): Promise<T> {
+    console.log(`Mock invoking: ${methodName}`, args);
     return Promise.resolve({} as T);
   }
+  
   send(methodName: string, ...args: any[]): Promise<void> {
+    console.log(`Mock sending: ${methodName}`, args);
     return Promise.resolve();
   }
-  start(transferFormat?: signalR.TransferFormat): Promise<void> {
+  
+  start(): Promise<void> {
+    console.log('Mock connection started');
     return Promise.resolve();
   }
+  
   stop(): Promise<void> {
+    console.log('Mock connection stopped');
     return Promise.resolve();
   }
-  onclose(callback: (error?: Error) => void): void {}
-  onreconnecting(callback: (error?: Error) => void): void {}
-  onreconnected(callback: (connectionId?: string) => void): void {}
-  stream<T>(methodName: string, ...args: any[]): signalR.IStreamResult<T> {
-    return { subscribe: () => ({ dispose: () => {} }) };
+  
+  // Properties to satisfy the interface
+  get state(): signalR.HubConnectionState {
+    return signalR.HubConnectionState.Connected;
   }
+  
+  get connectionId(): string | null {
+    return 'mock-connection-id';
+  }
+  
+  get baseUrl(): string {
+    return 'https://mock-signalr-server.com/hub';
+  }
+  
+  // Setting the necessary timeout properties
   serverTimeoutInMilliseconds: number = 30000;
   keepAliveIntervalInMilliseconds: number = 15000;
-  state: signalR.HubConnectionState = signalR.HubConnectionState.Connected;
-  connectionId?: string;
-  baseUrl: string = "";
+  
+  // Implement the rest of the required methods with minimal functionality
+  onclose(callback: (error?: Error) => void): void {
+    console.log('Mock onclose registered');
+  }
+  
+  onreconnecting(callback: (error?: Error) => void): void {
+    console.log('Mock onreconnecting registered');
+  }
+  
+  onreconnected(callback: (connectionId?: string) => void): void {
+    console.log('Mock onreconnected registered');
+  }
+  
+  stream<T>(methodName: string, ...args: any[]): signalR.IStreamResult<T> {
+    console.log(`Mock streaming: ${methodName}`, args);
+    return {
+      subscribe: () => ({ dispose: () => console.log('Mock stream disposed') })
+    };
+  }
 }
 
 // Export singleton instance

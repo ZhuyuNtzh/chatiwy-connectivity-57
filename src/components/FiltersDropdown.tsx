@@ -19,7 +19,7 @@ interface FiltersDropdownProps {
 const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
   const [filters, setFilters] = useState<Filters>({
     gender: ["Male", "Female"],
-    ageRange: [18, 80],
+    ageRange: [18, 80] as [number, number],
     countries: [],
   });
   
@@ -93,9 +93,9 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
   };
   
   const clearFilters = () => {
-    const resetFilters = {
+    const resetFilters: Filters = {
       gender: ["Male", "Female"],
-      ageRange: [18, 80],
+      ageRange: [18, 80] as [number, number],
       countries: [],
     };
     setFilters(resetFilters);
