@@ -44,6 +44,11 @@ const UserList: React.FC<UserListProps> = ({
   onUserClick,
   isDarkMode 
 }) => {
+  const handleUserClick = (e: React.MouseEvent, user: any) => {
+    e.stopPropagation(); // Stop the event from bubbling up
+    onUserClick(user);
+  };
+
   return (
     <ScrollArea className="h-full">
       <div className={`divide-y divide-gray-200 dark:divide-gray-700 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
@@ -53,7 +58,7 @@ const UserList: React.FC<UserListProps> = ({
             className={`p-4 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition cursor-pointer ${
               selectedUserId === user.id ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-100') : ''
             }`}
-            onClick={() => onUserClick(user)}
+            onClick={(e) => handleUserClick(e, user)}
           >
             <div className="flex items-start gap-3">
               <div className="relative">

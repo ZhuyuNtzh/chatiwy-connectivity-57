@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import Header from '../components/chat/Header';
@@ -35,6 +35,7 @@ const ChatInterface = () => {
   const { isDarkMode, toggleDarkMode } = useTheme();
   const { currentUser } = useUser();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
   
   const {
     searchTerm,
@@ -65,20 +66,26 @@ const ChatInterface = () => {
     handleContinueChat
   } = useChatInterface(mockUsers);
 
+  // Handle user click without closing the sidebar
   const handleMobileUserClick = (user: any) => {
     handleUserClick(user);
-    // Don't close the sidebar automatically on mobile
+    // Sidebar remains open
   };
 
-  // Create a handler that doesn't close the sidebar for filter changes
+  // Handle filter changes without closing the sidebar
   const handleMobileFiltersChange = (filters: any) => {
     handleFiltersChange(filters);
-    // Don't close the sidebar when applying filters
+    // Sidebar remains open
   };
 
-  // Only close sidebar when clicking the close button or clicking outside the sidebar
+  // Only close sidebar when explicitly requested
   const handleCloseSidebar = () => {
     setIsSidebarOpen(false);
+  };
+
+  // Prevent event propagation to parent elements
+  const handleContentClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
   };
 
   return (
@@ -107,6 +114,7 @@ const ChatInterface = () => {
           </Button>
 
           <div 
+            ref={sidebarRef}
             className={`
               fixed md:relative
               top-0 bottom-0 left-0
@@ -116,6 +124,7 @@ const ChatInterface = () => {
               z-40
               bg-white dark:bg-gray-800 shadow-lg
             `}
+            onClick={handleContentClick}
           >
             <ChatSidebar 
               searchTerm={searchTerm}
@@ -168,7 +177,7 @@ const ChatInterface = () => {
         <div 
           className="fixed inset-0 bg-black/30 z-30 md:hidden"
           onClick={(e) => {
-            // Only close if clicking directly on the backdrop, not on its children
+            // Only close if clicking directly on the backdrop
             if (e.target === e.currentTarget) {
               setIsSidebarOpen(false);
             }

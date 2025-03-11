@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -100,9 +99,13 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
     onFiltersChange(resetFilters);
   };
 
+  const handlePopoverClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <Popover>
-      <PopoverTrigger asChild>
+      <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
         <Button 
           variant="outline" 
           size="sm" 
@@ -112,7 +115,7 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
           Filters
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80" align="end">
+      <PopoverContent className="w-80" align="end" onClick={handlePopoverClick}>
         <div className="space-y-4">
           <GenderFilter 
             selectedGenders={filters.gender}
@@ -135,7 +138,10 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={clearFilters}
+              onClick={(e) => {
+                e.stopPropagation();
+                clearFilters();
+              }}
             >
               Clear All
             </Button>
