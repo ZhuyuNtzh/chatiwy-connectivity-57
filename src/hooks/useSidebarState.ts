@@ -45,10 +45,8 @@ export const useSidebarState = () => {
     if (e) {
       e.stopPropagation();
     }
-    // Only close the sidebar on mobile if a user is selected
-    if (window.innerWidth > 768) {
-      setIsSidebarOpen(false);
-    }
+    // Always close the sidebar when this is called, regardless of screen size
+    setIsSidebarOpen(false);
   };
   
   const handleContentClick = (e: React.MouseEvent) => {

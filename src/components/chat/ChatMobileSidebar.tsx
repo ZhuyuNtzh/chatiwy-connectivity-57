@@ -45,10 +45,12 @@ const ChatMobileSidebar: React.FC<ChatMobileSidebarProps> = ({
   onUserClick,
   isDarkMode
 }) => {
-  // Create a custom user click handler that also closes the sidebar
+  // Create a custom user click handler that also closes the sidebar on mobile
   const handleUserSelection = (user: any) => {
     onUserClick(user);
-    closeSidebar();
+    if (window.innerWidth <= 768) {
+      closeSidebar();
+    }
   };
 
   // Handle touch events - convert touch event to standard event

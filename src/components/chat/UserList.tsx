@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { User as UserIcon } from 'lucide-react';
 
@@ -47,7 +48,7 @@ const UserList: React.FC<UserListProps> = ({
       {users.map(user => (
         <div 
           key={user.id} 
-          className={`p-4 cursor-pointer transition-colors ${
+          className={`p-2 md:p-4 cursor-pointer transition-colors ${
             selectedUserId === user.id 
               ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-100') 
               : (isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50')
@@ -58,42 +59,42 @@ const UserList: React.FC<UserListProps> = ({
             onUserClick(user);
           }}
         >
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-2 md:gap-3">
             <div className="relative flex-shrink-0">
-              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-orange-100">
-                <UserIcon className="h-6 w-6 text-orange-600" />
+              <div className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full bg-orange-100">
+                <UserIcon className="h-5 w-5 md:h-6 md:w-6 text-orange-600" />
               </div>
               {user.isOnline && (
-                <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-400 ring-2 ring-white dark:ring-gray-800" />
+                <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 md:h-3 md:w-3 rounded-full bg-green-400 ring-2 ring-white dark:ring-gray-800" />
               )}
             </div>
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <h3 className={`text-base font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                <h3 className={`text-sm md:text-base font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                   {user.username}
                 </h3>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <p className={`text-xs md:text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                   {user.gender}, {user.age}
                 </p>
               </div>
               
-              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-1 flex items-center`}>
+              <p className={`text-xs md:text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-0.5 md:mt-1 flex items-center`}>
                 {countryFlags[user.location] && (
                   <img 
                     src={countryFlags[user.location]}
                     alt={`${user.location} flag`}
-                    className="w-5 h-4 mr-1 object-cover"
+                    className="w-4 h-3 md:w-5 md:h-4 mr-1 object-cover"
                   />
                 )}
                 <span>{user.location}</span>
               </p>
               
-              <div className="mt-2 flex flex-wrap gap-1">
+              <div className="mt-1 md:mt-2 flex flex-wrap gap-0.5 md:gap-1">
                 {user.interests.map((interest, idx) => (
                   <span 
                     key={idx} 
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${getInterestColor(interest)}`}
+                    className={`inline-flex items-center px-1.5 md:px-2.5 py-0.5 rounded text-[10px] md:text-xs font-medium ${getInterestColor(interest)}`}
                   >
                     {interest}
                   </span>
