@@ -6,8 +6,8 @@ import ChatSidebar from './ChatSidebar';
 
 interface ChatMobileSidebarProps {
   isSidebarOpen: boolean;
-  toggleSidebar: (e: React.MouseEvent) => void;
-  closeSidebar: (e: React.MouseEvent) => void;
+  toggleSidebar: (e?: React.MouseEvent) => void;
+  closeSidebar: (e?: React.MouseEvent) => void;
   sidebarRef: React.RefObject<HTMLDivElement>;
   handleContentClick: (e: React.MouseEvent) => void;
   searchTerm: string;
@@ -45,6 +45,12 @@ const ChatMobileSidebar: React.FC<ChatMobileSidebarProps> = ({
   onUserClick,
   isDarkMode
 }) => {
+  // Create a handler for touch events that calls the original handler
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    toggleSidebar();
+  };
+
   return (
     <>
       <Button
@@ -98,10 +104,7 @@ const ChatMobileSidebar: React.FC<ChatMobileSidebarProps> = ({
         <div 
           className="md:hidden fixed top-1/2 left-0 transform -translate-y-1/2 bg-white dark:bg-gray-800 p-2 rounded-r-md shadow-md z-30 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           onClick={toggleSidebar}
-          onTouchStart={(e) => {
-            e.stopPropagation();
-            toggleSidebar(e);
-          }}
+          onTouchStart={handleTouchStart}
           style={{ width: '20px', height: '120px' }}
         >
           <div className="h-full w-1 mx-auto bg-gray-400 rounded-full"></div>

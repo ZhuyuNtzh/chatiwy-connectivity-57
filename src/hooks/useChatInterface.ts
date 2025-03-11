@@ -1,7 +1,7 @@
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../contexts/UserContext';
+import { useUser, UserProfile } from '../contexts/UserContext';
 import { useAuthActions } from './useAuthActions';
 import { useUserSelection } from './useUserSelection';
 import { useDialogManagement } from './useDialogManagement';
@@ -68,7 +68,7 @@ export const useChatInterface = (mockUsers: User[]) => {
     setConnectedUsersCount
   } = useCountryFlags();
   
-  // Connect to SignalR
+  // Connect to SignalR - using proper type handling
   useSignalRConnection(currentUser, setConnectedUsersCount);
   
   // Check if user is logged in on initial load
