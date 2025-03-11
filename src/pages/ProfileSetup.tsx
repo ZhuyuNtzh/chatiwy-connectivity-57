@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -105,10 +104,10 @@ const ProfileSetup = () => {
     <div className={`min-h-screen flex flex-col ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-white'}`}>
       <Header />
       
-      <main className="flex-1 container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16">
+      <main className="flex-1 container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
         <div className="max-w-md mx-auto">
-          <div className="text-center mb-8 animate-fade-in-down">
-            <h1 className="text-3xl font-bold mb-2">Create Your Profile</h1>
+          <div className="text-center mb-6 animate-fade-in-down">
+            <h1 className="text-3xl font-bold mb-1">Create Your Profile</h1>
             <p className={`${isDarkMode ? 'text-gray-300' : 'text-muted-foreground'}`}>
               {userRole === 'vip' 
                 ? 'Set up your VIP profile to get started' 
@@ -116,9 +115,9 @@ const ProfileSetup = () => {
             </p>
           </div>
           
-          <form onSubmit={handleSubmit} className="bg-gradient-to-br from-[#EDE8D0] to-[#EDE8D0]/90 rounded-lg p-6 animate-fade-in">
-            <div className="space-y-6">
-              <div className="space-y-2">
+          <form onSubmit={handleSubmit} className="bg-gradient-to-br from-[#EDE8D0] to-[#EDE8D0]/90 rounded-lg p-5 animate-fade-in">
+            <div className="space-y-4">
+              <div className="space-y-1">
                 <Label htmlFor="nickname" className="text-gray-800">Nickname</Label>
                 <Input
                   id="nickname"
@@ -130,7 +129,7 @@ const ProfileSetup = () => {
               </div>
 
               {isLoading ? (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="location" className="text-gray-800">Country (Loading...)</Label>
                   <div className="bg-white/70 rounded-md px-3 py-2 border border-input flex items-center space-x-2">
                     <div className="w-6 h-4 bg-gray-200 animate-pulse"></div>
@@ -138,7 +137,7 @@ const ProfileSetup = () => {
                   </div>
                 </div>
               ) : country ? (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="location" className="text-gray-800">Country (Detected)</Label>
                   <div className="flex items-center space-x-2 bg-white/70 rounded-md px-3 py-2 border border-input">
                     <img 
@@ -155,7 +154,7 @@ const ProfileSetup = () => {
                   )}
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="location" className="text-gray-800">Country</Label>
                   <Input
                     id="location"
@@ -167,8 +166,8 @@ const ProfileSetup = () => {
                 </div>
               )}
               
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
                   <Label htmlFor="age" className="text-gray-800">Age</Label>
                   <Select value={age} onValueChange={setAge}>
                     <SelectTrigger className="glass-input bg-white/70 text-gray-800">
@@ -184,7 +183,7 @@ const ProfileSetup = () => {
                   </Select>
                 </div>
                 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="gender" className="text-gray-800">Gender</Label>
                   <Select value={gender} onValueChange={setGender}>
                     <SelectTrigger className="glass-input bg-white/70 text-gray-800">
@@ -199,7 +198,7 @@ const ProfileSetup = () => {
               </div>
               
               {userRole === 'vip' && (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="location" className="text-gray-800">Location</Label>
                   <Input
                     id="location"
@@ -211,11 +210,11 @@ const ProfileSetup = () => {
                 </div>
               )}
               
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label className="text-gray-800">Interests (Select up to {maxInterests})</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {interests.map((interest) => (
-                    <div key={interest} className="flex items-center space-x-2">
+                    <div key={interest} className="flex items-center space-x-1">
                       <Checkbox
                         id={`interest-${interest}`}
                         checked={selectedInterests.includes(interest)}
@@ -230,7 +229,7 @@ const ProfileSetup = () => {
                       />
                       <label
                         htmlFor={`interest-${interest}`}
-                        className="text-sm font-medium leading-none text-gray-800 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        className="text-xs font-medium leading-none text-gray-800 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
                         {interest}
                       </label>

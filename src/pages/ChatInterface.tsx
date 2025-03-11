@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
@@ -65,6 +64,13 @@ const ChatInterface = () => {
     handleContinueChat
   } = useChatInterface(mockUsers);
 
+  const handleMobileUserClick = (user: any) => {
+    handleUserClick(user);
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(true);
+    }
+  };
+
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-[#f2f7f9]'}`}>
       <Header 
@@ -99,7 +105,7 @@ const ChatInterface = () => {
               transition-transform duration-300 ease-in-out
               ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
               z-40
-              touch-manipulation
+              bg-white dark:bg-gray-800
             `}
           >
             <ChatSidebar 
@@ -110,10 +116,7 @@ const ChatInterface = () => {
               users={filteredUsers}
               selectedUserId={selectedUser?.id || null}
               countryFlags={countryFlags}
-              onUserClick={(user) => {
-                handleUserClick(user);
-                setIsSidebarOpen(false);
-              }}
+              onUserClick={handleMobileUserClick}
               isDarkMode={isDarkMode}
             />
           </div>
@@ -122,7 +125,12 @@ const ChatInterface = () => {
             <ChatInterfaceContent 
               selectedUser={selectedUser}
               countryFlags={countryFlags}
-              onCloseChat={handleCloseChat}
+              onCloseChat={() => {
+                handleCloseChat();
+                if (window.innerWidth < 768) {
+                  setIsSidebarOpen(true);
+                }
+              }}
               isDarkMode={isDarkMode}
             />
           </div>
@@ -140,7 +148,7 @@ const ChatInterface = () => {
         </div>
       )}
       
-      {/* Mobile sidebar overlay */}
+      {/* Mobile sidebar overlay - Clicking this closes the sidebar */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 md:hidden"
@@ -180,4 +188,3 @@ const ChatInterface = () => {
 };
 
 export default ChatInterface;
-
