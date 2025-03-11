@@ -46,7 +46,7 @@ const RulesModal: React.FC<RulesModalProps> = ({
   if (showWarning) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-w-[95%] p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Warning</DialogTitle>
             <DialogDescription>
@@ -54,7 +54,7 @@ const RulesModal: React.FC<RulesModalProps> = ({
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex justify-between mt-6">
+          <div className="flex justify-between mt-4">
             <Button
               variant="outline"
               onClick={handleWarningBack}
@@ -75,16 +75,16 @@ const RulesModal: React.FC<RulesModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-w-[95%] p-4 sm:p-6 overflow-y-auto max-h-[90vh]">
+        <DialogHeader className="mb-2">
           <DialogTitle>Chat Rules</DialogTitle>
           <DialogDescription>
             Please read and accept our community rules before continuing.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="grid gap-4 py-4">
-          <div className="space-y-4">
+        <div className="grid gap-2 py-2">
+          <div className="space-y-3">
             <h3 className="font-bold text-red-600">Age Restriction (18+)</h3>
             <p className="text-sm text-muted-foreground">
               Users must be 18 years of age or older to participate.
@@ -110,22 +110,24 @@ const RulesModal: React.FC<RulesModalProps> = ({
               Avoid spamming, advertising, or unsolicited promotion.
             </p>
 
-            <p className="text-sm font-bold text-red-600 mt-6 border-t pt-4">
+            <p className="text-sm font-bold text-red-600 mt-3 border-t pt-3">
               Note: In case of violating the rules mentioned above the user will be permanently banned from the site.
             </p>
           </div>
         </div>
         
-        <div className="flex justify-between">
+        <div className="flex justify-between mt-3">
           <Button
             variant="outline"
             className="hover:bg-destructive hover:text-destructive-foreground"
             onClick={handleDecline}
+            size="sm"
           >
             Decline
           </Button>
           <Button
             onClick={handleAccept}
+            size="sm"
           >
             Accept
           </Button>

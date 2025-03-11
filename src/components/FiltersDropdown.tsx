@@ -100,7 +100,7 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
     onFiltersChange(resetFilters);
   };
 
-  // Handle all clicks inside the popover to prevent event propagation
+  // Improved event handlers to ensure proper event propagation control
   const handlePopoverClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -123,10 +123,12 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-80 bg-white dark:bg-gray-800 z-50" 
-        align="end" 
+        className="w-80 bg-white dark:bg-gray-800 z-[100]" 
+        align="end"
+        sideOffset={5}
         onClick={handlePopoverClick}
         onPointerDownOutside={(e) => {
+          // Prevent the popover from closing when clicking outside
           e.preventDefault();
         }}
       >
