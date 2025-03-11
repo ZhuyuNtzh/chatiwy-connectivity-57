@@ -70,10 +70,10 @@ const Index = () => {
 
       {/* Main content */}
       <main className="flex-1 flex flex-col md:flex-row px-4 md:px-8 py-6 gap-4">
-        {/* Left side - Chat bubbles */}
-        <div className="w-full md:w-1/2 flex items-center justify-center relative">
+        {/* Left side - Chat bubbles (hidden on mobile) */}
+        <div className="w-full md:w-1/2 hidden md:flex items-center justify-center relative">
           <div className="w-full max-w-md relative">
-            {/* Animated chat bubbles */}
+            {/* Animated chat bubbles - only shown on desktop */}
             <div className="chat-bubble chat-bubble-teal w-64 h-44 absolute top-0 left-0 transform rotate-6 animate-float-slow"></div>
             <div className="chat-bubble chat-bubble-red w-16 h-16 rounded-full absolute top-16 right-12 animate-pulse-subtle"></div>
             <div className="chat-bubble chat-bubble-orange w-24 h-10 absolute top-8 right-24 transform -rotate-12 animate-float"></div>
@@ -127,13 +127,13 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Right side ad placeholder */}
+        {/* Right side ad placeholder - hidden on mobile */}
         <div className="hidden lg:block w-32 h-[530px] ad-placeholder animate-pulse-slow">
           Ad place holder
         </div>
       </main>
 
-      {/* Bottom ad placeholder */}
+      {/* Bottom ad placeholder - visible on all devices */}
       <div className="w-full max-w-4xl mx-auto p-4">
         <div className="w-full h-20 ad-placeholder mb-4 animate-pulse-subtle">
           Ad place holder

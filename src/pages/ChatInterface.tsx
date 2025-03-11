@@ -70,6 +70,17 @@ const ChatInterface = () => {
     // Don't close the sidebar automatically on mobile
   };
 
+  // Create a handler that doesn't close the sidebar for filter changes
+  const handleMobileFiltersChange = (filters: any) => {
+    handleFiltersChange(filters);
+    // Don't close the sidebar when applying filters
+  };
+
+  // Only close sidebar when clicking the close button or clicking outside the sidebar
+  const handleCloseSidebar = () => {
+    setIsSidebarOpen(false);
+  };
+
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-[#f2f7f9]'}`}>
       <Header 
@@ -110,7 +121,7 @@ const ChatInterface = () => {
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
               connectedUsersCount={connectedUsersCount}
-              onFiltersChange={handleFiltersChange}
+              onFiltersChange={handleMobileFiltersChange}
               users={filteredUsers}
               selectedUserId={selectedUser?.id || null}
               countryFlags={countryFlags}
@@ -122,7 +133,7 @@ const ChatInterface = () => {
               variant="outline"
               size="icon"
               className="md:hidden absolute top-4 right-4 z-50 bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700"
-              onClick={() => setIsSidebarOpen(false)}
+              onClick={handleCloseSidebar}
             >
               <X className="h-5 w-5" />
             </Button>
@@ -156,7 +167,12 @@ const ChatInterface = () => {
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/30 z-30 md:hidden"
-          onClick={(e) => e.target === e.currentTarget && setIsSidebarOpen(false)}
+          onClick={(e) => {
+            // Only close if clicking directly on the backdrop, not on its children
+            if (e.target === e.currentTarget) {
+              setIsSidebarOpen(false);
+            }
+          }}
         />
       )}
       
