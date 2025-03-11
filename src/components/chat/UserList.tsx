@@ -86,7 +86,7 @@ const UserList: React.FC<UserListProps> = ({
                   {user.interests.map((interest, idx) => (
                     <span 
                       key={idx} 
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded text-sm font-medium ${getInterestColor(interest)}`}
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${getInterestColor(interest)}`}
                     >
                       {interest}
                     </span>

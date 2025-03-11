@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
@@ -66,6 +67,7 @@ const ChatInterface = () => {
 
   const handleMobileUserClick = (user: any) => {
     handleUserClick(user);
+    // Don't close the sidebar automatically on mobile
   };
 
   return (
@@ -119,7 +121,7 @@ const ChatInterface = () => {
             <Button
               variant="outline"
               size="icon"
-              className="md:hidden absolute top-4 right-4 z-50 bg-white/90 dark:bg-gray-800/90 shadow-md border border-gray-200 dark:border-gray-700"
+              className="md:hidden absolute top-4 right-4 z-50 bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700"
               onClick={() => setIsSidebarOpen(false)}
             >
               <X className="h-5 w-5" />
@@ -132,9 +134,7 @@ const ChatInterface = () => {
               countryFlags={countryFlags}
               onCloseChat={() => {
                 handleCloseChat();
-                if (window.innerWidth < 768) {
-                  setIsSidebarOpen(false);
-                }
+                // Do not close sidebar automatically when closing chat
               }}
               isDarkMode={isDarkMode}
             />
@@ -155,7 +155,8 @@ const ChatInterface = () => {
       
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 md:hidden"
+          className="fixed inset-0 bg-black/30 z-30 md:hidden"
+          onClick={(e) => e.target === e.currentTarget && setIsSidebarOpen(false)}
         />
       )}
       
