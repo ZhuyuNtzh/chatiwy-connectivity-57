@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import InterestsSelector from './InterestsSelector';
 import CountryDisplay from './CountryDisplay';
-import { UserProfile } from '@/contexts/UserContext';
+import { UserProfile, UserRole } from '@/contexts/UserContext';
 
 interface ProfileFormProps {
   nickname: string;
@@ -43,6 +43,7 @@ const ProfileForm = ({
   setRulesAccepted
 }: ProfileFormProps) => {
   const navigate = useNavigate();
+  const [selectedAge, setSelectedAge] = useState(age);
   const maxInterests = userRole === 'vip' ? 5 : 3;
   
   const handleSubmit = (event: React.FormEvent) => {
@@ -51,13 +52,13 @@ const ProfileForm = ({
     // Create user profile
     const userProfile: UserProfile = {
       username: nickname,
-      age: parseInt(age),
+      age: parseInt(selectedAge),
       gender,
       interests: selectedInterests,
       location,
       isOnline: true,
       lastActive: new Date(),
-      role: userRole!,
+      role: userRole as UserRole, // Type assertion to fix the error
       isVip: userRole === 'vip',
       isAdmin: userRole === 'admin',
       joinedAt: new Date(),
@@ -96,7 +97,7 @@ const ProfileForm = ({
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
             <Label htmlFor="age" className="text-gray-800">Age</Label>
-            <Select value={age} disabled>
+            <Select value={selectedAge} onValueChange={setSelectedAge}>
               <SelectTrigger className="glass-input bg-white/70 text-gray-800">
                 <SelectValue placeholder="Select your age" />
               </SelectTrigger>

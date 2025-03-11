@@ -12,7 +12,8 @@ interface InterestsSelectorProps {
 // A curated list of the most popular interests
 const popularInterests = [
   'Gaming', 'Music', 'Movies', 'Books', 'Travel',
-  'Food', 'Sports', 'Technology', 'Art', 'Fashion'
+  'Food', 'Sports', 'Technology', 'Art', 'Fashion',
+  'Learning Languages', 'Photography', 'Cooking', 'Fitness'
 ];
 
 const InterestsSelector = ({ 
