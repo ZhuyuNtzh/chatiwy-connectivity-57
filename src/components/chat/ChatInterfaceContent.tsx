@@ -1,7 +1,6 @@
 
 import React from 'react';
 import ChatWindow from '../ChatWindow';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ChatInterfaceContentProps {
   selectedUser: {
@@ -25,15 +24,13 @@ const ChatInterfaceContent: React.FC<ChatInterfaceContentProps> = ({
   isDarkMode
 }) => {
   return (
-    <div className={`h-[calc(100vh-5rem)] ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm flex flex-col ${selectedUser ? 'block fixed inset-0 top-20 z-50 md:static md:z-auto' : 'hidden md:flex'}`}>
+    <div className={`h-[calc(100vh-5rem)] ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm flex flex-col ${selectedUser ? 'block fixed inset-0 top-16 z-50 md:static md:z-auto' : 'hidden md:flex'}`}>
       {selectedUser ? (
-        <ScrollArea className="h-full">
-          <ChatWindow 
-            user={selectedUser}
-            countryFlags={countryFlags}
-            onClose={onCloseChat}
-          />
-        </ScrollArea>
+        <ChatWindow 
+          user={selectedUser}
+          countryFlags={countryFlags}
+          onClose={onCloseChat}
+        />
       ) : (
         <div className="p-6 flex flex-col items-center justify-center h-full">
           <p className={`text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-500'} font-medium`}>

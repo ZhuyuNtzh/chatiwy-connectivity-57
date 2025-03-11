@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import Header from '../components/Header';
 import RulesModal from '../components/RulesModal';
 import { useUser, UserProfile } from '../contexts/UserContext';
@@ -23,11 +21,11 @@ interface Country {
   };
 }
 
-// Reduced the number of interests to make the form more compact
 const interests = [
   'Gaming', 'Music', 'Movies', 'Books', 'Travel',
   'Food', 'Sports', 'Technology', 'Art', 'Fashion',
-  'Fitness', 'Pets', 'Photography', 'Writing', 'Nature'
+  'Fitness', 'Pets', 'Photography', 'Writing', 'Nature',
+  'Cooking', 'Learning languages', 'Current events', 'Hobbies', 'Socializing'
 ];
 
 const ProfileSetup = () => {
@@ -106,12 +104,21 @@ const ProfileSetup = () => {
     <div className={`min-h-screen flex flex-col ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-white'}`}>
       <Header />
       
-      <main className="flex-1 container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-4">
+      <main className="flex-1 container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
         <div className="max-w-md mx-auto">
-          <form onSubmit={handleSubmit} className="bg-gradient-to-br from-[#EDE8D0] to-[#EDE8D0]/90 rounded-lg p-4 animate-fade-in">
-            <div className="space-y-3">
+          <div className="text-center mb-6 animate-fade-in-down">
+            <h1 className="text-3xl font-bold mb-1">Create Your Profile</h1>
+            <p className={`${isDarkMode ? 'text-gray-300' : 'text-muted-foreground'}`}>
+              {userRole === 'vip' 
+                ? 'Set up your VIP profile to get started' 
+                : 'Quick profile setup to get chatting'}
+            </p>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="bg-gradient-to-br from-[#EDE8D0] to-[#EDE8D0]/90 rounded-lg p-5 animate-fade-in">
+            <div className="space-y-4">
               <div className="space-y-1">
-                <Label htmlFor="nickname" className="text-gray-800 text-sm">Nickname</Label>
+                <Label htmlFor="nickname" className="text-gray-800">Nickname</Label>
                 <Input
                   id="nickname"
                   value={nickname}
@@ -123,27 +130,32 @@ const ProfileSetup = () => {
 
               {isLoading ? (
                 <div className="space-y-1">
-                  <Label htmlFor="location" className="text-gray-800 text-sm">Country (Loading...)</Label>
+                  <Label htmlFor="location" className="text-gray-800">Country (Loading...)</Label>
                   <div className="bg-white/70 rounded-md px-3 py-2 border border-input flex items-center space-x-2">
                     <div className="w-6 h-4 bg-gray-200 animate-pulse"></div>
-                    <span className="text-gray-400 text-sm">Loading country information...</span>
+                    <span className="text-gray-400">Loading country information...</span>
                   </div>
                 </div>
               ) : country ? (
                 <div className="space-y-1">
-                  <Label htmlFor="location" className="text-gray-800 text-sm">Country (Detected)</Label>
+                  <Label htmlFor="location" className="text-gray-800">Country (Detected)</Label>
                   <div className="flex items-center space-x-2 bg-white/70 rounded-md px-3 py-2 border border-input">
                     <img 
                       src={country.flags.svg} 
                       alt={`${country.name.common} flag`} 
                       className="w-6 h-4 object-cover"
                     />
-                    <span className="text-gray-800 text-sm">{country.name.common}</span>
+                    <span className="text-gray-800">{country.name.common}</span>
                   </div>
+                  {userRole === 'standard' && (
+                    <p className="text-xs text-gray-600">
+                      Based on your IP address (Standard users cannot change)
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-1">
-                  <Label htmlFor="location" className="text-gray-800 text-sm">Country</Label>
+                  <Label htmlFor="location" className="text-gray-800">Country</Label>
                   <Input
                     id="location"
                     value="Unable to detect country"
@@ -156,9 +168,9 @@ const ProfileSetup = () => {
               
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label htmlFor="age" className="text-gray-800 text-sm">Age</Label>
+                  <Label htmlFor="age" className="text-gray-800">Age</Label>
                   <Select value={age} onValueChange={setAge}>
-                    <SelectTrigger className="glass-input bg-white/70 text-gray-800 text-sm h-9">
+                    <SelectTrigger className="glass-input bg-white/70 text-gray-800">
                       <SelectValue placeholder="Select your age" />
                     </SelectTrigger>
                     <SelectContent>
@@ -172,9 +184,9 @@ const ProfileSetup = () => {
                 </div>
                 
                 <div className="space-y-1">
-                  <Label htmlFor="gender" className="text-gray-800 text-sm">Gender</Label>
+                  <Label htmlFor="gender" className="text-gray-800">Gender</Label>
                   <Select value={gender} onValueChange={setGender}>
-                    <SelectTrigger className="glass-input bg-white/70 text-gray-800 text-sm h-9">
+                    <SelectTrigger className="glass-input bg-white/70 text-gray-800">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
@@ -185,11 +197,24 @@ const ProfileSetup = () => {
                 </div>
               </div>
               
+              {userRole === 'vip' && (
+                <div className="space-y-1">
+                  <Label htmlFor="location" className="text-gray-800">Location</Label>
+                  <Input
+                    id="location"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="glass-input bg-white/70 text-gray-800 placeholder:text-gray-500"
+                    placeholder="Enter your location"
+                  />
+                </div>
+              )}
+              
               <div className="space-y-1">
-                <Label className="text-gray-800 text-sm">Interests (Select up to {maxInterests})</Label>
-                <div className="grid grid-cols-3 gap-1">
+                <Label className="text-gray-800">Interests (Select up to {maxInterests})</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {interests.map((interest) => (
-                    <div key={interest} className="flex items-center space-x-1 py-0.5">
+                    <div key={interest} className="flex items-center space-x-1">
                       <Checkbox
                         id={`interest-${interest}`}
                         checked={selectedInterests.includes(interest)}
@@ -200,7 +225,7 @@ const ProfileSetup = () => {
                           !selectedInterests.includes(interest) && 
                           selectedInterests.length >= maxInterests
                         }
-                        className="border-[#FB9E41] text-[#FB9E41] data-[state=checked]:bg-[#FB9E41] data-[state=checked]:text-white h-3.5 w-3.5"
+                        className="border-[#FB9E41] text-[#FB9E41] data-[state=checked]:bg-[#FB9E41] data-[state=checked]:text-white"
                       />
                       <label
                         htmlFor={`interest-${interest}`}
@@ -216,7 +241,7 @@ const ProfileSetup = () => {
                 </p>
               </div>
               
-              <Button type="submit" className="w-full bg-[#FB9E41] hover:bg-[#FB9E41]/90 text-white h-10 text-base mt-2">
+              <Button type="submit" className="w-full bg-[#FB9E41] hover:bg-[#FB9E41]/90 text-white">
                 Start Chatting
               </Button>
             </div>
