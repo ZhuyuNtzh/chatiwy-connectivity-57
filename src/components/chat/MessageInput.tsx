@@ -50,12 +50,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-64 p-2" align="start" alignOffset={-40} side="top">
-          <div className="grid grid-cols-8 gap-1">
+          <div className="grid grid-cols-7 gap-1">
             {commonEmojis.map((emoji, i) => (
               <Button
                 key={i}
                 variant="ghost"
-                className="h-8 w-8 p-0"
+                className="h-10 w-10 p-0 text-lg"
                 onClick={() => handleAddEmoji(emoji)}
               >
                 {emoji}

@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React from 'react';
 import MessageInput from './MessageInput';
 
 interface ChatActionsProps {
