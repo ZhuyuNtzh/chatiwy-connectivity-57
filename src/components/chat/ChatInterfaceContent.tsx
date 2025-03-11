@@ -24,7 +24,7 @@ const ChatInterfaceContent: React.FC<ChatInterfaceContentProps> = ({
   isDarkMode
 }) => {
   return (
-    <div className={`md:col-span-2 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm h-full flex flex-col`}>
+    <div className={`h-[calc(100vh-5rem)] ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm flex flex-col`}>
       {selectedUser ? (
         <ChatWindow 
           user={selectedUser}

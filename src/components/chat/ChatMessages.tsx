@@ -84,7 +84,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-hidden relative">
+    <div className="flex-1 overflow-hidden relative h-[calc(100vh-13rem)]">
       <div 
         ref={scrollContainerRef} 
         className="h-full overflow-y-auto p-4 space-y-4"

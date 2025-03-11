@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
@@ -10,6 +9,8 @@ import InboxDialog from '../components/chat/InboxDialog';
 import ChatSidebar from '../components/chat/ChatSidebar';
 import ChatInterfaceContent from '../components/chat/ChatInterfaceContent';
 import { useChatInterface } from '../hooks/useChatInterface';
+import { Menu } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const mockUsers = [
   { id: 1, username: "Alice", gender: "Female", age: 28, location: "Australia", interests: ["Art", "Photography", "Travel"], isOnline: true },
@@ -32,6 +33,8 @@ const mockUsers = [
 const ChatInterface = () => {
   const { isDarkMode, toggleDarkMode } = useTheme();
   const { currentUser } = useUser();
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  
   const {
     searchTerm,
     setSearchTerm,
@@ -73,27 +76,57 @@ const ChatInterface = () => {
       />
       
       <div className="fixed top-16 bottom-0 left-0 right-0 px-4 md:px-6 max-w-7xl mx-auto">
-        <div className="h-full grid grid-cols-1 md:grid-cols-3 gap-6">
-          <ChatSidebar 
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            connectedUsersCount={connectedUsersCount}
-            onFiltersChange={handleFiltersChange}
-            users={filteredUsers}
-            selectedUserId={selectedUser?.id || null}
-            countryFlags={countryFlags}
-            onUserClick={handleUserClick}
-            isDarkMode={isDarkMode}
-          />
-          
-          <ChatInterfaceContent 
-            selectedUser={selectedUser}
-            countryFlags={countryFlags}
-            onCloseChat={handleCloseChat}
-            isDarkMode={isDarkMode}
-          />
+        <div className="h-full relative flex">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden fixed top-4 left-4 z-50"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+
+          <div className={`
+            fixed md:relative
+            top-0 bottom-0 left-0
+            w-64 md:w-1/3
+            transition-transform duration-300 ease-in-out
+            ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+            z-40
+          `}>
+            <ChatSidebar 
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              connectedUsersCount={connectedUsersCount}
+              onFiltersChange={handleFiltersChange}
+              users={filteredUsers}
+              selectedUserId={selectedUser?.id || null}
+              countryFlags={countryFlags}
+              onUserClick={(user) => {
+                handleUserClick(user);
+                setIsSidebarOpen(false);
+              }}
+              isDarkMode={isDarkMode}
+            />
+          </div>
+
+          <div className="flex-1 md:ml-6">
+            <ChatInterfaceContent 
+              selectedUser={selectedUser}
+              countryFlags={countryFlags}
+              onCloseChat={handleCloseChat}
+              isDarkMode={isDarkMode}
+            />
+          </div>
         </div>
       </div>
+      
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 z-30 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
       
       <RulesModal 
         open={isRulesModalOpen} 
