@@ -45,9 +45,14 @@ const ChatMobileSidebar: React.FC<ChatMobileSidebarProps> = ({
   onUserClick,
   isDarkMode
 }) => {
-  // Create a handler for touch events that calls the original handler
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    e.stopPropagation();
+  // Create a custom user click handler that also closes the sidebar
+  const handleUserSelection = (user: any) => {
+    onUserClick(user);
+    closeSidebar();
+  };
+
+  // Handle touch events
+  const handleSwipeOpen = () => {
     toggleSidebar();
   };
 
@@ -86,7 +91,7 @@ const ChatMobileSidebar: React.FC<ChatMobileSidebarProps> = ({
           users={users}
           selectedUserId={selectedUserId}
           countryFlags={countryFlags}
-          onUserClick={onUserClick}
+          onUserClick={handleUserSelection}
           isDarkMode={isDarkMode}
         />
 
@@ -103,8 +108,7 @@ const ChatMobileSidebar: React.FC<ChatMobileSidebarProps> = ({
       {!isSidebarOpen && (
         <div 
           className="md:hidden fixed top-1/2 left-0 transform -translate-y-1/2 bg-white dark:bg-gray-800 p-2 rounded-r-md shadow-md z-30 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          onClick={toggleSidebar}
-          onTouchStart={handleTouchStart}
+          onClick={handleSwipeOpen}
           style={{ width: '20px', height: '120px' }}
         >
           <div className="h-full w-1 mx-auto bg-gray-400 rounded-full"></div>

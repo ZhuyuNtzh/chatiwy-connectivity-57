@@ -27,6 +27,7 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
   
   const [countries, setCountries] = useState<{name: string, flag: string}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   
   useEffect(() => {
     const fetchCountries = async () => {
@@ -107,7 +108,7 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
   };
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button 
           variant="outline" 
@@ -116,6 +117,7 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            setIsOpen(!isOpen);
           }}
         >
           <Filter className="h-4 w-4 mr-1" />
