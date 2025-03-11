@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import Header from '../components/chat/Header';
@@ -7,11 +7,10 @@ import RulesModal from '../components/RulesModal';
 import LogoutDialog from '../components/chat/LogoutDialog';
 import HistoryDialog from '../components/chat/HistoryDialog';
 import InboxDialog from '../components/chat/InboxDialog';
-import ChatSidebar from '../components/chat/ChatSidebar';
-import ChatInterfaceContent from '../components/chat/ChatInterfaceContent';
+import ChatMainContent from '../components/chat/ChatMainContent';
+import ChatMobileSidebar from '../components/chat/ChatMobileSidebar';
 import { useChatInterface } from '../hooks/useChatInterface';
-import { Menu, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useSidebarState } from '../hooks/useSidebarState';
 
 const mockUsers = [
   { id: 1, username: "Alice", gender: "Female", age: 28, location: "Australia", interests: ["Art", "Photography", "Travel"], isOnline: true },
@@ -34,8 +33,13 @@ const mockUsers = [
 const ChatInterface = () => {
   const { isDarkMode, toggleDarkMode } = useTheme();
   const { currentUser } = useUser();
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
-  const sidebarRef = useRef<HTMLDivElement>(null);
+  const {
+    isSidebarOpen,
+    sidebarRef,
+    toggleSidebar,
+    closeSidebar,
+    handleContentClick
+  } = useSidebarState();
   
   const {
     searchTerm,
@@ -54,9 +58,9 @@ const ChatInterface = () => {
     setShowInbox,
     inboxMessages,
     filteredUsers,
-    handleLogout,
-    confirmLogout,
-    cancelLogout,
+    handleLogoutClick,
+    handleConfirmLogout,
+    handleCancelLogout,
     handleRulesAccepted,
     handleFiltersChange,
     handleUserClick,
@@ -66,134 +70,44 @@ const ChatInterface = () => {
     handleContinueChat
   } = useChatInterface(mockUsers);
 
-  // Handle user click without closing the sidebar
-  const handleMobileUserClick = (user: any) => {
-    handleUserClick(user);
-    // Sidebar remains open until explicitly closed
-  };
-
-  // Handle filter changes without closing the sidebar
-  const handleMobileFiltersChange = (filters: any) => {
-    handleFiltersChange(filters);
-    // Sidebar remains open
-  };
-
-  // Only close sidebar when explicitly requested
-  const handleCloseSidebar = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsSidebarOpen(false);
-  };
-
-  // Prevent propagation for sidebar content clicks
-  const handleContentClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
-
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-[#f2f7f9]'}`}>
       <Header 
         username={currentUser?.username || "Nickname"}
         isDarkMode={isDarkMode}
         toggleDarkMode={toggleDarkMode}
-        onLogout={handleLogout}
+        onLogout={handleLogoutClick}
         onHistory={handleShowHistory}
         onInbox={handleShowInbox}
       />
       
       <div className="fixed top-16 bottom-0 left-0 right-0 px-4 md:px-6 max-w-7xl mx-auto">
         <div className="h-full relative flex">
-          <Button
-            variant="outline"
-            size="icon"
-            className="md:hidden fixed top-4 left-4 z-50 bg-white/90 dark:bg-gray-800/90 shadow-md border border-gray-200 dark:border-gray-700"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsSidebarOpen(!isSidebarOpen);
-            }}
-          >
-            <Menu className="h-5 w-5" />
-            {!isSidebarOpen && (
-              <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-green-500 ring-1 ring-white"></span>
-            )}
-          </Button>
+          <ChatMobileSidebar 
+            isSidebarOpen={isSidebarOpen}
+            toggleSidebar={toggleSidebar}
+            closeSidebar={closeSidebar}
+            sidebarRef={sidebarRef}
+            handleContentClick={handleContentClick}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            connectedUsersCount={connectedUsersCount}
+            onFiltersChange={handleFiltersChange}
+            users={filteredUsers}
+            selectedUserId={selectedUser?.id || null}
+            countryFlags={countryFlags}
+            onUserClick={handleUserClick}
+            isDarkMode={isDarkMode}
+          />
 
-          <div 
-            ref={sidebarRef}
-            className={`
-              fixed md:relative
-              top-0 bottom-0 left-0
-              w-80 md:w-1/3
-              transition-transform duration-300 ease-in-out
-              ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-              z-40
-              bg-white dark:bg-gray-800 shadow-lg
-            `}
-            onClick={handleContentClick}
-          >
-            <ChatSidebar 
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-              connectedUsersCount={connectedUsersCount}
-              onFiltersChange={handleMobileFiltersChange}
-              users={filteredUsers}
-              selectedUserId={selectedUser?.id || null}
-              countryFlags={countryFlags}
-              onUserClick={handleMobileUserClick}
-              isDarkMode={isDarkMode}
-            />
-
-            <Button
-              variant="outline"
-              size="icon"
-              className="md:hidden absolute top-4 right-4 z-50 bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700"
-              onClick={handleCloseSidebar}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-
-          <div className="flex-1 md:ml-6">
-            <ChatInterfaceContent 
-              selectedUser={selectedUser}
-              countryFlags={countryFlags}
-              onCloseChat={() => {
-                handleCloseChat();
-                // Do not close sidebar automatically when closing chat
-              }}
-              isDarkMode={isDarkMode}
-            />
-          </div>
+          <ChatMainContent 
+            selectedUser={selectedUser}
+            countryFlags={countryFlags}
+            onCloseChat={handleCloseChat}
+            isDarkMode={isDarkMode}
+          />
         </div>
       </div>
-      
-      {!isSidebarOpen && (
-        <div 
-          className="md:hidden fixed top-1/2 left-0 transform -translate-y-1/2 bg-white dark:bg-gray-800 p-2 rounded-r-md shadow-md z-30 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsSidebarOpen(true);
-          }}
-          onTouchStart={(e) => {
-            e.stopPropagation();
-            setIsSidebarOpen(true);
-          }}
-          style={{ width: '20px', height: '120px' }}
-        >
-          <div className="h-full w-1 mx-auto bg-gray-400 rounded-full"></div>
-        </div>
-      )}
-      
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/30 z-30 md:hidden"
-          onClick={(e) => {
-            // Only close if clicking directly on the backdrop
-            if (e.target === e.currentTarget) {
-              setIsSidebarOpen(false);
-            }
-          }}
-        />
-      )}
       
       <RulesModal 
         open={isRulesModalOpen} 
@@ -204,8 +118,8 @@ const ChatInterface = () => {
       <LogoutDialog
         isOpen={isLogoutDialogOpen}
         onOpenChange={setIsLogoutDialogOpen}
-        onConfirm={confirmLogout}
-        onCancel={cancelLogout}
+        onConfirm={handleConfirmLogout}
+        onCancel={handleCancelLogout}
       />
       
       <HistoryDialog 

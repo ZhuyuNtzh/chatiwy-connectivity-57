@@ -1,9 +1,15 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
+import { useAuthActions } from './useAuthActions';
+import { useUserSelection } from './useUserSelection';
+import { useDialogManagement } from './useDialogManagement';
+import { useChatHistory } from './useChatHistory';
+import { useInactivityTimer } from './useInactivityTimer';
+import { useCountryFlags } from './useCountryFlags';
+import { useSignalRConnection } from './useSignalRConnection';
 import { signalRService } from '../services/signalRService';
-import type { ChatMessage } from '../services/signalR/types';
 
 interface User {
   id: number;
@@ -17,163 +23,66 @@ interface User {
 
 export const useChatInterface = (mockUsers: User[]) => {
   const navigate = useNavigate();
-  const { currentUser, setCurrentUser, setIsLoggedIn, rulesAccepted, setRulesAccepted } = useUser();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isRulesModalOpen, setIsRulesModalOpen] = useState(!rulesAccepted);
-  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
-  const [countryFlags, setCountryFlags] = useState<Record<string, string>>({});
-  const [activeFilters, setActiveFilters] = useState<{
-    gender: string[];
-    ageRange: [number, number];
-    countries: string[];
-  }>({
-    gender: ["Male", "Female"],
-    ageRange: [18, 80],
-    countries: [],
-  });
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [connectedUsersCount, setConnectedUsersCount] = useState(0);
-  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
-  const [chatHistory, setChatHistory] = useState<Record<number, ChatMessage[]>>({});
-  const [showInbox, setShowInbox] = useState(false);
-  const [inboxMessages, setInboxMessages] = useState<Record<number, ChatMessage[]>>({});
-  const [lastActivity, setLastActivity] = useState<Date>(new Date());
-  const inactivityTimerRef = useRef<number | null>(null);
+  const { currentUser, setIsLoggedIn } = useUser();
   
-  useEffect(() => {
-    const resetTimer = () => {
-      setLastActivity(new Date());
-    };
-    
-    window.addEventListener('mousemove', resetTimer);
-    window.addEventListener('keypress', resetTimer);
-    window.addEventListener('click', resetTimer);
-    
-    const checkInactivity = () => {
-      const now = new Date();
-      const inactiveTime = (now.getTime() - lastActivity.getTime()) / (1000 * 60);
-      
-      if (inactiveTime >= 30) {
-        signalRService.disconnect();
-        setCurrentUser(null);
-        setIsLoggedIn(false);
-        navigate('/');
-      }
-    };
-    
-    const intervalId = window.setInterval(checkInactivity, 60000);
-    
-    return () => {
-      window.removeEventListener('mousemove', resetTimer);
-      window.removeEventListener('keypress', resetTimer);
-      window.removeEventListener('click', resetTimer);
-      window.clearInterval(intervalId);
-    };
-  }, [lastActivity, navigate, setCurrentUser, setIsLoggedIn]);
+  // Initialize all the smaller hooks
+  const { handleLogout, confirmLogout, cancelLogout } = useAuthActions();
+  const {
+    searchTerm,
+    setSearchTerm,
+    activeFilters,
+    selectedUser,
+    filteredUsers,
+    handleFiltersChange,
+    handleUserClick: baseHandleUserClick,
+    handleCloseChat
+  } = useUserSelection(mockUsers);
   
+  const {
+    isRulesModalOpen,
+    setIsRulesModalOpen,
+    isLogoutDialogOpen,
+    setIsLogoutDialogOpen,
+    isHistoryDialogOpen,
+    setIsHistoryDialogOpen,
+    showInbox,
+    setShowInbox,
+    handleRulesAccepted
+  } = useDialogManagement();
+  
+  const {
+    chatHistory,
+    setChatHistory,
+    inboxMessages,
+    setInboxMessages,
+    handleShowHistory: baseHandleShowHistory,
+    handleShowInbox: baseHandleShowInbox,
+    handleContinueChat: baseHandleContinueChat
+  } = useChatHistory();
+  
+  useInactivityTimer();
+  
+  const {
+    countryFlags,
+    connectedUsersCount,
+    setConnectedUsersCount
+  } = useCountryFlags();
+  
+  // Connect to SignalR
+  useSignalRConnection(currentUser, setConnectedUsersCount);
+  
+  // Check if user is logged in on initial load
   useEffect(() => {
     if (!currentUser && sessionStorage.getItem('isLoggedIn') !== 'true') {
       navigate('/');
     } else if (currentUser) {
       sessionStorage.setItem('isLoggedIn', 'true');
     }
-    
-    if (sessionStorage.getItem('rulesAccepted') === 'true') {
-      setRulesAccepted(true);
-      setIsRulesModalOpen(false);
-    }
-    
-    const fetchCountryFlags = async () => {
-      try {
-        const response = await fetch('https://restcountries.com/v3.1/all?fields=name,flags');
-        const data = await response.json();
-        const flagsMap: Record<string, string> = {};
-        
-        data.forEach((country: any) => {
-          flagsMap[country.name.common] = country.flags.svg;
-        });
-        
-        setCountryFlags(flagsMap);
-      } catch (error) {
-        console.error('Error fetching country flags:', error);
-      }
-    };
-
-    fetchCountryFlags();
-    
-    if (currentUser) {
-      signalRService.initialize(
-        1,
-        currentUser.username
-      );
-      
-      signalRService.onConnectedUsersCountChanged(count => {
-        setConnectedUsersCount(count);
-      });
-    }
-    
-    return () => {
-      signalRService.disconnect();
-    };
-  }, [currentUser, navigate, rulesAccepted, setRulesAccepted]);
+  }, [currentUser, navigate, setIsLoggedIn]);
   
-  const handleLogout = () => {
-    setIsLogoutDialogOpen(true);
-  };
-  
-  const confirmLogout = () => {
-    setCurrentUser(null);
-    setIsLoggedIn(false);
-    sessionStorage.removeItem('isLoggedIn');
-    sessionStorage.removeItem('rulesAccepted');
-    setIsLogoutDialogOpen(false);
-    navigate('/');
-  };
-  
-  const cancelLogout = () => {
-    setIsLogoutDialogOpen(false);
-  };
-  
-  const handleRulesAccepted = () => {
-    setRulesAccepted(true);
-    sessionStorage.setItem('rulesAccepted', 'true');
-    setIsRulesModalOpen(false);
-  };
-  
-  const handleFiltersChange = (newFilters: {
-    gender: string[];
-    ageRange: [number, number];
-    countries: string[];
-  }) => {
-    setActiveFilters(newFilters);
-  };
-  
-  const filteredUsers = mockUsers.filter(user => {
-    const matchesSearch = user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.interests.some(interest => interest.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesGender = activeFilters.gender.includes(user.gender);
-    
-    const matchesAge = user.age >= activeFilters.ageRange[0] && user.age <= activeFilters.ageRange[1];
-    
-    const matchesCountry = activeFilters.countries.length === 0 || 
-      activeFilters.countries.includes(user.location);
-    
-    return matchesSearch && matchesGender && matchesAge && matchesCountry;
-  }).sort((a, b) => {
-    const countryA = a.location;
-    const countryB = b.location;
-    const countryCompare = countryA.localeCompare(countryB);
-    
-    if (countryCompare === 0) {
-      return a.username.localeCompare(b.username);
-    }
-    
-    return countryCompare;
-  });
-  
+  // Extended user click handler that gets chat history
   const handleUserClick = (user: User) => {
-    setSelectedUser(user);
+    baseHandleUserClick(user);
     // Get chat history for this user
     const userHistory = signalRService.getChatHistory(user.id) || [];
     if (userHistory.length > 0) {
@@ -184,30 +93,44 @@ export const useChatInterface = (mockUsers: User[]) => {
     }
   };
   
-  const handleCloseChat = () => {
-    setSelectedUser(null);
-  };
-  
+  // Enhanced history handler
   const handleShowHistory = () => {
-    const allHistory = signalRService.getAllChatHistory();
-    setChatHistory(allHistory);
+    const allHistory = baseHandleShowHistory();
     setIsHistoryDialogOpen(true);
+    return allHistory;
   };
   
+  // Enhanced inbox handler
   const handleShowInbox = () => {
-    // Get all chat history when opening inbox
-    const allHistory = signalRService.getAllChatHistory();
-    setInboxMessages(allHistory);
+    const allHistory = baseHandleShowInbox();
     setShowInbox(true);
+    return allHistory;
   };
-
+  
+  // Enhanced continue chat handler
   const handleContinueChat = (userId: number) => {
-    const foundUser = mockUsers.find(u => u.id === userId);
+    const foundUser = baseHandleContinueChat(userId, mockUsers);
     if (foundUser) {
       handleUserClick(foundUser);
       setIsHistoryDialogOpen(false);
       setShowInbox(false); // Close inbox if it was open
     }
+  };
+  
+  // This is the function to be called when logout is clicked
+  const handleLogoutClick = () => {
+    setIsLogoutDialogOpen(true);
+  };
+  
+  // This is the function to be called when logout is confirmed
+  const handleConfirmLogout = () => {
+    confirmLogout();
+    setIsLogoutDialogOpen(false);
+  };
+  
+  // This is the function to be called when logout is cancelled
+  const handleCancelLogout = () => {
+    setIsLogoutDialogOpen(false);
   };
 
   return {
@@ -229,9 +152,9 @@ export const useChatInterface = (mockUsers: User[]) => {
     setShowInbox,
     inboxMessages,
     filteredUsers,
-    handleLogout,
-    confirmLogout,
-    cancelLogout,
+    handleLogoutClick,
+    handleConfirmLogout,
+    handleCancelLogout,
     handleRulesAccepted,
     handleFiltersChange,
     handleUserClick,
