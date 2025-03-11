@@ -46,37 +46,37 @@ const UserList: React.FC<UserListProps> = ({
 }) => {
   return (
     <ScrollArea className="h-full">
-      <div className="divide-y divide-gray-200 dark:divide-gray-700">
+      <div className={`divide-y divide-gray-200 dark:divide-gray-700 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
         {users.map(user => (
           <div 
             key={user.id} 
             className={`p-4 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition cursor-pointer ${
-              selectedUserId === user.id ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-100') : (isDarkMode ? 'bg-gray-800' : 'bg-white')
+              selectedUserId === user.id ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-100') : ''
             }`}
             onClick={() => onUserClick(user)}
           >
             <div className="flex items-start gap-3">
               <div className="relative">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-orange-100">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-orange-100">
                   <UserIcon className="h-6 w-6 text-orange-600" />
                 </div>
                 {user.isOnline && (
-                  <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-white dark:ring-gray-800" />
+                  <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-400 ring-2 ring-white dark:ring-gray-800" />
                 )}
               </div>
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <h3 className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{user.username}</h3>
-                  <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user.gender}, {user.age}</p>
+                  <h3 className={`text-base font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{user.username}</h3>
+                  <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user.gender}, {user.age}</p>
                 </div>
                 
-                <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-1 flex items-center`}>
+                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-1 flex items-center`}>
                   {countryFlags[user.location] && (
                     <img 
                       src={countryFlags[user.location]}
                       alt={`${user.location} flag`}
-                      className="w-4 h-3 mr-1 object-cover"
+                      className="w-5 h-4 mr-1 object-cover"
                     />
                   )}
                   <span>{user.location}</span>
@@ -86,7 +86,7 @@ const UserList: React.FC<UserListProps> = ({
                   {user.interests.map((interest, idx) => (
                     <span 
                       key={idx} 
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getInterestColor(interest)}`}
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded text-sm font-medium ${getInterestColor(interest)}`}
                     >
                       {interest}
                     </span>

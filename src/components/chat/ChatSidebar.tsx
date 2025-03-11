@@ -38,7 +38,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 }) => {
   return (
     <div className={`h-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden flex flex-col border-r border-gray-200 dark:border-gray-700`}>
-      <div className="p-4 flex-shrink-0 bg-opacity-100">
+      <div className="p-4 flex-shrink-0">
         <SearchBar 
           searchTerm={searchTerm}
           onSearchChange={onSearchChange}
@@ -52,7 +52,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </div>
       </div>
       
-      <div className="flex-1 overflow-hidden bg-opacity-100">
+      <div className="flex-1 overflow-hidden">
         <UserList
           users={users}
           selectedUserId={selectedUserId}
