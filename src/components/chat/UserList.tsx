@@ -46,12 +46,12 @@ const UserList: React.FC<UserListProps> = ({
 }) => {
   return (
     <ScrollArea className="h-full">
-      <div className="divide-y">
+      <div className="divide-y divide-gray-200 dark:divide-gray-700">
         {users.map(user => (
           <div 
             key={user.id} 
             className={`p-4 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition cursor-pointer ${
-              selectedUserId === user.id ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-100') : ''
+              selectedUserId === user.id ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-100') : (isDarkMode ? 'bg-gray-800' : 'bg-white')
             }`}
             onClick={() => onUserClick(user)}
           >
@@ -61,7 +61,7 @@ const UserList: React.FC<UserListProps> = ({
                   <UserIcon className="h-6 w-6 text-orange-600" />
                 </div>
                 {user.isOnline && (
-                  <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-white" />
+                  <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-white dark:ring-gray-800" />
                 )}
               </div>
               

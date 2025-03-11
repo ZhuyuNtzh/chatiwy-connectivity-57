@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
@@ -64,6 +65,7 @@ const ChatInterface = () => {
     handleContinueChat
   } = useChatInterface(mockUsers);
 
+  // Modified to prevent closing sidebar after user selection on mobile
   const handleMobileUserClick = (user: any) => {
     handleUserClick(user);
     if (window.innerWidth < 768) {
@@ -105,7 +107,7 @@ const ChatInterface = () => {
               transition-transform duration-300 ease-in-out
               ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
               z-40
-              bg-white dark:bg-gray-800
+              bg-white dark:bg-gray-800 shadow-lg
             `}
           >
             <ChatSidebar 
@@ -128,7 +130,7 @@ const ChatInterface = () => {
               onCloseChat={() => {
                 handleCloseChat();
                 if (window.innerWidth < 768) {
-                  setIsSidebarOpen(true);
+                  setIsSidebarOpen(false);
                 }
               }}
               isDarkMode={isDarkMode}
@@ -137,23 +139,36 @@ const ChatInterface = () => {
         </div>
       </div>
       
-      {/* Swipe indicator and hover trigger for mobile */}
+      {/* Improved swipe indicator for mobile - more visible and wider touch area */}
       {!isSidebarOpen && (
         <div 
-          className="md:hidden fixed top-1/2 left-0 transform -translate-y-1/2 bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm p-1 rounded-r-md shadow-md z-30 cursor-pointer hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors"
+          className="md:hidden fixed top-1/2 left-0 transform -translate-y-1/2 bg-white/60 dark:bg-gray-800/60 p-2 rounded-r-md shadow-md z-30 cursor-pointer hover:bg-white/80 dark:hover:bg-gray-800/80 transition-colors"
           onClick={() => setIsSidebarOpen(true)}
-          onMouseEnter={() => setIsSidebarOpen(true)}
+          onTouchStart={() => setIsSidebarOpen(true)}
+          style={{ width: '20px', height: '120px' }}
         >
-          <div className="h-12 w-1 bg-gray-400/50 rounded-full"></div>
+          <div className="h-full w-1 mx-auto bg-gray-400 rounded-full"></div>
         </div>
       )}
       
-      {/* Mobile sidebar overlay - Clicking this closes the sidebar */}
+      {/* Mobile sidebar overlay - Clicking this does NOT close the sidebar anymore */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 md:hidden"
-          onClick={() => setIsSidebarOpen(false)}
         />
+      )}
+
+      {/* Add close button for mobile sidebar */}
+      {isSidebarOpen && (
+        <Button
+          variant="outline"
+          size="icon"
+          className="md:hidden fixed top-4 right-4 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-md border border-gray-200 dark:border-gray-700"
+          onClick={() => setIsSidebarOpen(false)}
+        >
+          <span className="sr-only">Close sidebar</span>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </Button>
       )}
       
       <RulesModal 
