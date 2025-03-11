@@ -36,17 +36,12 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onUserClick,
   isDarkMode
 }) => {
-  // Stop event propagation to prevent sidebar from closing
-  const handleContentClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
-
   return (
     <div 
-      className={`h-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden flex flex-col border-r border-gray-200 dark:border-gray-700`}
-      onClick={handleContentClick}
+      className={`h-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm flex flex-col border-r border-gray-200 dark:border-gray-700`}
+      onClick={(e) => e.stopPropagation()}
     >
-      <div className="p-4 flex-shrink-0">
+      <div className="sticky top-0 z-10 p-4 bg-inherit">
         <SearchBar 
           searchTerm={searchTerm}
           onSearchChange={onSearchChange}
@@ -56,11 +51,13 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           <h2 className={`text-lg font-semibold text-[#FB9E41]`}>
             People <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>({connectedUsersCount})</span>
           </h2>
-          <FiltersDropdown onFiltersChange={onFiltersChange} />
+          <div className="relative z-50">
+            <FiltersDropdown onFiltersChange={onFiltersChange} />
+          </div>
         </div>
       </div>
       
-      <div className="flex-1 overflow-hidden">
+      <ScrollArea className="flex-1 overflow-y-auto">
         <UserList
           users={users}
           selectedUserId={selectedUserId}
@@ -68,7 +65,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           onUserClick={onUserClick}
           isDarkMode={isDarkMode}
         />
-      </div>
+      </ScrollArea>
     </div>
   );
 };
