@@ -78,7 +78,7 @@ const ChatInterface = () => {
       
       <div className="fixed top-16 bottom-0 left-0 right-0 px-4 md:px-6 max-w-7xl mx-auto">
         <div className="h-full relative flex">
-          {/* Mobile sidebar toggle button with better visibility */}
+          {/* Mobile sidebar toggle button */}
           <Button
             variant="outline"
             size="icon"
@@ -91,14 +91,17 @@ const ChatInterface = () => {
             )}
           </Button>
 
-          <div className={`
-            fixed md:relative
-            top-0 bottom-0 left-0
-            w-64 md:w-1/3
-            transition-transform duration-300 ease-in-out
-            ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-            z-40
-          `}>
+          <div 
+            className={`
+              fixed md:relative
+              top-0 bottom-0 left-0
+              w-64 md:w-1/3
+              transition-transform duration-300 ease-in-out
+              ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+              z-40
+              touch-manipulation
+            `}
+          >
             <ChatSidebar 
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
@@ -126,13 +129,18 @@ const ChatInterface = () => {
         </div>
       </div>
       
-      {/* Darker overlay and swipe indicator for mobile sidebar */}
+      {/* Swipe indicator and hover trigger for mobile */}
       {!isSidebarOpen && (
-        <div className="md:hidden fixed top-1/2 left-0 transform -translate-y-1/2 bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm p-1 rounded-r-md shadow-md z-30">
+        <div 
+          className="md:hidden fixed top-1/2 left-0 transform -translate-y-1/2 bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm p-1 rounded-r-md shadow-md z-30 cursor-pointer hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors"
+          onClick={() => setIsSidebarOpen(true)}
+          onMouseEnter={() => setIsSidebarOpen(true)}
+        >
           <div className="h-12 w-1 bg-gray-400/50 rounded-full"></div>
         </div>
       )}
       
+      {/* Mobile sidebar overlay */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 md:hidden"
@@ -172,3 +180,4 @@ const ChatInterface = () => {
 };
 
 export default ChatInterface;
+

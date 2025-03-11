@@ -22,13 +22,13 @@ const Header = ({
   return (
     <header className={`fixed top-0 left-0 right-0 z-10 py-3 px-4 ${isDarkMode ? 'bg-gray-900' : 'bg-white'} border-b border-gray-200 dark:border-gray-700`}>
       <div className="flex items-center justify-between max-w-7xl mx-auto">
-        <div className="flex items-center">
+        <div className="hidden md:flex items-center">
           <span className="text-xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-pink-500">
             Chatiwy
           </span>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ml-auto">
           {onHistory && (
             <Button 
               variant="outline" 
@@ -53,8 +53,8 @@ const Header = ({
             </Button>
           )}
           
-          <div className="flex items-center ml-4">
-            <span className="text-sm font-medium mr-2">{username}</span>
+          <div className="flex items-center ml-2 md:ml-4">
+            <span className="hidden sm:inline text-sm font-medium mr-2">{username}</span>
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-orange-100">
               <User className="h-5 w-5 text-orange-600" />
             </div>
@@ -64,7 +64,7 @@ const Header = ({
             variant="ghost"
             size="icon"
             onClick={toggleDarkMode}
-            className="ml-2"
+            className="ml-1 md:ml-2"
           >
             {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
@@ -73,7 +73,7 @@ const Header = ({
             variant="ghost"
             size="icon"
             onClick={onLogout}
-            className="ml-2"
+            className="ml-1 md:ml-2"
           >
             <LogOut className="h-5 w-5" />
           </Button>
@@ -84,3 +84,4 @@ const Header = ({
 };
 
 export default Header;
+
