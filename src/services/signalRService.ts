@@ -1,3 +1,4 @@
+
 import * as signalR from '@microsoft/signalr';
 import { toast } from "sonner";
 import { MockHubConnection } from './signalR/mockConnection';
@@ -15,10 +16,12 @@ class SignalRService implements ISignalRService {
   private chatHistory: Record<number, ChatMessage[]> = {};
   private userName: string = '';
   private isInitializing: boolean = false;
+  private currentUserId: number = 0; // Store the current user's ID
 
   public async initialize(userId: number, username: string): Promise<void> {
-    // Store the username for later use
+    // Store the username and userId for later use
     this.userName = username;
+    this.currentUserId = userId;
     
     // Only initialize if not already connected or initializing
     if (this.connectionStatus === 'connected' || this.isInitializing) {
@@ -44,13 +47,22 @@ class SignalRService implements ISignalRService {
           return;
         }
         
-        // Store message in chat history
-        if (!this.chatHistory[message.senderId]) {
-          this.chatHistory[message.senderId] = [];
+        // Only process messages if:
+        // 1. The message is sent TO the current user (recipientId matches currentUserId)
+        // 2. The message is FROM the current user (senderId matches currentUserId)
+        if (message.recipientId === this.currentUserId || message.senderId === this.currentUserId) {
+          // Store message in chat history for the specific conversation partner
+          const conversationPartnerId = message.senderId === this.currentUserId ? 
+            message.recipientId! : message.senderId;
+          
+          if (!this.chatHistory[conversationPartnerId]) {
+            this.chatHistory[conversationPartnerId] = [];
+          }
+          this.chatHistory[conversationPartnerId].push(message);
+          
+          // Only notify about messages relevant to this user
+          this.messageCallbacks.forEach(callback => callback(message));
         }
-        this.chatHistory[message.senderId].push(message);
-        
-        this.messageCallbacks.forEach(callback => callback(message));
       });
 
       toast.success("Connected to chat server!");
@@ -104,7 +116,7 @@ class SignalRService implements ISignalRService {
       id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       content,
       sender: 'You',
-      senderId: 0,
+      senderId: this.currentUserId, // Use the actual current user ID, not 0
       recipientId,
       timestamp: new Date()
     };
@@ -115,10 +127,15 @@ class SignalRService implements ISignalRService {
     }
     this.chatHistory[recipientId].push(message);
     
+    // In a real implementation, this would call the SignalR hub method
+    // this.connection.invoke("SendMessage", message);
+    
+    // For our mock implementation, simulate sending to specific recipient
     this.simulateMessageSent(message, recipientId);
     
-    // Only notify about messages intended for this recipient
+    // Notify only about this specific message to the current user
     this.messageCallbacks.forEach(callback => {
+      // Only if the callback is interested in messages for this conversation
       callback(message);
     });
   }
@@ -143,7 +160,7 @@ class SignalRService implements ISignalRService {
       id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       content: 'Image',
       sender: 'You',
-      senderId: 0,
+      senderId: this.currentUserId, // Use the actual current user ID, not 0
       recipientId,
       timestamp: new Date(),
       isImage: true,
@@ -157,6 +174,10 @@ class SignalRService implements ISignalRService {
     }
     this.chatHistory[recipientId].push(message);
     
+    // In a real implementation, this would call the SignalR hub method
+    // this.connection.invoke("SendImageMessage", message);
+    
+    // For our mock implementation, simulate sending to specific recipient
     this.simulateMessageSent(message, recipientId);
     
     // Notify about the message
@@ -168,7 +189,7 @@ class SignalRService implements ISignalRService {
   private async reconnectIfNeeded(): Promise<void> {
     if (this.connectionStatus === 'disconnected' && !this.isInitializing && this.userName) {
       console.log("Attempting to reconnect...");
-      await this.initialize(1, this.userName);
+      await this.initialize(this.currentUserId, this.userName);
     }
   }
 
@@ -229,7 +250,7 @@ class SignalRService implements ISignalRService {
         content,
         sender: username,
         senderId: fromUserId,
-        recipientId,
+        recipientId: this.currentUserId, // Set the recipient to the current user
         timestamp: new Date(),
         isImage,
         imageUrl,
@@ -242,7 +263,7 @@ class SignalRService implements ISignalRService {
       }
       this.chatHistory[fromUserId].push(message);
       
-      // Notify about the message
+      // Notify about the message, but only for the specific conversation
       this.messageCallbacks.forEach(callback => {
         callback(message);
       });
@@ -268,7 +289,7 @@ class SignalRService implements ISignalRService {
         false,
         "",
         false,
-        0
+        this.currentUserId // Set the correct recipient ID
       );
     }
   }

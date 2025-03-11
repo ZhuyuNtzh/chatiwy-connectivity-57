@@ -8,13 +8,15 @@ interface ChatMessagesProps {
   toggleImageBlur: (messageId: string) => void;
   openImagePreview: (imageUrl: string) => void;
   autoScrollToBottom: boolean;
+  updateScrollPosition?: (isAtBottom: boolean) => void;
 }
 
 const ChatMessages: React.FC<ChatMessagesProps> = ({
   messages,
   toggleImageBlur,
   openImagePreview,
-  autoScrollToBottom
+  autoScrollToBottom,
+  updateScrollPosition
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -29,11 +31,16 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
       const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
       const isAtBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 5;
       setUserScrolledUp(!isAtBottom);
+      
+      // Update the parent component about scroll position
+      if (updateScrollPosition) {
+        updateScrollPosition(isAtBottom);
+      }
     };
 
     scrollContainer.addEventListener("scroll", handleScroll);
     return () => scrollContainer.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [updateScrollPosition]);
   
   // Scroll to bottom only when new messages arrive and user hasn't scrolled up or autoScroll is triggered
   useEffect(() => {

@@ -19,23 +19,28 @@ export const useChat = (userId: number, userRole: string) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const maxChars = userRole === 'vip' ? 200 : 140;
   
-  // Auto-scroll state
+  // Auto-scroll state with a ref to track whether we need to scroll
   const [autoScrollToBottom, setAutoScrollToBottom] = useState(false);
+  const isAtBottomRef = useRef(true);
   
   useEffect(() => {
     const handleNewMessage = (msg: ChatMessage) => {
       // Only process messages specific to this conversation
-      // Check if the message is from this user to us or from us to this user
-      if (msg.senderId === userId || (msg.senderId === 0 && msg.recipientId === userId)) {
+      // Message is either:
+      // 1. From this user (senderId === userId) to current user
+      // 2. From current user to this user (recipientId === userId)
+      if (msg.senderId === userId || msg.recipientId === userId) {
         setMessages(prev => [...prev, msg]);
         
-        // Auto-scroll when receiving a new message from this user
-        setAutoScrollToBottom(true);
-        
-        // Reset auto-scroll after a short delay
-        setTimeout(() => {
-          setAutoScrollToBottom(false);
-        }, 100);
+        // Only auto-scroll if user was already at the bottom
+        if (isAtBottomRef.current) {
+          setAutoScrollToBottom(true);
+          
+          // Reset auto-scroll after a short delay
+          setTimeout(() => {
+            setAutoScrollToBottom(false);
+          }, 300); // Increase the delay to ensure scrolling completes
+        }
       }
     };
     
@@ -70,6 +75,10 @@ export const useChat = (userId: number, userRole: string) => {
     
     signalRService.sendMessage(userId, message.trim());
     setMessage('');
+    
+    // Set auto-scroll to true when sending a message
+    setAutoScrollToBottom(true);
+    setTimeout(() => setAutoScrollToBottom(false), 300);
   };
   
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -194,6 +203,10 @@ export const useChat = (userId: number, userRole: string) => {
     setShowOptions(false);
   };
   
+  const updateScrollPosition = (isAtBottom: boolean) => {
+    isAtBottomRef.current = isAtBottom;
+  };
+
   return {
     message,
     setMessage,
@@ -219,6 +232,7 @@ export const useChat = (userId: number, userRole: string) => {
     fileInputRef,
     maxChars,
     autoScrollToBottom,
+    updateScrollPosition,
     // functions
     handleSendMessage,
     handleKeyDown,

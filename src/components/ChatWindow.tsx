@@ -51,6 +51,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
     fileInputRef,
     maxChars,
     autoScrollToBottom,
+    updateScrollPosition,
     handleSendMessage,
     handleKeyDown,
     handleAddEmoji,
@@ -85,6 +86,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         toggleImageBlur={toggleImageBlur}
         openImagePreview={openImagePreview}
         autoScrollToBottom={autoScrollToBottom}
+        updateScrollPosition={updateScrollPosition}
       />
       
       <ChatActions 
