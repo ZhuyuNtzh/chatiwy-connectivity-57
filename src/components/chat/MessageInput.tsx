@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React from 'react';
 import { Send, Image, Mic, Smile } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,14 +42,14 @@ const MessageInput: React.FC<MessageInputProps> = ({
   fileInputRef
 }) => {
   return (
-    <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+    <form onSubmit={handleSendMessage} className="flex items-center gap-2 sticky bottom-0 bg-white dark:bg-gray-800 p-2 border-t border-gray-200 dark:border-gray-700">
       <Popover>
         <PopoverTrigger asChild>
           <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0">
             <Smile className="h-5 w-5" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-64 p-2" align="start" alignOffset={-40}>
+        <PopoverContent className="w-64 p-2" align="start" alignOffset={-40} side="top">
           <div className="grid grid-cols-8 gap-1">
             {commonEmojis.map((emoji, i) => (
               <Button

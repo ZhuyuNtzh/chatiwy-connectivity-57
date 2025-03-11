@@ -70,16 +70,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
   
   return (
     <div className="flex flex-col bg-white dark:bg-gray-800 h-full w-full border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
-      <ChatHeader 
-        user={user}
-        countryFlags={countryFlags}
-        onClose={onClose}
-        showOptions={showOptions}
-        onShowOptions={setShowOptions}
-        onBlockUser={handleBlockUser}
-        onReportUser={handleReportUser}
-        onShowBlockedUsers={showBlockedUsersList}
-      />
+      <div className="sticky top-0 z-[60] bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <ChatHeader 
+          user={user}
+          countryFlags={countryFlags}
+          onClose={onClose}
+          showOptions={showOptions}
+          onShowOptions={setShowOptions}
+          onBlockUser={handleBlockUser}
+          onReportUser={handleReportUser}
+          onShowBlockedUsers={showBlockedUsersList}
+        />
+      </div>
       
       <ChatMessages 
         messages={messages}

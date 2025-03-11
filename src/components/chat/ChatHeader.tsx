@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { X, MoreVertical, Flag, Ban } from 'lucide-react';
@@ -35,17 +35,17 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
   onShowBlockedUsers
 }) => {
   return (
-    <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
+    <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-white dark:bg-gray-800">
       <UserInfo user={user} countryFlags={countryFlags} />
       
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 z-50">
         <Popover open={showOptions} onOpenChange={onShowOptions}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8 bg-gray-100 dark:bg-gray-700">
               <MoreVertical className="h-5 w-5" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-48 p-2">
+          <PopoverContent className="w-48 p-2 z-[70]">
             <div className="flex flex-col gap-1">
               <Button 
                 variant="ghost" 
@@ -74,7 +74,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
             </div>
           </PopoverContent>
         </Popover>
-        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 bg-gray-100 dark:bg-gray-700">
           <X className="h-5 w-5" />
         </Button>
       </div>
