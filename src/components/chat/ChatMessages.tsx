@@ -4,6 +4,7 @@ import type { ChatMessage } from '../../services/signalR/types';
 import MessageItem from './MessageItem';
 import { Button } from '@/components/ui/button';
 import { ArrowDown } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -85,20 +86,24 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
 
   return (
     <div className="flex-1 overflow-hidden relative h-[calc(100vh-13rem)]">
-      <div 
-        ref={scrollContainerRef} 
-        className="h-full overflow-y-auto p-4 space-y-4"
+      <ScrollArea
+        className="h-full"
       >
-        {messages.map((msg) => (
-          <MessageItem 
-            key={msg.id}
-            message={msg}
-            toggleImageBlur={toggleImageBlur}
-            openImagePreview={openImagePreview}
-          />
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
+        <div 
+          ref={scrollContainerRef} 
+          className="p-4 space-y-4"
+        >
+          {messages.map((msg) => (
+            <MessageItem 
+              key={msg.id}
+              message={msg}
+              toggleImageBlur={toggleImageBlur}
+              openImagePreview={openImagePreview}
+            />
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+      </ScrollArea>
       
       {/* Scroll to bottom button with new message count */}
       {userScrolledUp && newMessageCount > 0 && (
