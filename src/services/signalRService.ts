@@ -16,7 +16,8 @@ class SignalRService implements ISignalRService {
   private chatHistory: Record<number, ChatMessage[]> = {};
   private userName: string = '';
   private isInitializing: boolean = false;
-  private currentUserId: number = 0; // Store the current user's ID
+  private currentUserId: number = 0;
+  private useMockConnection: boolean = true; // Flag to toggle between mock and real connection
 
   public async initialize(userId: number, username: string): Promise<void> {
     // Store the username and userId for later use
@@ -33,14 +34,30 @@ class SignalRService implements ISignalRService {
     this.notifyConnectionStatusChanged();
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      this.connection = new MockHubConnection() as unknown as signalR.HubConnection;
+      if (this.useMockConnection) {
+        // Use mock connection for development/testing
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        this.connection = new MockHubConnection() as unknown as signalR.HubConnection;
+      } else {
+        // Use real SignalR connection for production
+        // Replace 'https://your-backend-url.com/chathub' with your actual backend URL
+        this.connection = new signalR.HubConnectionBuilder()
+          .withUrl('https://your-backend-url.com/chathub')
+          .withAutomaticReconnect()
+          .build();
+          
+        await this.connection.start();
+        
+        // Send user information to the server
+        await this.connection.invoke('RegisterUser', userId, username);
+      }
+      
       this.connectionStatus = 'connected';
       this.notifyConnectionStatusChanged();
       
       this.updateConnectedUsersCount();
       
+      // Set up the message receiver
       this.connection.on('receiveMessage', (message: ChatMessage) => {
         // Don't receive messages from blocked users
         if (this.blockedUsers.has(message.senderId)) {
@@ -116,7 +133,7 @@ class SignalRService implements ISignalRService {
       id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       content,
       sender: 'You',
-      senderId: this.currentUserId, // Use the actual current user ID, not 0
+      senderId: this.currentUserId,
       recipientId,
       timestamp: new Date()
     };
@@ -127,15 +144,16 @@ class SignalRService implements ISignalRService {
     }
     this.chatHistory[recipientId].push(message);
     
-    // In a real implementation, this would call the SignalR hub method
-    // this.connection.invoke("SendMessage", message);
-    
-    // For our mock implementation, simulate sending to specific recipient
-    this.simulateMessageSent(message, recipientId);
+    if (this.useMockConnection) {
+      // For mock implementation, simulate sending to specific recipient
+      this.simulateMessageSent(message, recipientId);
+    } else {
+      // For real implementation, use the SignalR hub method
+      await this.connection!.invoke("SendMessageToUser", recipientId.toString(), message);
+    }
     
     // Notify only about this specific message to the current user
     this.messageCallbacks.forEach(callback => {
-      // Only if the callback is interested in messages for this conversation
       callback(message);
     });
   }
@@ -160,7 +178,7 @@ class SignalRService implements ISignalRService {
       id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       content: 'Image',
       sender: 'You',
-      senderId: this.currentUserId, // Use the actual current user ID, not 0
+      senderId: this.currentUserId,
       recipientId,
       timestamp: new Date(),
       isImage: true,
@@ -174,11 +192,13 @@ class SignalRService implements ISignalRService {
     }
     this.chatHistory[recipientId].push(message);
     
-    // In a real implementation, this would call the SignalR hub method
-    // this.connection.invoke("SendImageMessage", message);
-    
-    // For our mock implementation, simulate sending to specific recipient
-    this.simulateMessageSent(message, recipientId);
+    if (this.useMockConnection) {
+      // For mock implementation, simulate sending to specific recipient
+      this.simulateMessageSent(message, recipientId);
+    } else {
+      // For real implementation, use the SignalR hub method
+      await this.connection!.invoke("SendImageToUser", recipientId.toString(), message);
+    }
     
     // Notify about the message
     this.messageCallbacks.forEach(callback => {

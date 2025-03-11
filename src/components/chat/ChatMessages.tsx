@@ -2,6 +2,8 @@
 import React, { useRef, useEffect, useState } from 'react';
 import type { ChatMessage } from '../../services/signalR/types';
 import MessageItem from './MessageItem';
+import { Button } from '@/components/ui/button';
+import { ArrowDown } from 'lucide-react';
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -21,6 +23,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
+  const [newMessageCount, setNewMessageCount] = useState(0);
   
   // Detect when user scrolls up manually
   useEffect(() => {
@@ -30,17 +33,38 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
       const isAtBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 5;
+      
+      // Update local scroll state
       setUserScrolledUp(!isAtBottom);
       
       // Update the parent component about scroll position
       if (updateScrollPosition) {
         updateScrollPosition(isAtBottom);
       }
+      
+      // If user scrolls to bottom, reset new message counter
+      if (isAtBottom) {
+        setNewMessageCount(0);
+      }
     };
 
     scrollContainer.addEventListener("scroll", handleScroll);
     return () => scrollContainer.removeEventListener("scroll", handleScroll);
   }, [updateScrollPosition]);
+  
+  // Count new messages when user has scrolled up
+  useEffect(() => {
+    if (userScrolledUp && !autoScrollToBottom && messages.length > 0) {
+      setNewMessageCount(prev => prev + 1);
+    }
+  }, [messages.length, userScrolledUp, autoScrollToBottom]);
+  
+  // Reset counter when auto-scrolling
+  useEffect(() => {
+    if (autoScrollToBottom) {
+      setNewMessageCount(0);
+    }
+  }, [autoScrollToBottom]);
   
   // Scroll to bottom only when new messages arrive and user hasn't scrolled up or autoScroll is triggered
   useEffect(() => {
@@ -49,8 +73,16 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
     }
   }, [messages, userScrolledUp, autoScrollToBottom]);
 
+  // Handle manual scroll to bottom
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      setNewMessageCount(0);
+    }
+  };
+
   return (
-    <div className="flex-1 overflow-hidden">
+    <div className="flex-1 overflow-hidden relative">
       <div 
         ref={scrollContainerRef} 
         className="h-full overflow-y-auto p-4 space-y-4"
@@ -65,6 +97,20 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
         ))}
         <div ref={messagesEndRef} />
       </div>
+      
+      {/* Scroll to bottom button with new message count */}
+      {userScrolledUp && newMessageCount > 0 && (
+        <div className="absolute bottom-4 right-4">
+          <Button 
+            onClick={scrollToBottom}
+            size="sm"
+            className="rounded-full p-2 flex items-center gap-2"
+          >
+            <ArrowDown className="h-4 w-4" />
+            {newMessageCount > 1 ? `${newMessageCount} new messages` : '1 new message'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
