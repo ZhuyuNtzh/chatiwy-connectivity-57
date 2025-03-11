@@ -37,7 +37,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   isDarkMode
 }) => {
   return (
-    <div className={`md:col-span-1 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden flex flex-col h-full`}>
+    <div className={`h-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden flex flex-col`}>
       <div className="p-4 flex-shrink-0">
         <SearchBar 
           searchTerm={searchTerm}

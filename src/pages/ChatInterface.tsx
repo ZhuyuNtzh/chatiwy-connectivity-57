@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
@@ -77,13 +78,17 @@ const ChatInterface = () => {
       
       <div className="fixed top-16 bottom-0 left-0 right-0 px-4 md:px-6 max-w-7xl mx-auto">
         <div className="h-full relative flex">
+          {/* Mobile sidebar toggle button with better visibility */}
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
-            className="md:hidden fixed top-4 left-4 z-50"
+            className="md:hidden fixed top-4 left-4 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-md border border-gray-200 dark:border-gray-700"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           >
-            <Menu className="h-6 w-6" />
+            <Menu className="h-5 w-5" />
+            {!isSidebarOpen && (
+              <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-green-500 ring-1 ring-white"></span>
+            )}
           </Button>
 
           <div className={`
@@ -121,9 +126,16 @@ const ChatInterface = () => {
         </div>
       </div>
       
+      {/* Darker overlay and swipe indicator for mobile sidebar */}
+      {!isSidebarOpen && (
+        <div className="md:hidden fixed top-1/2 left-0 transform -translate-y-1/2 bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm p-1 rounded-r-md shadow-md z-30">
+          <div className="h-12 w-1 bg-gray-400/50 rounded-full"></div>
+        </div>
+      )}
+      
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/20 z-30 md:hidden"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 md:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}

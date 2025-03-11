@@ -37,7 +37,7 @@ const Header = ({
               onClick={onHistory}
             >
               <History className="h-4 w-4" />
-              History
+              <span className="hidden sm:inline">History</span>
             </Button>
           )}
           
@@ -49,7 +49,7 @@ const Header = ({
               onClick={onInbox}
             >
               <Inbox className="h-4 w-4" />
-              Inbox
+              <span className="hidden sm:inline">Inbox</span>
             </Button>
           )}
           
