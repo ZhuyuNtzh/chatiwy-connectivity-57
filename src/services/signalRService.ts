@@ -1,4 +1,3 @@
-
 import * as signalR from '@microsoft/signalr';
 import { toast } from "sonner";
 import { MockHubConnection } from './signalR/mockConnection';
@@ -17,7 +16,8 @@ class SignalRService implements ISignalRService {
   private userName: string = '';
   private isInitializing: boolean = false;
   private currentUserId: number = 0;
-  private useMockConnection: boolean = true; // Flag to toggle between mock and real connection
+  private useMockConnection: boolean = true; // Set to false when connecting to a real backend
+  private hubUrl: string = 'https://your-backend-url.com/chathub'; // Update this with your actual backend URL
 
   public async initialize(userId: number, username: string): Promise<void> {
     // Store the username and userId for later use
@@ -40,13 +40,14 @@ class SignalRService implements ISignalRService {
         this.connection = new MockHubConnection() as unknown as signalR.HubConnection;
       } else {
         // Use real SignalR connection for production
-        // Replace 'https://your-backend-url.com/chathub' with your actual backend URL
         this.connection = new signalR.HubConnectionBuilder()
-          .withUrl('https://your-backend-url.com/chathub')
-          .withAutomaticReconnect()
+          .withUrl(this.hubUrl)
+          .withAutomaticReconnect([0, 2000, 10000, 30000]) // Retry after 0ms, 2s, 10s, 30s
+          .configureLogging(signalR.LogLevel.Information)
           .build();
           
         await this.connection.start();
+        console.log("Connected to SignalR hub.");
         
         // Send user information to the server
         await this.connection.invoke('RegisterUser', userId, username);
@@ -149,7 +150,13 @@ class SignalRService implements ISignalRService {
       this.simulateMessageSent(message, recipientId);
     } else {
       // For real implementation, use the SignalR hub method
-      await this.connection!.invoke("SendMessageToUser", recipientId.toString(), message);
+      try {
+        await this.connection!.invoke("SendMessageToUser", recipientId.toString(), message);
+        console.log("Message sent to user:", recipientId);
+      } catch (error) {
+        console.error("Error sending message:", error);
+        toast.error("Failed to send message. Please try again.");
+      }
     }
     
     // Notify only about this specific message to the current user
@@ -197,7 +204,13 @@ class SignalRService implements ISignalRService {
       this.simulateMessageSent(message, recipientId);
     } else {
       // For real implementation, use the SignalR hub method
-      await this.connection!.invoke("SendImageToUser", recipientId.toString(), message);
+      try {
+        await this.connection!.invoke("SendImageToUser", recipientId.toString(), message);
+        console.log("Image sent to user:", recipientId);
+      } catch (error) {
+        console.error("Error sending image:", error);
+        toast.error("Failed to send image. Please try again.");
+      }
     }
     
     // Notify about the message
@@ -404,6 +417,20 @@ class SignalRService implements ISignalRService {
       const count = Math.max(5, baseCount + variation);
       this.connectedUsersCallbacks.forEach(callback => callback(count));
     }, 30000); // Update every 30 seconds for a more stable count
+  }
+
+  // Helper method to set hub URL
+  public setHubUrl(url: string): void {
+    this.hubUrl = url;
+  }
+
+  // Helper method to enable/disable mock connection
+  public setUseMockConnection(useMock: boolean): void {
+    this.useMockConnection = useMock;
+    // Disconnect current connection if connected
+    if (this.connection && this.connectionStatus === 'connected') {
+      this.disconnect();
+    }
   }
 }
 

@@ -24,6 +24,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const [newMessageCount, setNewMessageCount] = useState(0);
+  const previousMessagesLengthRef = useRef(messages.length);
   
   // Detect when user scrolls up manually
   useEffect(() => {
@@ -54,9 +55,10 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   
   // Count new messages when user has scrolled up
   useEffect(() => {
-    if (userScrolledUp && !autoScrollToBottom && messages.length > 0) {
-      setNewMessageCount(prev => prev + 1);
+    if (userScrolledUp && !autoScrollToBottom && messages.length > previousMessagesLengthRef.current) {
+      setNewMessageCount(prev => prev + (messages.length - previousMessagesLengthRef.current));
     }
+    previousMessagesLengthRef.current = messages.length;
   }, [messages.length, userScrolledUp, autoScrollToBottom]);
   
   // Reset counter when auto-scrolling
