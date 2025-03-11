@@ -36,8 +36,16 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onUserClick,
   isDarkMode
 }) => {
+  // Stop event propagation to prevent sidebar from closing
+  const handleContentClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
-    <div className={`h-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden flex flex-col border-r border-gray-200 dark:border-gray-700`}>
+    <div 
+      className={`h-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden flex flex-col border-r border-gray-200 dark:border-gray-700`}
+      onClick={handleContentClick}
+    >
       <div className="p-4 flex-shrink-0">
         <SearchBar 
           searchTerm={searchTerm}

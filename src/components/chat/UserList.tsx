@@ -45,12 +45,13 @@ const UserList: React.FC<UserListProps> = ({
   isDarkMode 
 }) => {
   const handleUserClick = (e: React.MouseEvent, user: any) => {
+    e.preventDefault(); // Prevent default behavior
     e.stopPropagation(); // Stop the event from bubbling up
     onUserClick(user);
   };
 
   return (
-    <ScrollArea className="h-full">
+    <ScrollArea className="h-full" type="always">
       <div className={`divide-y divide-gray-200 dark:divide-gray-700 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
         {users.map(user => (
           <div 

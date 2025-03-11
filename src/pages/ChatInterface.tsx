@@ -69,7 +69,7 @@ const ChatInterface = () => {
   // Handle user click without closing the sidebar
   const handleMobileUserClick = (user: any) => {
     handleUserClick(user);
-    // Sidebar remains open
+    // Sidebar remains open until explicitly closed
   };
 
   // Handle filter changes without closing the sidebar
@@ -79,11 +79,12 @@ const ChatInterface = () => {
   };
 
   // Only close sidebar when explicitly requested
-  const handleCloseSidebar = () => {
+  const handleCloseSidebar = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setIsSidebarOpen(false);
   };
 
-  // Prevent event propagation to parent elements
+  // Prevent propagation for sidebar content clicks
   const handleContentClick = (e: React.MouseEvent) => {
     e.stopPropagation();
   };
@@ -105,7 +106,10 @@ const ChatInterface = () => {
             variant="outline"
             size="icon"
             className="md:hidden fixed top-4 left-4 z-50 bg-white/90 dark:bg-gray-800/90 shadow-md border border-gray-200 dark:border-gray-700"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsSidebarOpen(!isSidebarOpen);
+            }}
           >
             <Menu className="h-5 w-5" />
             {!isSidebarOpen && (
@@ -165,8 +169,14 @@ const ChatInterface = () => {
       {!isSidebarOpen && (
         <div 
           className="md:hidden fixed top-1/2 left-0 transform -translate-y-1/2 bg-white dark:bg-gray-800 p-2 rounded-r-md shadow-md z-30 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          onClick={() => setIsSidebarOpen(true)}
-          onTouchStart={() => setIsSidebarOpen(true)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsSidebarOpen(true);
+          }}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+            setIsSidebarOpen(true);
+          }}
           style={{ width: '20px', height: '120px' }}
         >
           <div className="h-full w-1 mx-auto bg-gray-400 rounded-full"></div>

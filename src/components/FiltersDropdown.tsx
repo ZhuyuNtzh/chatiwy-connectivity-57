@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -99,23 +100,36 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
     onFiltersChange(resetFilters);
   };
 
+  // Handle all clicks inside the popover to prevent event propagation
   const handlePopoverClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
   };
 
   return (
     <Popover>
-      <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+      <PopoverTrigger asChild>
         <Button 
           variant="outline" 
           size="sm" 
           className="h-8 bg-white dark:bg-gray-800 px-2"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
         >
           <Filter className="h-4 w-4 mr-1" />
           Filters
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80" align="end" onClick={handlePopoverClick}>
+      <PopoverContent 
+        className="w-80 bg-white dark:bg-gray-800 z-50" 
+        align="end" 
+        onClick={handlePopoverClick}
+        onPointerDownOutside={(e) => {
+          e.preventDefault();
+        }}
+      >
         <div className="space-y-4">
           <GenderFilter 
             selectedGenders={filters.gender}
@@ -139,6 +153,7 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
               variant="ghost" 
               size="sm"
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 clearFilters();
               }}
