@@ -24,7 +24,7 @@ const ChatMainContent: React.FC<ChatMainContentProps> = ({
   isDarkMode
 }) => {
   return (
-    <div className="flex-1 md:ml-6">
+    <div className="flex-1 md:ml-6 hidden md:block">
       <ChatInterfaceContent 
         selectedUser={selectedUser}
         countryFlags={countryFlags}

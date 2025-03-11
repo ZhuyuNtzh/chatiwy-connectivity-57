@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Filter } from 'lucide-react';
@@ -28,6 +28,24 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
   const [countries, setCountries] = useState<{name: string, flag: string}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  
+  // Close the popover when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(event.target as Node) && isOpen) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside as any);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside as any);
+    };
+  }, [isOpen]);
   
   useEffect(() => {
     const fetchCountries = async () => {
@@ -101,73 +119,73 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
     onFiltersChange(resetFilters);
   };
 
-  // Improved event handlers to ensure proper event propagation control
-  const handlePopoverClick = (e: React.MouseEvent) => {
+  // Toggle popover state
+  const togglePopover = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    setIsOpen(!isOpen);
+  };
+
+  const closePopover = () => {
+    setIsOpen(false);
   };
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="h-8 bg-white dark:bg-gray-800 px-2"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsOpen(!isOpen);
-          }}
+    <div ref={popoverRef}>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-8 bg-white dark:bg-gray-800 px-2"
+            onClick={togglePopover}
+          >
+            <Filter className="h-4 w-4 mr-1" />
+            Filters
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent 
+          className="w-80 bg-white dark:bg-gray-800 z-[100]" 
+          align="end"
+          sideOffset={5}
+          onClick={(e) => e.stopPropagation()}
         >
-          <Filter className="h-4 w-4 mr-1" />
-          Filters
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent 
-        className="w-80 bg-white dark:bg-gray-800 z-[100]" 
-        align="end"
-        sideOffset={5}
-        onClick={handlePopoverClick}
-        onPointerDownOutside={(e) => {
-          // Prevent the popover from closing when clicking outside
-          e.preventDefault();
-        }}
-      >
-        <div className="space-y-4">
-          <GenderFilter 
-            selectedGenders={filters.gender}
-            onGenderChange={handleGenderChange}
-          />
-          
-          <AgeRangeFilter 
-            ageRange={filters.ageRange}
-            onAgeChange={handleAgeChange}
-          />
-          
-          <CountryFilter 
-            selectedCountries={filters.countries}
-            countries={countries}
-            onCountryChange={handleCountryChange}
-            isLoading={isLoading}
-          />
-          
-          <div className="pt-2 text-right">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                clearFilters();
-              }}
-            >
-              Clear All
-            </Button>
+          <div className="space-y-4">
+            <GenderFilter 
+              selectedGenders={filters.gender}
+              onGenderChange={handleGenderChange}
+            />
+            
+            <AgeRangeFilter 
+              ageRange={filters.ageRange}
+              onAgeChange={handleAgeChange}
+            />
+            
+            <CountryFilter 
+              selectedCountries={filters.countries}
+              countries={countries}
+              onCountryChange={handleCountryChange}
+              isLoading={isLoading}
+            />
+            
+            <div className="pt-2 text-right">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  clearFilters();
+                  closePopover();
+                }}
+              >
+                Clear All
+              </Button>
+            </div>
           </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 };
 

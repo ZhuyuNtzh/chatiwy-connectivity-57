@@ -1,9 +1,31 @@
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export const useSidebarState = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // Default to open on mobile
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth <= 768);
   const sidebarRef = useRef<HTMLDivElement>(null);
+  
+  // Set sidebar open by default on mobile devices
+  useEffect(() => {
+    const handleResize = () => {
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        setIsSidebarOpen(true);
+      }
+    };
+
+    // Call once to initialize
+    handleResize();
+
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
   
   const toggleSidebar = (e?: React.MouseEvent) => {
     if (e) {
@@ -23,7 +45,10 @@ export const useSidebarState = () => {
     if (e) {
       e.stopPropagation();
     }
-    setIsSidebarOpen(false);
+    // Only close the sidebar on mobile if a user is selected
+    if (window.innerWidth > 768) {
+      setIsSidebarOpen(false);
+    }
   };
   
   const handleContentClick = (e: React.MouseEvent) => {

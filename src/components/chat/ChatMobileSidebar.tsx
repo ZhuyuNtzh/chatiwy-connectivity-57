@@ -51,7 +51,7 @@ const ChatMobileSidebar: React.FC<ChatMobileSidebarProps> = ({
     closeSidebar();
   };
 
-  // Handle touch events
+  // Handle touch events - convert touch event to standard event
   const handleSwipeOpen = () => {
     toggleSidebar();
   };
