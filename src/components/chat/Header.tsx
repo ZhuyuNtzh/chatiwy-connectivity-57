@@ -65,6 +65,7 @@ const Header = ({
             size="icon"
             onClick={toggleDarkMode}
             className="ml-1 md:ml-2"
+            aria-label="Toggle dark mode"
           >
             {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
@@ -84,4 +85,3 @@ const Header = ({
 };
 
 export default Header;
-

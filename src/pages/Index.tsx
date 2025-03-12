@@ -7,7 +7,6 @@ import { Switch } from '@/components/ui/switch';
 import { useUser } from '@/contexts/UserContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Shuffle } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
 const Index = () => {
@@ -51,9 +50,13 @@ const Index = () => {
       description: "Let's set up your profile"
     });
   };
+  
+  const handleVipClick = () => {
+    navigate('/vip-membership');
+  };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className={`min-h-screen bg-background flex flex-col ${isDarkMode ? 'dark' : ''}`}>
       {/* Header */}
       <header className="w-full px-8 py-4 flex justify-between items-center">
         <div className="text-2xl font-bold text-foreground">chativy.</div>
@@ -62,7 +65,10 @@ const Index = () => {
             <span className="text-sm font-medium">Dark mode</span>
             <Switch checked={isDarkMode} onCheckedChange={toggleDarkMode} />
           </div>
-          <Button className="bg-primary hover:bg-primary/90 text-white rounded-md px-6">
+          <Button 
+            className="bg-primary hover:bg-primary/90 text-white rounded-md px-6"
+            onClick={handleVipClick}
+          >
             VIP Membership
           </Button>
         </div>

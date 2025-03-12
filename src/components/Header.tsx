@@ -30,8 +30,11 @@ const Header = () => {
 
   const showBackButton = location.pathname !== '/' && location.pathname !== '/user-selection';
   const showUserControls = currentUser && location.pathname !== '/';
-  // Hide inbox and history buttons on profile-setup page
-  const hideExtraButtons = location.pathname === '/profile-setup';
+  // Hide inbox and history buttons on specific pages
+  const hideExtraButtons = location.pathname === '/profile-setup' || 
+                          location.pathname === '/login' || 
+                          location.pathname === '/register' ||
+                          location.pathname === '/vip-membership';
 
   return (
     <header 
@@ -133,26 +136,27 @@ const Header = () => {
             )}
           </div>
         ) : (
-          location.pathname === '/' && (
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleDarkMode}
+              className="transition-all duration-300 hover:bg-white/20"
+              aria-label="Toggle dark mode"
+            >
+              {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+            
+            {location.pathname === '/' && (
               <Button
                 variant="ghost"
-                size="icon"
-                onClick={toggleDarkMode}
                 className="transition-all duration-300 hover:bg-white/20"
-                aria-label="Toggle dark mode"
+                onClick={() => navigate('/vip-membership')}
               >
-                {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                VIP Membership
               </Button>
-              <Button
-                variant="ghost"
-                className="transition-all duration-300 hover:bg-white/20"
-                onClick={() => navigate('/user-selection')}
-              >
-                Get Started
-              </Button>
-            </div>
-          )
+            )}
+          </div>
         )}
       </div>
     </header>
