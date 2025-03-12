@@ -28,13 +28,60 @@ const Index = () => {
     return `${randomAdjective}${randomNoun}${randomNumber}`;
   };
 
+  const validateNickname = (value: string): boolean => {
+    // Check for more than 2 consecutive numbers
+    const consecutiveNumbersPattern = /\d{3,}/;
+    if (consecutiveNumbersPattern.test(value)) {
+      return false;
+    }
+    
+    // Check for alphanumeric characters only
+    const alphanumericPattern = /^[a-zA-Z0-9]*$/;
+    if (!alphanumericPattern.test(value)) {
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleRandomize = () => {
     setUsername(generateRandomUsername());
+  };
+
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    
+    if (value.length <= 20) {
+      if (value === '' || validateNickname(value)) {
+        setUsername(value);
+      } else {
+        toast({
+          title: "Invalid nickname",
+          description: "Nickname must be alphanumeric with no more than 2 consecutive numbers",
+          variant: "destructive"
+        });
+      }
+    } else {
+      toast({
+        title: "Nickname too long",
+        description: "Standard users can have up to 20 characters",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleStartChat = () => {
     if (!username.trim()) {
       setUsername(generateRandomUsername());
+      return;
+    }
+
+    if (!validateNickname(username)) {
+      toast({
+        title: "Invalid nickname",
+        description: "Nickname must be alphanumeric with no more than 2 consecutive numbers",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -123,12 +170,18 @@ const Index = () => {
             </div>
             
             <div className="flex items-center gap-2 mb-4">
-              <Input
-                className="h-12"
-                placeholder="Type your name"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
+              <div className="flex-1 relative">
+                <Input
+                  className="h-12 pr-16"
+                  placeholder="Type your name"
+                  value={username}
+                  onChange={handleUsernameChange}
+                  maxLength={20}
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                  {username.length}/20
+                </div>
+              </div>
               <Button 
                 variant="outline" 
                 size="icon" 
@@ -200,3 +253,4 @@ const Index = () => {
 };
 
 export default Index;
+

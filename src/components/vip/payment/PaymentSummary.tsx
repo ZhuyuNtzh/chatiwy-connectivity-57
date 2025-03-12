@@ -5,8 +5,8 @@ interface PaymentSummaryProps {
 
 const PLAN_PRICES = {
   monthly: 4.99,
-  '6months': 24.99,
-  yearly: 49.99
+  '6months': 22.99,
+  yearly: 35.99
 };
 
 const PLAN_NAMES = {

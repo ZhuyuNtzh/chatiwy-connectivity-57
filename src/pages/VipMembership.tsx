@@ -39,21 +39,21 @@ const VipMembership = () => {
       popular: false
     },
     {
-      id: 'biannual',
+      id: '6months',
       price: '$22.99',
       period: 'Billed every 6 month.',
       popular: true
     },
     {
-      id: 'annual',
-      price: '$39.99',
+      id: 'yearly',
+      price: '$35.99',
       period: 'Billed annually.',
       popular: false
     }
   ];
   
-  const handleGetStarted = () => {
-    navigate('/vip-register');
+  const handleGetStarted = (planId: string) => {
+    navigate(`/vip-register?plan=${planId}`);
   };
   
   return (
@@ -97,7 +97,7 @@ const VipMembership = () => {
               
               <Button 
                 className="w-full bg-secondary hover:bg-secondary/90 text-white"
-                onClick={handleGetStarted}
+                onClick={() => handleGetStarted(plan.id)}
               >
                 Get started
               </Button>
@@ -139,7 +139,7 @@ const VipMembership = () => {
                     
                     <Button 
                       className="w-full bg-secondary hover:bg-secondary/90 text-white"
-                      onClick={handleGetStarted}
+                      onClick={() => handleGetStarted(plan.id)}
                     >
                       Get started
                     </Button>
