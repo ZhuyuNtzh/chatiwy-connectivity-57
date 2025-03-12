@@ -1,10 +1,12 @@
 
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from '@/hooks/use-toast';
 
 interface InterestsSelectorProps {
   selectedInterests: string[];
   onChange: (interests: string[]) => void;
+  maxInterests: number;
 }
 
 const popularInterests = [
@@ -13,16 +15,23 @@ const popularInterests = [
   'Learning Languages', 'Photography', 'Cooking', 'Fitness'
 ];
 
-const VipInterestsSelector = ({ selectedInterests, onChange }: InterestsSelectorProps) => {
-  const MAX_INTERESTS = 4;
+const InterestsSelector = ({
+  selectedInterests,
+  onChange,
+  maxInterests
+}: InterestsSelectorProps) => {
   
   const handleInterestChange = (interest: string, checked: boolean) => {
-    if (checked && selectedInterests.length >= MAX_INTERESTS) {
-      return;
-    }
-    
     if (checked) {
-      onChange([...selectedInterests, interest]);
+      if (selectedInterests.length < maxInterests) {
+        onChange([...selectedInterests, interest]);
+      } else {
+        toast({
+          title: "Maximum interests reached",
+          description: `You can select up to ${maxInterests} interests`,
+          variant: "destructive"
+        });
+      }
     } else {
       onChange(selectedInterests.filter(i => i !== interest));
     }
@@ -33,7 +42,7 @@ const VipInterestsSelector = ({ selectedInterests, onChange }: InterestsSelector
       <div className="flex justify-between items-center">
         <Label>Interests</Label>
         <span className="text-sm text-muted-foreground">
-          {selectedInterests.length}/{MAX_INTERESTS}
+          {selectedInterests.length}/{maxInterests}
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2">
@@ -45,9 +54,10 @@ const VipInterestsSelector = ({ selectedInterests, onChange }: InterestsSelector
               onCheckedChange={(checked) => 
                 handleInterestChange(interest, checked as boolean)
               }
+              className="data-[state=checked]:bg-secondary data-[state=checked]:text-secondary-foreground"
               disabled={
                 !selectedInterests.includes(interest) && 
-                selectedInterests.length >= MAX_INTERESTS
+                selectedInterests.length >= maxInterests
               }
             />
             <Label
@@ -63,4 +73,4 @@ const VipInterestsSelector = ({ selectedInterests, onChange }: InterestsSelector
   );
 };
 
-export default VipInterestsSelector;
+export default InterestsSelector;
