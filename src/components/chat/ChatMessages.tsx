@@ -14,6 +14,8 @@ interface ChatMessagesProps {
   updateScrollPosition?: (isAtBottom: boolean) => void;
   isTyping?: boolean;
   selectedUserId?: number;
+  onReplyToMessage?: (messageId: string, messageText: string) => void;
+  onUnsendMessage?: (messageId: string) => void;
 }
 
 const ChatMessages: React.FC<ChatMessagesProps> = ({
@@ -23,7 +25,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   autoScrollToBottom,
   updateScrollPosition,
   isTyping = false,
-  selectedUserId
+  selectedUserId,
+  onReplyToMessage,
+  onUnsendMessage
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -103,6 +107,8 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
             toggleImageBlur={toggleImageBlur}
             openImagePreview={openImagePreview}
             showMessageStatus={isVip}
+            onReply={onReplyToMessage}
+            onUnsendMessage={isVip ? onUnsendMessage : undefined}
           />
         ))}
         

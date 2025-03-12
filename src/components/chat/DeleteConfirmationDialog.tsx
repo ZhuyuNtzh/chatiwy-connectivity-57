@@ -16,21 +16,25 @@ interface DeleteConfirmationDialogProps {
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
   onCancel: () => void;
+  title?: string;
+  description?: string;
 }
 
 const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   isOpen,
   onOpenChange,
   onConfirm,
-  onCancel
+  onCancel,
+  title = "Delete Conversation",
+  description = "Are you sure you want to delete this entire conversation? This action cannot be undone."
 }) => {
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent className="dark:bg-gray-800">
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Conversation</AlertDialogTitle>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete this entire conversation? This action cannot be undone.
+            {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

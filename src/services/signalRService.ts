@@ -1,7 +1,7 @@
 import * as signalR from '@microsoft/signalr';
 import { toast } from "sonner";
 import { MockHubConnection } from './signalR/mockConnection';
-import { ChatMessage, ConnectionStatus, ISignalRService, MessageCallback, ConnectionStatusCallback, ConnectedUsersCallback, TypingCallback } from './signalR/types';
+import { ChatMessage, ConnectionStatus, ISignalRService, MessageCallback, ConnectionStatusCallback, ConnectedUsersCallback, TypingCallback, MessageDeletedCallback } from './signalR/types';
 
 export type { ChatMessage } from './signalR/types';
 
@@ -9,6 +9,7 @@ class SignalRService implements ISignalRService {
   private connection: signalR.HubConnection | null = null;
   private connectionStatus: ConnectionStatus = 'disconnected';
   private messageCallbacks: MessageCallback[] = [];
+  private messageDeletedCallbacks: MessageDeletedCallback[] = [];
   private connectionStatusCallbacks: ConnectionStatusCallback[] = [];
   private connectedUsersCallbacks: ConnectedUsersCallback[] = [];
   private typingCallbacks: TypingCallback[] = [];
@@ -16,7 +17,7 @@ class SignalRService implements ISignalRService {
   private chatHistory: Record<number, ChatMessage[]> = {};
   private userName: string = '';
   private isInitializing: boolean = false;
-  private currentUserId: number = 0;
+  public currentUserId: number = 0;
   private useMockConnection: boolean = true; // Set to false when connecting to a real backend
   private hubUrl: string = 'https://your-backend-url.com/chathub'; // Update this with your actual backend URL
 
@@ -88,6 +89,11 @@ class SignalRService implements ISignalRService {
       this.connection.on('userTyping', (userId: number) => {
         this.typingCallbacks.forEach(callback => callback(userId));
       });
+      
+      // Set up message deletion handler
+      this.connection.on('messageDeleted', (messageId: string) => {
+        this.messageDeletedCallbacks.forEach(callback => callback(messageId));
+      });
 
       toast.success("Connected to chat server!");
     } catch (error) {
@@ -106,6 +112,14 @@ class SignalRService implements ISignalRService {
   
   public offMessageReceived(callback: MessageCallback): void {
     this.messageCallbacks = this.messageCallbacks.filter(cb => cb !== callback);
+  }
+  
+  public onMessageDeleted(callback: MessageDeletedCallback): void {
+    this.messageDeletedCallbacks.push(callback);
+  }
+  
+  public offMessageDeleted(callback: MessageDeletedCallback): void {
+    this.messageDeletedCallbacks = this.messageDeletedCallbacks.filter(cb => cb !== callback);
   }
 
   public onUserTyping(callback: TypingCallback): void {
@@ -284,6 +298,53 @@ class SignalRService implements ISignalRService {
     this.messageCallbacks.forEach(callback => {
       callback(message);
     });
+  }
+  
+  public async deleteMessage(messageId: string, recipientId: number): Promise<void> {
+    // Ensure connection is active
+    if (this.connectionStatus !== 'connected') {
+      await this.reconnectIfNeeded();
+    }
+    
+    if (this.connectionStatus !== 'connected') {
+      toast.error("Not connected to chat server!");
+      return;
+    }
+    
+    if (this.useMockConnection) {
+      // For mock implementation, simulate message deletion
+      this.simulateMessageDeleted(messageId, recipientId);
+    } else {
+      // For real implementation, use the SignalR hub method
+      try {
+        await this.connection!.invoke("DeleteMessage", messageId, recipientId.toString());
+        console.log("Message deleted:", messageId);
+      } catch (error) {
+        console.error("Error deleting message:", error);
+        toast.error("Failed to delete message. Please try again.");
+      }
+    }
+    
+    // Update the chat history for this specific recipient
+    if (this.chatHistory[recipientId]) {
+      this.chatHistory[recipientId] = this.chatHistory[recipientId].map(msg => 
+        msg.id === messageId ? { ...msg, isDeleted: true } : msg
+      );
+    }
+    
+    // Notify about the deleted message
+    this.messageDeletedCallbacks.forEach(callback => {
+      callback(messageId);
+    });
+  }
+  
+  private simulateMessageDeleted(messageId: string, recipientId: number): void {
+    // Notify about the deleted message after a slight delay
+    setTimeout(() => {
+      this.messageDeletedCallbacks.forEach(callback => {
+        callback(messageId);
+      });
+    }, 500);
   }
 
   public sendTypingIndication(recipientId: number): void {

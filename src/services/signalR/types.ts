@@ -19,17 +19,21 @@ export interface ChatMessage {
   replyText?: string;
   translated?: boolean;
   status?: 'sent' | 'delivered' | 'read';
+  isDeleted?: boolean;
 }
 
 export type MessageCallback = (message: ChatMessage) => void;
 export type ConnectionStatusCallback = (status: ConnectionStatus) => void;
 export type ConnectedUsersCallback = (count: number) => void;
 export type TypingCallback = (userId: number) => void;
+export type MessageDeletedCallback = (messageId: string) => void;
 
 export interface ISignalRService {
   initialize(userId: number, username: string): Promise<void>;
   onMessageReceived(callback: MessageCallback): void;
   offMessageReceived(callback: MessageCallback): void;
+  onMessageDeleted(callback: MessageDeletedCallback): void;
+  offMessageDeleted(callback: MessageDeletedCallback): void;
   onUserTyping(callback: TypingCallback): void;
   offUserTyping(callback: TypingCallback): void;
   onConnectionStatusChanged(callback: ConnectionStatusCallback): void;
@@ -37,6 +41,7 @@ export interface ISignalRService {
   sendMessage(recipientId: number, content: string): Promise<void>;
   sendImage(recipientId: number, imageUrl: string, isBlurred?: boolean): Promise<void>;
   sendVoiceMessage(recipientId: number, audioUrl: string): Promise<void>;
+  deleteMessage(messageId: string, recipientId: number): Promise<void>;
   sendTypingIndication(recipientId: number): void;
   disconnect(): Promise<void>;
   blockUser(userId: number): void;

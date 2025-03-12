@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
 import { useChat } from '@/hooks/useChat';
@@ -27,8 +28,6 @@ interface ChatWindowProps {
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) => {
   const { userRole } = useUser();
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  
   const {
     message,
     setMessage,
@@ -63,6 +62,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
     setIsMediaGalleryOpen,
     mediaGalleryItems,
     isRecording,
+    isDeleteDialogOpen,
+    setIsDeleteDialogOpen,
     handleSendMessage,
     handleKeyDown,
     handleAddEmoji,
@@ -75,23 +76,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
     handleImageChange,
     handleSendImage,
     handleVoiceMessageClick,
+    sendVoiceMessage,
     toggleImageBlur,
     openImagePreview,
     showBlockedUsersList,
     toggleTranslation,
     showMediaGallery,
-    deleteConversation
+    deleteConversation,
+    confirmDeleteConversation,
+    cancelDeleteConversation,
+    replyToMessage,
+    unsendMessage
   } = useChat(user.id, userRole);
-  
-  const handleDeleteClick = () => {
-    setIsDeleteDialogOpen(true);
-    setShowOptions(false);
-  };
-  
-  const handleConfirmDelete = () => {
-    deleteConversation();
-    setIsDeleteDialogOpen(false);
-  };
   
   return (
     <div className="flex flex-col bg-white dark:bg-gray-800 h-full w-full border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
@@ -110,7 +106,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
           onSelectLanguage={userRole === 'vip' ? setSelectedLanguage : undefined}
           selectedLanguage={selectedLanguage}
           onShowMediaGallery={userRole === 'vip' ? showMediaGallery : undefined}
-          onDeleteConversation={userRole === 'vip' ? handleDeleteClick : undefined}
+          onDeleteConversation={userRole === 'vip' ? deleteConversation : undefined}
         />
       </div>
       
@@ -122,6 +118,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         updateScrollPosition={updateScrollPosition}
         isTyping={isTyping}
         selectedUserId={user.id}
+        onReplyToMessage={replyToMessage}
+        onUnsendMessage={unsendMessage}
       />
       
       <ChatActions 
@@ -136,6 +134,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         isVipUser={userRole === 'vip'}
         fileInputRef={fileInputRef}
         handleVoiceMessageClick={userRole === 'vip' ? handleVoiceMessageClick : undefined}
+        sendVoiceMessage={userRole === 'vip' ? sendVoiceMessage : undefined}
       />
       
       <input 
@@ -170,21 +169,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         setPreviewImage={setPreviewImage}
       />
       
-      {/* Delete Confirmation Dialog */}
-      <DeleteConfirmationDialog
-        isOpen={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setIsDeleteDialogOpen(false)}
-      />
-      
-      {/* New Media Gallery Dialog for VIP users */}
+      {/* Media Gallery Dialog for VIP users */}
       {userRole === 'vip' && (
         <MediaGalleryDialog
           isOpen={isMediaGalleryOpen}
           onOpenChange={setIsMediaGalleryOpen}
           mediaItems={mediaGalleryItems}
           user={user}
+        />
+      )}
+      
+      {/* Delete Confirmation Dialog */}
+      {userRole === 'vip' && (
+        <DeleteConfirmationDialog
+          isOpen={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          onConfirm={confirmDeleteConversation}
+          onCancel={cancelDeleteConversation}
         />
       )}
     </div>

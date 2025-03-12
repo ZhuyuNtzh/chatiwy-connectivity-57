@@ -18,6 +18,7 @@ interface MessageInputProps {
   isVipUser: boolean;
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleVoiceMessageClick?: () => void;
+  sendVoiceMessage?: (audioUrl: string) => void;
 }
 
 const commonEmojis = [
@@ -42,7 +43,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
   isUserBlocked,
   isVipUser,
   fileInputRef,
-  handleVoiceMessageClick
+  handleVoiceMessageClick,
+  sendVoiceMessage
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -83,11 +85,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
         const audioUrl = URL.createObjectURL(audioBlob);
         
-        // Send the voice message via the provided handler
-        if (handleVoiceMessageClick) {
+        // Automatically send the voice message without requiring another click
+        if (sendVoiceMessage) {
           console.log('Voice message recorded:', audioUrl);
-          // Just notify the parent that recording is done
-          handleVoiceMessageClick();
+          sendVoiceMessage(audioUrl);
         }
         
         // Clean up

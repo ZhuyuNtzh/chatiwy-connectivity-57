@@ -1,8 +1,8 @@
+
 import { useState, useEffect, useRef } from 'react';
-import { signalRService } from '../services/signalRService';
-import type { ChatMessage } from '../services/signalR/types';
+import { signalRService } from '@/services/signalRService';
+import type { ChatMessage } from '@/services/signalR/types';
 import { toast } from "sonner";
-import axios from 'axios';
 
 export const useChat = (userId: number, userRole: string) => {
   const [message, setMessage] = useState('');
@@ -97,8 +97,20 @@ export const useChat = (userId: number, userRole: string) => {
       }
     };
     
+    // Handle message deletion
+    const handleMessageDeleted = (messageId: string) => {
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === messageId 
+            ? { ...msg, isDeleted: true } 
+            : msg
+        )
+      );
+    };
+    
     signalRService.onMessageReceived(handleNewMessage);
     signalRService.onUserTyping(handleUserTyping);
+    signalRService.onMessageDeleted(handleMessageDeleted);
     
     // Load existing messages specifically for this user
     const existingMessages = signalRService.getChatHistory(userId);
@@ -126,14 +138,15 @@ export const useChat = (userId: number, userRole: string) => {
       // Cleanup
       signalRService.offMessageReceived(handleNewMessage);
       signalRService.offUserTyping(handleUserTyping);
+      signalRService.offMessageDeleted(handleMessageDeleted);
       
       if (typingTimerRef.current) {
         clearTimeout(typingTimerRef.current);
       }
     };
   }, [userId, userRole, isTranslationEnabled, selectedLanguage]);
-
-  // Simulate translation API call (would be replaced with actual API)
+  
+  // Helper function to simulate message translation
   const translateMessage = async (msg: ChatMessage): Promise<ChatMessage> => {
     try {
       // In a real app, you would call a translation API here
@@ -312,8 +325,9 @@ export const useChat = (userId: number, userRole: string) => {
       setAudioPreview(audioUrl);
       setIsRecording(false);
       
+      // No longer need this since we're sending automatically from MessageInput
       // Send the voice message
-      sendVoiceMessage(audioUrl);
+      // sendVoiceMessage(audioUrl);
       
       // Stop all tracks to release the microphone
       stream.getTracks().forEach(track => track.stop());
@@ -407,6 +421,77 @@ export const useChat = (userId: number, userRole: string) => {
     setIsDeleteDialogOpen(false);
   };
   
+  // New function to handle replying to a message
+  const replyToMessage = (messageId: string, messageText: string) => {
+    if (userRole !== 'vip') {
+      toast.error('Replying to messages is a VIP feature');
+      return;
+    }
+    
+    // Find the message we're replying to
+    const replyMessage = messages.find(msg => msg.id === messageId);
+    if (!replyMessage) return;
+    
+    // Create a truncated version of the original message for the reply reference
+    const replyText = messageText.length > 50 
+      ? messageText.substring(0, 50) + '...' 
+      : messageText;
+    
+    // Send a new message with a reference to the original
+    const newMessage: ChatMessage = {
+      id: `reply_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      content: message.trim(),
+      sender: 'You',
+      senderId: signalRService.currentUserId,
+      recipientId: userId,
+      timestamp: new Date(),
+      replyToId: messageId,
+      replyText: replyText
+    };
+    
+    // Add the message to our local messages
+    setMessages(prev => [...prev, newMessage]);
+    
+    // Clear the input field
+    setMessage('');
+    
+    // Auto-scroll to the new message
+    setAutoScrollToBottom(true);
+    setTimeout(() => setAutoScrollToBottom(false), 300);
+  };
+  
+  // New function to unsend a message
+  const unsendMessage = (messageId: string) => {
+    if (userRole !== 'vip') {
+      toast.error('Unsending messages is a VIP feature');
+      return;
+    }
+    
+    // Find the message we're unsending
+    const message = messages.find(msg => msg.id === messageId);
+    if (!message) return;
+    
+    // Only allow unsending your own messages
+    if (message.sender !== 'You') {
+      toast.error('You can only unsend your own messages');
+      return;
+    }
+    
+    // Send the unsend request to the server
+    signalRService.deleteMessage(messageId, userId);
+    
+    // Update the local state
+    setMessages(prev => 
+      prev.map(msg => 
+        msg.id === messageId 
+          ? { ...msg, isDeleted: true } 
+          : msg
+      )
+    );
+    
+    toast.success('Message unsent');
+  };
+  
   // Helper function to check if a message contains a link
   const isLinkMessage = (content: string) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -470,6 +555,7 @@ export const useChat = (userId: number, userRole: string) => {
     handleImageChange,
     handleSendImage,
     handleVoiceMessageClick,
+    sendVoiceMessage,
     toggleImageBlur,
     openImagePreview,
     showBlockedUsersList,
@@ -477,6 +563,8 @@ export const useChat = (userId: number, userRole: string) => {
     showMediaGallery,
     deleteConversation,
     confirmDeleteConversation,
-    cancelDeleteConversation
+    cancelDeleteConversation,
+    replyToMessage,
+    unsendMessage
   };
 };

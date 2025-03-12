@@ -14,22 +14,37 @@ interface ChatActionsProps {
   isVipUser: boolean;
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleVoiceMessageClick?: () => void;
+  sendVoiceMessage?: (audioUrl: string) => void;
 }
 
-const ChatActions: React.FC<ChatActionsProps> = (props) => {
+const ChatActions: React.FC<ChatActionsProps> = ({
+  message,
+  setMessage,
+  maxChars,
+  handleSendMessage,
+  handleKeyDown,
+  handleAddEmoji,
+  handleImageClick,
+  isUserBlocked,
+  isVipUser,
+  fileInputRef,
+  handleVoiceMessageClick,
+  sendVoiceMessage
+}) => {
   return (
     <MessageInput 
-      message={props.message}
-      setMessage={props.setMessage}
-      maxChars={props.maxChars}
-      handleSendMessage={props.handleSendMessage}
-      handleKeyDown={props.handleKeyDown}
-      handleAddEmoji={props.handleAddEmoji}
-      handleImageClick={props.handleImageClick}
-      isUserBlocked={props.isUserBlocked}
-      isVipUser={props.isVipUser}
-      fileInputRef={props.fileInputRef}
-      handleVoiceMessageClick={props.handleVoiceMessageClick}
+      message={message}
+      setMessage={setMessage}
+      maxChars={maxChars}
+      handleSendMessage={handleSendMessage}
+      handleKeyDown={handleKeyDown}
+      handleAddEmoji={handleAddEmoji}
+      handleImageClick={handleImageClick}
+      isUserBlocked={isUserBlocked}
+      isVipUser={isVipUser}
+      fileInputRef={fileInputRef}
+      handleVoiceMessageClick={handleVoiceMessageClick}
+      sendVoiceMessage={sendVoiceMessage}
     />
   );
 };
