@@ -5,7 +5,7 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 export type UserRole = 'standard' | 'vip' | 'admin';
 
 export interface UserProfile {
-  username: string;
+  username: string; // Validation handled in components
   age?: number;
   gender?: string;
   interests?: string[];
@@ -14,7 +14,7 @@ export interface UserProfile {
   lastActive?: Date;
   role: UserRole;
   avatarUrl?: string;
-  avatar?: string; // Added this field
+  avatar?: string;
   isVip?: boolean;
   isAdmin?: boolean;
   isVerified?: boolean;
