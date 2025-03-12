@@ -1,13 +1,10 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
-import { Check } from 'lucide-react';
+import { Check, LogIn, UserPlus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UserLogin } from 'lucide-react';
-import { UserPlus } from 'lucide-react';
 
 const VipMembership = () => {
   const { isDarkMode } = useTheme();
@@ -130,7 +127,7 @@ const VipMembership = () => {
               className="flex flex-col h-auto py-4"
               onClick={handleLogin}
             >
-              <UserLogin className="h-10 w-10 mb-2" />
+              <LogIn className="h-10 w-10 mb-2" />
               <span>Login</span>
               <span className="text-xs text-muted-foreground mt-1">Already a VIP member</span>
             </Button>
