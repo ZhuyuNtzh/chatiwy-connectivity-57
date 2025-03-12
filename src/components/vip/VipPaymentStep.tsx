@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -14,12 +13,14 @@ interface VipPaymentStepProps {
   };
   onBack: () => void;
   onComplete: () => void;
+  updateFormData: (data: Partial<{ plan: 'monthly' | '6months' | 'yearly' }>) => void;
 }
 
 const VipPaymentStep = ({
   formData,
   onBack,
-  onComplete
+  onComplete,
+  updateFormData
 }: VipPaymentStepProps) => {
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypal'>('card');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -31,6 +32,10 @@ const VipPaymentStep = ({
     expYear: '',
     cvc: ''
   });
+
+  const handlePlanChange = (newPlan: 'monthly' | '6months' | 'yearly') => {
+    updateFormData({ plan: newPlan });
+  };
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,7 +116,10 @@ const VipPaymentStep = ({
             </Tabs>
           </div>
           
-          <PaymentSummary plan={formData.plan} />
+          <PaymentSummary 
+            plan={formData.plan} 
+            onPlanChange={handlePlanChange}
+          />
         </CardContent>
         
         <CardFooter className="flex justify-between space-x-4">

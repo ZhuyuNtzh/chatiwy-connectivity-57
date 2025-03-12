@@ -1,13 +1,29 @@
 
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft } from 'lucide-react';
+
 interface VipProgressStepsProps {
   steps: Array<{ title: string }>;
   currentStep: number;
 }
 
 const VipProgressSteps = ({ steps, currentStep }: VipProgressStepsProps) => {
+  const navigate = useNavigate();
+
   return (
-    <div className="text-center mb-8">
-      <h1 className="text-3xl md:text-4xl font-bold mb-4">Join VIP Membership</h1>
+    <div className="mb-8">
+      <div className="flex items-center mb-4">
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={() => navigate('/')}
+          className="mr-4"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+        <h1 className="text-3xl md:text-4xl font-bold">Join VIP Membership</h1>
+      </div>
       <div className="flex justify-center items-center space-x-2 md:space-x-4">
         {steps.map((step, index) => (
           <div key={index} className="flex items-center">
@@ -32,7 +48,7 @@ const VipProgressSteps = ({ steps, currentStep }: VipProgressStepsProps) => {
           </div>
         ))}
       </div>
-      <h2 className="mt-4 text-xl font-medium">{steps[currentStep].title}</h2>
+      <h2 className="mt-4 text-xl font-medium text-center">{steps[currentStep].title}</h2>
     </div>
   );
 };
