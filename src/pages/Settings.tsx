@@ -15,6 +15,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { useUser } from '@/contexts/UserContext';
+import AvatarSelectPopup from '@/components/vip/profile/AvatarSelectPopup';
+import ChangeEmailDialog from '@/components/vip/profile/ChangeEmailDialog';
+import axios from 'axios';
 
 const Settings = () => {
   const { isDarkMode } = useTheme();
@@ -23,6 +26,8 @@ const Settings = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showAvatarPopup, setShowAvatarPopup] = useState(false);
+  const [showChangeEmailDialog, setShowChangeEmailDialog] = useState(false);
   const [avatar, setAvatar] = useState<string | undefined>(currentUser?.avatar);
   const [username, setUsername] = useState(currentUser?.username || '');
   const [email, setEmail] = useState(currentUser?.email || '');
@@ -32,6 +37,8 @@ const Settings = () => {
   const [interests, setInterests] = useState<string[]>(currentUser?.interests || []);
   const [isOnline, setIsOnline] = useState(currentUser?.isOnline !== false);
   const [newInterest, setNewInterest] = useState('');
+  const [countries, setCountries] = useState<any[]>([]);
+  const [isLoadingCountries, setIsLoadingCountries] = useState(true);
 
   // Generate age options from 18 to 80
   const ageOptions = Array.from({ length: 63 }, (_, i) => String(18 + i));
@@ -41,6 +48,29 @@ const Settings = () => {
     if (!currentUser || !currentUser.isVip) {
       navigate('/login');
     }
+    
+    // Fetch countries when component mounts
+    const fetchCountries = async () => {
+      setIsLoadingCountries(true);
+      try {
+        const response = await axios.get('https://restcountries.com/v3.1/all?fields=name,flags,cca2');
+        const sortedCountries = response.data.sort((a: any, b: any) => 
+          a.name.common.localeCompare(b.name.common)
+        );
+        setCountries(sortedCountries);
+      } catch (error) {
+        console.error('Error fetching countries:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load countries list",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoadingCountries(false);
+      }
+    };
+    
+    fetchCountries();
   }, [currentUser, navigate]);
 
   const handleSave = () => {
@@ -103,6 +133,37 @@ const Settings = () => {
 
   const handleStartChatting = () => {
     navigate('/chat-interface');
+  };
+
+  const handleAvatarSelect = (avatarSrc: string) => {
+    setAvatar(avatarSrc);
+    
+    // If we're not in edit mode, save the avatar immediately
+    if (!isEditing && currentUser) {
+      const updatedUser = {
+        ...currentUser,
+        avatar: avatarSrc
+      };
+      setCurrentUser(updatedUser);
+    }
+  };
+
+  const handleOnlineStatusChange = (status: boolean) => {
+    setIsOnline(status);
+    
+    // If we're not in edit mode, save the status immediately
+    if (!isEditing && currentUser) {
+      const updatedUser = {
+        ...currentUser,
+        isOnline: status
+      };
+      setCurrentUser(updatedUser);
+      
+      toast({
+        title: status ? "You are now online" : "You are now offline",
+        description: status ? "Other users can see you" : "You're now invisible to other users",
+      });
+    }
   };
 
   return (
@@ -174,12 +235,15 @@ const Settings = () => {
                         )}
                       </Avatar>
                       
-                      {isEditing && (
-                        <div className="flex flex-col space-y-2 ml-4">
-                          <Button variant="outline" size="sm">Change Avatar</Button>
-                          <Button variant="outline" size="sm">Remove Avatar</Button>
-                        </div>
-                      )}
+                      <div className="flex flex-col space-y-2 ml-4">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setShowAvatarPopup(true)}
+                        >
+                          Change Avatar
+                        </Button>
+                      </div>
                     </div>
                   </div>
                   
@@ -201,14 +265,15 @@ const Settings = () => {
                         id="email" 
                         value={email} 
                         onChange={(e) => setEmail(e.target.value)}
-                        disabled={!isEditing}
+                        disabled={true}
                         className="flex-1"
                       />
                       <Button 
                         variant="outline" 
                         className="ml-2 bg-orange-400 text-white hover:bg-orange-500"
+                        onClick={() => setShowChangeEmailDialog(true)}
                       >
-                        Verify
+                        Change
                       </Button>
                     </div>
                   </div>
@@ -256,38 +321,26 @@ const Settings = () => {
                   <div className="space-y-1.5">
                     <Label htmlFor="country">Country</Label>
                     <Select 
-                      disabled={!isEditing} 
+                      disabled={!isEditing || isLoadingCountries} 
                       value={country} 
                       onValueChange={setCountry}
                     >
                       <SelectTrigger className="max-w-md">
-                        <SelectValue placeholder="Select your country" />
+                        <SelectValue placeholder={isLoadingCountries ? "Loading countries..." : "Select your country"} />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="United States">
-                          <div className="flex items-center">
-                            <Flag className="mr-2 h-4 w-4" />
-                            United States
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="Canada">
-                          <div className="flex items-center">
-                            <Flag className="mr-2 h-4 w-4" />
-                            Canada
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="United Kingdom">
-                          <div className="flex items-center">
-                            <Flag className="mr-2 h-4 w-4" />
-                            United Kingdom
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="Australia">
-                          <div className="flex items-center">
-                            <Flag className="mr-2 h-4 w-4" />
-                            Australia
-                          </div>
-                        </SelectItem>
+                      <SelectContent className="max-h-[240px]">
+                        {countries.map((country) => (
+                          <SelectItem key={country.cca2} value={country.name.common}>
+                            <div className="flex items-center gap-2">
+                              <img 
+                                src={country.flags.svg} 
+                                alt={`${country.name.common} flag`} 
+                                className="w-5 h-3 object-cover"
+                              />
+                              {country.name.common}
+                            </div>
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -296,11 +349,13 @@ const Settings = () => {
                     <div className="flex justify-between items-center">
                       <Label>Online Status</Label>
                       <Switch 
-                        disabled={!isEditing}
                         checked={isOnline} 
-                        onCheckedChange={setIsOnline} 
+                        onCheckedChange={handleOnlineStatusChange} 
                       />
                     </div>
+                    <p className="text-sm text-gray-500">
+                      {isOnline ? "You are visible to other users" : "You are invisible to other users"}
+                    </p>
                   </div>
                   
                   <div className="space-y-3">
@@ -418,6 +473,22 @@ const Settings = () => {
         </div>
       </footer>
       
+      {/* Avatar Selection Popup */}
+      <AvatarSelectPopup
+        open={showAvatarPopup}
+        onOpenChange={setShowAvatarPopup}
+        currentAvatar={avatar || ''}
+        onAvatarSelect={handleAvatarSelect}
+      />
+      
+      {/* Change Email Dialog */}
+      <ChangeEmailDialog
+        open={showChangeEmailDialog}
+        onOpenChange={setShowChangeEmailDialog}
+        currentEmail={email}
+      />
+      
+      {/* Delete Account Confirmation */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent>
           <DialogHeader>

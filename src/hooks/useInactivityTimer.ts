@@ -1,56 +1,120 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useUser } from '@/contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../contexts/UserContext';
-import { signalRService } from '../services/signalRService';
+import { toast } from '@/hooks/use-toast';
 
-export const useInactivityTimer = () => {
+export const useInactivityTimer = (timeoutMinutes = 10) => {
+  const { userRole, setIsLoggedIn } = useUser();
   const navigate = useNavigate();
-  const { currentUser, setCurrentUser, setIsLoggedIn, userRole } = useUser();
-  const [lastActivity, setLastActivity] = useState<Date>(new Date());
-  const inactivityTimerRef = useRef<number | null>(null);
+  const [isWarningShown, setIsWarningShown] = useState(false);
+  const [remainingTime, setRemainingTime] = useState(timeoutMinutes * 60);
+  const timerRef = useRef<number | null>(null);
+  const warningTimerRef = useRef<number | null>(null);
   
-  useEffect(() => {
-    // Skip inactivity checks for VIP users
+  const resetTimer = () => {
+    setIsWarningShown(false);
+    setRemainingTime(timeoutMinutes * 60);
+    
+    if (warningTimerRef.current) {
+      clearTimeout(warningTimerRef.current);
+      warningTimerRef.current = null;
+    }
+    
+    // Reset the logout timer
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    
+    timerRef.current = window.setTimeout(() => {
+      showWarning();
+    }, (timeoutMinutes - 1) * 60 * 1000); // Show warning 1 minute before logout
+  };
+  
+  const showWarning = () => {
+    setIsWarningShown(true);
+    setRemainingTime(60); // 1 minute left
+    
+    toast({
+      title: "Session Expiring Soon",
+      description: `You will be logged out in 1 minute due to inactivity.`,
+      variant: "destructive",
+    });
+    
+    // Start countdown timer
+    warningTimerRef.current = window.setInterval(() => {
+      setRemainingTime(prev => {
+        if (prev <= 1) {
+          logout();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+  
+  const logout = () => {
+    // Don't log out VIP users automatically
     if (userRole === 'vip') {
+      resetTimer(); // Just reset the timer for VIP users
       return;
     }
     
-    const resetTimer = () => {
-      setLastActivity(new Date());
-    };
+    // Clear all timers
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
     
-    window.addEventListener('mousemove', resetTimer);
-    window.addEventListener('keypress', resetTimer);
-    window.addEventListener('click', resetTimer);
+    if (warningTimerRef.current) {
+      clearInterval(warningTimerRef.current);
+      warningTimerRef.current = null;
+    }
     
-    const checkInactivity = () => {
-      // Only check for non-VIP users
-      if (userRole === 'vip') return;
+    // Log the user out
+    setIsLoggedIn(false);
+    navigate('/');
+    
+    toast({
+      title: "Logged Out",
+      description: "You have been logged out due to inactivity.",
+    });
+  };
+  
+  const handleUserActivity = () => {
+    resetTimer();
+  };
+  
+  useEffect(() => {
+    // Set up event listeners for user activity
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    
+    events.forEach(event => {
+      document.addEventListener(event, handleUserActivity);
+    });
+    
+    // Initialize timer
+    resetTimer();
+    
+    // Clean up
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, handleUserActivity);
+      });
       
-      const now = new Date();
-      const inactiveTime = (now.getTime() - lastActivity.getTime()) / (1000 * 60);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
       
-      if (inactiveTime >= 30) {
-        signalRService.disconnect();
-        setCurrentUser(null);
-        setIsLoggedIn(false);
-        navigate('/feedback');
+      if (warningTimerRef.current) {
+        clearInterval(warningTimerRef.current);
       }
     };
-    
-    const intervalId = window.setInterval(checkInactivity, 60000);
-    
-    return () => {
-      window.removeEventListener('mousemove', resetTimer);
-      window.removeEventListener('keypress', resetTimer);
-      window.removeEventListener('click', resetTimer);
-      window.clearInterval(intervalId);
-    };
-  }, [lastActivity, navigate, setCurrentUser, setIsLoggedIn, userRole]);
+  }, []);
   
   return {
-    lastActivity,
-    setLastActivity
+    isWarningShown,
+    remainingTime,
+    resetTimer,
   };
 };

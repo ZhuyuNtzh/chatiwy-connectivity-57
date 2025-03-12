@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 // User type definitions
@@ -19,6 +18,7 @@ export interface UserProfile {
   isAdmin?: boolean;
   isVerified?: boolean;
   joinedAt?: Date;
+  email?: string; // Adding email field to fix type errors
 }
 
 interface UserContextType {

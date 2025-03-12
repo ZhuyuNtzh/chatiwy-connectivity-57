@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useUser } from '@/contexts/UserContext';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Eye, EyeOff, Mail } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
   const { isDarkMode } = useTheme();
@@ -166,12 +166,6 @@ const Login = () => {
               >
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
-              <div className="mt-2 text-center">
-                <Button type="button" variant="outline" className="w-full flex items-center justify-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Google
-                </Button>
-              </div>
               <p className="text-center text-sm mt-2">
                 Don't have an account?{" "}
                 <Link to="/vip-membership" className="text-accent font-medium hover:underline">
