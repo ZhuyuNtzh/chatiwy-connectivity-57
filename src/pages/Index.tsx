@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,14 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { useUser } from '@/contexts/UserContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Shuffle } from 'lucide-react';
+import { Shuffle, LogIn, UserPlus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const Index = () => {
   const navigate = useNavigate();
   const { setCurrentUser, setIsLoggedIn } = useUser();
   const { isDarkMode, toggleDarkMode } = useTheme();
   const [username, setUsername] = useState('');
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
 
   const generateRandomUsername = () => {
     const adjectives = ['Happy', 'Sunny', 'Quick', 'Clever', 'Brave', 'Calm', 'Eager', 'Gentle'];
@@ -42,7 +43,6 @@ const Index = () => {
     });
     setIsLoggedIn(true);
     
-    // Navigate to profile setup page
     navigate('/profile-setup');
     
     toast({
@@ -52,12 +52,21 @@ const Index = () => {
   };
   
   const handleVipClick = () => {
+    setShowAuthDialog(true);
+  };
+
+  const handleVipLogin = () => {
+    setShowAuthDialog(false);
+    navigate('/login');
+  };
+
+  const handleVipRegister = () => {
+    setShowAuthDialog(false);
     navigate('/vip-membership');
   };
 
   return (
     <div className={`min-h-screen bg-background flex flex-col ${isDarkMode ? 'dark' : ''}`}>
-      {/* Header */}
       <header className="w-full px-8 py-4 flex justify-between items-center">
         <div className="text-2xl font-bold text-foreground">chativy.</div>
         <div className="flex items-center gap-6">
@@ -74,12 +83,9 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Main content */}
       <main className="flex-1 flex flex-col md:flex-row px-4 md:px-8 py-6 gap-4">
-        {/* Left side - Chat bubbles (hidden on mobile) */}
         <div className="w-full md:w-1/2 hidden md:flex items-center justify-center relative">
           <div className="w-full max-w-md relative">
-            {/* Animated chat bubbles - only shown on desktop */}
             <div className="chat-bubble chat-bubble-teal w-64 h-44 absolute top-0 left-0 transform rotate-6 animate-float-slow"></div>
             <div className="chat-bubble chat-bubble-red w-16 h-16 rounded-full absolute top-16 right-12 animate-pulse-subtle"></div>
             <div className="chat-bubble chat-bubble-orange w-24 h-10 absolute top-8 right-24 transform -rotate-12 animate-float"></div>
@@ -91,7 +97,6 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Right side - Text and input */}
         <div className="w-full md:w-1/2 flex items-center">
           <div className="w-full max-w-lg bg-card rounded-2xl p-8 shadow-sm">
             <div className="mb-8">
@@ -133,20 +138,46 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Right side ad placeholder - hidden on mobile */}
         <div className="hidden lg:block w-32 h-[530px] ad-placeholder animate-pulse-slow">
           Ad place holder
         </div>
       </main>
 
-      {/* Bottom ad placeholder - visible on all devices */}
+      <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl">Choose an option</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <Button
+              variant="outline"
+              className="flex flex-col h-auto py-4"
+              onClick={handleVipLogin}
+            >
+              <LogIn className="h-10 w-10 mb-2" />
+              <span>Login</span>
+              <span className="text-xs text-muted-foreground mt-1">Already a VIP member</span>
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="flex flex-col h-auto py-4"
+              onClick={handleVipRegister}
+            >
+              <UserPlus className="h-10 w-10 mb-2" />
+              <span>Register</span>
+              <span className="text-xs text-muted-foreground mt-1">New to VIP</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="w-full max-w-4xl mx-auto p-4">
         <div className="w-full h-20 ad-placeholder mb-4 animate-pulse-subtle">
           Ad place holder
         </div>
       </div>
 
-      {/* Footer */}
       <footer className="w-full px-8 py-4 flex justify-between items-center text-sm text-muted-foreground">
         <div className="flex gap-8">
           <a href="#" className="hover:text-foreground transition-colors">Terms & Privacy Policy</a>
