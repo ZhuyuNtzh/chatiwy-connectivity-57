@@ -56,7 +56,7 @@ const Header = () => {
           )}
           <Link to="/" className="text-xl font-semibold flex items-center">
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
-              Chatiwy
+              Chatwii
             </span>
           </Link>
         </div>

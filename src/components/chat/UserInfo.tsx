@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { User } from 'lucide-react';
+import { User, Crown } from 'lucide-react';
 
 interface UserInfoProps {
   user: {
@@ -9,6 +9,7 @@ interface UserInfoProps {
     age: number;
     location: string;
     interests: string[];
+    isVip?: boolean;
   };
   countryFlags: Record<string, string>;
 }
@@ -21,7 +22,14 @@ const UserInfo: React.FC<UserInfoProps> = ({ user, countryFlags }) => {
       </div>
       <div>
         <div className="flex items-center gap-2">
-          <h3 className="font-medium">{user.username}</h3>
+          <div className="flex items-center">
+            <h3 className="font-medium">{user.username}</h3>
+            {user.isVip && (
+              <span className="ml-1.5 inline-flex items-center">
+                <Crown className="h-4 w-4 text-amber-400" />
+              </span>
+            )}
+          </div>
           <span className="text-xs text-gray-500">
             {user.gender}, {user.age}
           </span>

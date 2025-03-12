@@ -19,6 +19,7 @@ const VipProgressSteps = ({ steps, currentStep }: VipProgressStepsProps) => {
           size="icon"
           onClick={() => navigate('/')}
           className="mr-4"
+          aria-label="Back to home"
         >
           <ChevronLeft className="h-5 w-5" />
         </Button>

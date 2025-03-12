@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { User as UserIcon } from 'lucide-react';
+import { User as UserIcon, Crown } from 'lucide-react';
 
 interface UserListProps {
   users: Array<{
@@ -11,6 +11,7 @@ interface UserListProps {
     location: string;
     interests: string[];
     isOnline: boolean;
+    isVip?: boolean;
   }>;
   selectedUserId: number | null;
   countryFlags: Record<string, string>;
@@ -71,9 +72,16 @@ const UserList: React.FC<UserListProps> = ({
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <h3 className={`text-sm md:text-base font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  {user.username}
-                </h3>
+                <div className="flex items-center">
+                  <h3 className={`text-sm md:text-base font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {user.username}
+                  </h3>
+                  {user.isVip && (
+                    <span className="ml-1.5 inline-flex items-center">
+                      <Crown className="h-3.5 w-3.5 md:h-4 md:w-4 text-amber-400" />
+                    </span>
+                  )}
+                </div>
                 <p className={`text-xs md:text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                   {user.gender}, {user.age}
                 </p>

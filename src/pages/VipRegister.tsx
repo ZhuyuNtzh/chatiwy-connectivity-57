@@ -83,6 +83,7 @@ const VipRegister = () => {
       component: (
         <VipPaymentStep
           formData={formData}
+          updateFormData={updateFormData}
           onBack={handleBack}
           onComplete={handleComplete}
         />
