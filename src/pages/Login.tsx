@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -58,6 +59,7 @@ const Login = () => {
         description: "Welcome to Chatwii VIP!",
       });
       
+      // This is where we need to fix the redirection - ensure VIP users go to settings
       navigate('/settings');
       return;
     }

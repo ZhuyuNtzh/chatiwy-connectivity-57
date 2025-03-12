@@ -40,7 +40,7 @@ const Feedback = () => {
         description: "We appreciate you taking the time to share your thoughts.",
       });
       
-      // Automatically redirect to landing page after submission
+      // Immediately redirect to landing page after submission
       navigate('/');
     }, 1000);
   };
