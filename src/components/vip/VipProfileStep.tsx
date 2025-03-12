@@ -1,15 +1,14 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User2, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import axios from 'axios';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import GenderSelector from './profile/GenderSelector';
+import AvatarSelector from './profile/AvatarSelector';
 
 interface VipProfileFormData {
   gender: string;
@@ -129,69 +128,15 @@ const VipProfileStep = ({
     <Card className="w-full shadow-lg">
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-6 pt-6">
-          <div className="space-y-3">
-            <Label>Gender</Label>
-            <RadioGroup 
-              value={formData.gender} 
-              onValueChange={(value) => updateFormData({ gender: value })}
-              className="flex gap-4 justify-center"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="Male" id="male" className="sr-only" />
-                <Label
-                  htmlFor="male"
-                  className={`flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer transition-all ${
-                    formData.gender === 'Male' 
-                      ? 'bg-primary/10 border-2 border-primary' 
-                      : 'bg-background border-2 border-muted hover:bg-muted/20'
-                  }`}
-                >
-                  <User2 size={36} className={formData.gender === 'Male' ? 'text-primary' : 'text-foreground'} />
-                  <span className="mt-2 font-medium">Male</span>
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="Female" id="female" className="sr-only" />
-                <Label
-                  htmlFor="female"
-                  className={`flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer transition-all ${
-                    formData.gender === 'Female' 
-                      ? 'bg-primary/10 border-2 border-primary' 
-                      : 'bg-background border-2 border-muted hover:bg-muted/20'
-                  }`}
-                >
-                  <Users size={36} className={formData.gender === 'Female' ? 'text-primary' : 'text-foreground'} />
-                  <span className="mt-2 font-medium">Female</span>
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
+          <GenderSelector 
+            value={formData.gender}
+            onChange={(value) => updateFormData({ gender: value })}
+          />
           
-          {/* Avatar Selection */}
-          <div className="space-y-3">
-            <Label>Select Avatar</Label>
-            <div className="flex flex-wrap gap-4 justify-center">
-              {avatarOptions.map((avatar) => (
-                <div 
-                  key={avatar.id}
-                  onClick={() => updateFormData({ avatar: avatar.src })}
-                  className={`cursor-pointer transition-all ${
-                    formData.avatar === avatar.src 
-                      ? 'ring-2 ring-primary ring-offset-2' 
-                      : 'hover:opacity-80'
-                  }`}
-                >
-                  <Avatar className="h-16 w-16">
-                    <AvatarImage src={avatar.src} alt={avatar.alt} />
-                    <AvatarFallback>
-                      <User2 className="h-8 w-8" />
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-              ))}
-            </div>
-          </div>
+          <AvatarSelector
+            selectedAvatar={formData.avatar}
+            onSelect={(avatarSrc) => updateFormData({ avatar: avatarSrc })}
+          />
           
           <div className="space-y-3">
             <div className="flex justify-between items-center">

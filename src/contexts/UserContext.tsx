@@ -14,6 +14,7 @@ export interface UserProfile {
   lastActive?: Date;
   role: UserRole;
   avatarUrl?: string;
+  avatar?: string; // Added this field
   isVip?: boolean;
   isAdmin?: boolean;
   isVerified?: boolean;
