@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -444,23 +445,47 @@ const Settings = () => {
                   <ul className="space-y-3">
                     <li className="flex items-center text-sm">
                       <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Unlimited messaging with all users
+                      Send unlimited photos
                     </li>
                     <li className="flex items-center text-sm">
                       <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Advanced profile customization
+                      Send voice messages
                     </li>
                     <li className="flex items-center text-sm">
                       <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Priority support access
+                      Longer chat history
                     </li>
                     <li className="flex items-center text-sm">
                       <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Ad-free experience
+                      Customer Support
                     </li>
                     <li className="flex items-center text-sm">
                       <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Exclusive features and updates
+                      Unique avatar options
+                    </li>
+                    <li className="flex items-center text-sm">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
+                      Appear at the top of the list
+                    </li>
+                    <li className="flex items-center text-sm">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
+                      Ad-free
+                    </li>
+                    <li className="flex items-center text-sm">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
+                      React, reply, edit, unsend messages
+                    </li>
+                    <li className="flex items-center text-sm">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
+                      View message status
+                    </li>
+                    <li className="flex items-center text-sm">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
+                      Special Badges
+                    </li>
+                    <li className="flex items-center text-sm">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
+                      Control your online status
                     </li>
                   </ul>
                 </div>
