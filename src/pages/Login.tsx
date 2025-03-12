@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
@@ -5,7 +6,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Github, Google } from 'lucide-react';
+import { Github, Mail } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const Login = () => {
@@ -101,7 +102,7 @@ const Login = () => {
               Github
             </Button>
             <Button variant="outline" size="sm">
-              <Google className="w-4 h-4 mr-2" />
+              <Mail className="w-4 h-4 mr-2" />
               Google
             </Button>
           </div>
