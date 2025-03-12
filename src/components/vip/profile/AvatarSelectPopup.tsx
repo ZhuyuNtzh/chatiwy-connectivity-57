@@ -1,8 +1,6 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface AvatarSelectPopupProps {
@@ -52,17 +50,7 @@ const AvatarSelectPopup = ({ open, onOpenChange, currentAvatar, onAvatarSelect }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Choose Avatar</span>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-8 w-8 p-0 rounded-full" 
-              onClick={() => onOpenChange(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogTitle>
+          <DialogTitle>Choose Avatar</DialogTitle>
         </DialogHeader>
         
         <div className="grid grid-cols-5 gap-2 p-4">

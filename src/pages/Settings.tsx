@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -10,11 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { User, X, Plus, Flag } from 'lucide-react';
+import { User, Crown } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { useUser } from '@/contexts/UserContext';
+import InterestsSelector from '@/components/vip/profile/InterestsSelector';
 import AvatarSelectPopup from '@/components/vip/profile/AvatarSelectPopup';
 import ChangeEmailDialog from '@/components/vip/profile/ChangeEmailDialog';
 import axios from 'axios';
@@ -39,17 +39,21 @@ const Settings = () => {
   const [newInterest, setNewInterest] = useState('');
   const [countries, setCountries] = useState<any[]>([]);
   const [isLoadingCountries, setIsLoadingCountries] = useState(true);
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState({ email: '', password: '' });
+  const [showDeleteFinalConfirm, setShowDeleteFinalConfirm] = useState(false);
 
-  // Generate age options from 18 to 80
+  const membershipStartDate = new Date(currentUser?.joinedAt || Date.now());
+  const membershipEndDate = new Date(membershipStartDate);
+  membershipEndDate.setFullYear(membershipEndDate.getFullYear() + 1);
+
   const ageOptions = Array.from({ length: 63 }, (_, i) => String(18 + i));
 
   useEffect(() => {
-    // Redirect if not logged in or not a VIP user
     if (!currentUser || !currentUser.isVip) {
       navigate('/login');
     }
     
-    // Fetch countries when component mounts
     const fetchCountries = async () => {
       setIsLoadingCountries(true);
       try {
@@ -74,7 +78,6 @@ const Settings = () => {
   }, [currentUser, navigate]);
 
   const handleSave = () => {
-    // Update user profile
     if (currentUser) {
       const updatedUser = {
         ...currentUser,
@@ -96,7 +99,6 @@ const Settings = () => {
   };
 
   const handleCancel = () => {
-    // Reset to current user values
     setAvatar(currentUser?.avatar);
     setUsername(currentUser?.username || '');
     setEmail(currentUser?.email || '');
@@ -109,15 +111,7 @@ const Settings = () => {
   };
 
   const handleDeleteAccount = () => {
-    setIsLoggedIn(false);
-    setCurrentUser(null);
-    
-    toast({
-      title: "Account deleted",
-      description: "Your account has been deleted successfully",
-    });
-    
-    navigate('/');
+    setShowDeleteConfirm(true);
   };
 
   const handleAddInterest = () => {
@@ -138,7 +132,6 @@ const Settings = () => {
   const handleAvatarSelect = (avatarSrc: string) => {
     setAvatar(avatarSrc);
     
-    // If we're not in edit mode, save the avatar immediately
     if (!isEditing && currentUser) {
       const updatedUser = {
         ...currentUser,
@@ -151,7 +144,6 @@ const Settings = () => {
   const handleOnlineStatusChange = (status: boolean) => {
     setIsOnline(status);
     
-    // If we're not in edit mode, save the status immediately
     if (!isEditing && currentUser) {
       const updatedUser = {
         ...currentUser,
@@ -164,6 +156,17 @@ const Settings = () => {
         description: status ? "Other users can see you" : "You're now invisible to other users",
       });
     }
+  };
+
+  const handleDeleteConfirmation = () => {
+    setShowDeleteConfirmDialog(false);
+    setShowDeleteFinalConfirm(true);
+  };
+
+  const handleFinalDelete = () => {
+    setIsLoggedIn(false);
+    setCurrentUser(null);
+    navigate('/');
   };
 
   return (
@@ -253,7 +256,7 @@ const Settings = () => {
                       id="username" 
                       value={username} 
                       onChange={(e) => setUsername(e.target.value)}
-                      disabled={true} // Username can't be changed
+                      disabled={true}
                       className="max-w-md"
                     />
                   </div>
@@ -411,12 +414,14 @@ const Settings = () => {
                     Delete Account
                   </Button>
                   
-                  <Button 
-                    onClick={handleStartChatting}
-                    className="bg-orange-400 hover:bg-orange-500"
-                  >
-                    Start Chatting
-                  </Button>
+                  <div className="mt-6">
+                    <Button 
+                      onClick={handleStartChatting}
+                      className="w-full bg-orange-400 hover:bg-orange-500"
+                    >
+                      Start Chatting
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -425,17 +430,63 @@ const Settings = () => {
           <TabsContent value="membership">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-6">
-                <h2 className="text-xl font-semibold mb-4">VIP Membership</h2>
-                <p className="text-gray-500">
-                  You are currently on a VIP membership plan. Your benefits include:
-                </p>
-                <ul className="list-disc list-inside mt-4 space-y-2 text-gray-700">
-                  <li>Unlimited messaging</li>
-                  <li>Advanced profile customization</li>
-                  <li>Priority support</li>
-                  <li>No advertisements</li>
-                  <li>Access to exclusive features</li>
-                </ul>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold">VIP Membership</h2>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-amber-200 to-amber-400 text-amber-800">
+                    <Crown className="h-4 w-4 mr-1" />
+                    Active
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-600">Start Date</p>
+                    <p className="text-lg font-medium">
+                      {membershipStartDate.toLocaleDateString('en-GB')}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-600">Expiry Date</p>
+                    <p className="text-lg font-medium">
+                      {membershipEndDate.toLocaleDateString('en-GB')}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">VIP Benefits</h3>
+                  <ul className="space-y-3">
+                    <li className="flex items-center text-sm">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
+                      Unlimited messaging with all users
+                    </li>
+                    <li className="flex items-center text-sm">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
+                      Advanced profile customization
+                    </li>
+                    <li className="flex items-center text-sm">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
+                      Priority support access
+                    </li>
+                    <li className="flex items-center text-sm">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
+                      Ad-free experience
+                    </li>
+                    <li className="flex items-center text-sm">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
+                      Exclusive features and updates
+                    </li>
+                  </ul>
+                </div>
+                
+                <div className="mt-6">
+                  <Button 
+                    onClick={handleStartChatting}
+                    className="w-full bg-orange-400 hover:bg-orange-500"
+                  >
+                    Start Chatting
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -473,7 +524,6 @@ const Settings = () => {
         </div>
       </footer>
       
-      {/* Avatar Selection Popup */}
       <AvatarSelectPopup
         open={showAvatarPopup}
         onOpenChange={setShowAvatarPopup}
@@ -481,28 +531,67 @@ const Settings = () => {
         onAvatarSelect={handleAvatarSelect}
       />
       
-      {/* Change Email Dialog */}
       <ChangeEmailDialog
         open={showChangeEmailDialog}
         onOpenChange={setShowChangeEmailDialog}
         currentEmail={email}
       />
       
-      {/* Delete Account Confirmation */}
-      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <Dialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Account</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete your account? This action cannot be undone.
+              Please confirm your credentials to proceed.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Email or Nickname</Label>
+              <Input
+                value={deleteConfirmation.email}
+                onChange={(e) => setDeleteConfirmation(prev => ({ ...prev, email: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Password</Label>
+              <Input
+                type="password"
+                value={deleteConfirmation.password}
+                onChange={(e) => setDeleteConfirmation(prev => ({ ...prev, password: e.target.value }))}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteConfirmDialog(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteAccount}>
-              Delete Account
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteConfirmation}
+              disabled={!deleteConfirmation.email || !deleteConfirmation.password}
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={showDeleteFinalConfirm} onOpenChange={setShowDeleteFinalConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Email Confirmation Required</DialogTitle>
+            <DialogDescription>
+              We've sent a confirmation link to your email address. Please check your inbox and follow the link to complete the account deletion process.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteFinalConfirm(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

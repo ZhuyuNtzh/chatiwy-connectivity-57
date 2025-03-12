@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
@@ -30,7 +29,6 @@ const Header = () => {
 
   const showBackButton = location.pathname !== '/' && location.pathname !== '/user-selection';
   const showUserControls = currentUser && location.pathname !== '/';
-  // Hide inbox and history buttons on specific pages
   const hideExtraButtons = location.pathname === '/profile-setup' || 
                           location.pathname === '/login' || 
                           location.pathname === '/register' ||
@@ -54,7 +52,7 @@ const Header = () => {
               <ChevronLeft className="h-5 w-5" />
             </Button>
           )}
-          <Link to="/" className="text-xl font-semibold flex items-center">
+          <Link to="/" className="text-xl font-semibold hidden md:flex items-center">
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
               Chatwii
             </span>
@@ -68,7 +66,7 @@ const Header = () => {
                 {currentUser.username}
               </span>
               {userRole === 'vip' && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-accent/20 text-accent">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gradient-to-r from-amber-200 to-amber-400 text-amber-800">
                   VIP
                 </span>
               )}
@@ -110,29 +108,15 @@ const Header = () => {
             </Button>
             
             {!hideExtraButtons && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs flex items-center gap-1 bg-gray-100/10"
-                >
-                  <img 
-                    src="/lovable-uploads/e3b5491b-50db-4077-a99f-3de3837ccad6.png" 
-                    alt="Inbox" 
-                    className="h-4 w-4" 
-                  />
-                  Inbox
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs flex items-center gap-1 bg-gray-100/10"
-                  onClick={() => navigate('/chat-history')}
-                >
-                  <History className="h-4 w-4" />
-                  History
-                </Button>
-              </>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs flex items-center gap-1 bg-gray-100/10"
+                onClick={() => navigate('/chat-history')}
+              >
+                <History className="h-4 w-4" />
+                <span className="hidden md:inline">History</span>
+              </Button>
             )}
           </div>
         ) : (
