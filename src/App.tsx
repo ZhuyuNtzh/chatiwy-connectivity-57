@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -11,7 +12,7 @@ import ChatInterface from './pages/ChatInterface';
 import ChatHistory from './pages/ChatHistory';
 import NotFound from './pages/NotFound';
 import { Toaster } from '@/components/ui/toaster';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import VipRegister from './pages/VipRegister';
 import Feedback from './pages/Feedback';
 
