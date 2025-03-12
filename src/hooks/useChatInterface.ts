@@ -71,7 +71,7 @@ export const useChatInterface = (mockUsers: User[]) => {
   // Connect to SignalR - using proper type handling
   useSignalRConnection(currentUser, setConnectedUsersCount);
   
-  // Check if user is logged in on initial load
+  // Check if user is logged in on initial load and handle VIP redirection
   useEffect(() => {
     // First check session storage for role information
     const storedRole = sessionStorage.getItem('userRole');
@@ -79,11 +79,21 @@ export const useChatInterface = (mockUsers: User[]) => {
     
     if (!currentUser && sessionStorage.getItem('isLoggedIn') !== 'true') {
       // Not logged in at all, redirect to login
-      navigate('/');
+      console.log("Not logged in, redirecting to login page");
+      navigate('/', { replace: true });
     } else {
       // User is logged in
       if (currentUser) {
         sessionStorage.setItem('isLoggedIn', 'true');
+        
+        // Add more explicit logging to track the decision flow
+        console.log("Checking VIP status:", {
+          userRoleFromContext: userRole,
+          storedRole,
+          currentUserRole: currentUser.role,
+          allowVIPChatAccess,
+          currentPath: window.location.pathname
+        });
         
         // Only redirect VIP users if they haven't explicitly chosen to chat
         if ((userRole === 'vip' || storedRole === 'vip' || currentUser.role === 'vip') && 
@@ -95,6 +105,7 @@ export const useChatInterface = (mockUsers: User[]) => {
         
         // Clear the temporary flag once used
         if (allowVIPChatAccess === 'true') {
+          console.log("Clearing allowVIPChatAccess flag");
           sessionStorage.removeItem('allowVIPChatAccess');
         }
       }

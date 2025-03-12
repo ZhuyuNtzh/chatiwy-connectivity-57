@@ -38,7 +38,11 @@ const LoginForm = ({ handleOpenForgotPassword }: LoginFormProps) => {
     );
     
     if (isVipAccount) {
-      // First set up user data in context before navigation
+      // First set up session storage values immediately to avoid race conditions
+      sessionStorage.setItem('isLoggedIn', 'true');
+      sessionStorage.setItem('userRole', 'vip');
+      
+      // Set up user data in context
       const vipUser = {
         username: 'VIPTester',
         role: 'vip' as const,
@@ -50,10 +54,6 @@ const LoginForm = ({ handleOpenForgotPassword }: LoginFormProps) => {
         avatar: 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&w=100&h=100',
         email: 'vip@chatwii.com',
       };
-      
-      // Set session storage first to avoid race conditions
-      sessionStorage.setItem('isLoggedIn', 'true');
-      sessionStorage.setItem('userRole', 'vip');
       
       // Now update context
       setCurrentUser(vipUser);
@@ -67,11 +67,11 @@ const LoginForm = ({ handleOpenForgotPassword }: LoginFormProps) => {
         description: "Welcome to Chatwii VIP!",
       });
       
-      // Complete the login process and navigate
+      // Complete the login process and navigate with replace to clear history
       setTimeout(() => {
         setIsLoading(false);
-        navigate('/settings', { replace: true }); // Using replace to clear history
-      }, 100);
+        navigate('/settings', { replace: true }); 
+      }, 500); // Increased timeout to ensure context updates properly
       
       return;
     }
