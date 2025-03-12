@@ -1,28 +1,61 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '@/services/signalRService';
 import type { ChatMessage } from '@/services/signalR/types';
+import { useMessages } from './useMessages';
+import { useMediaHandling } from './useMediaHandling';
+import { useUserInteractions } from './useUserInteractions';
 import { toast } from "sonner";
 
 export const useChat = (userId: number, userRole: string) => {
-  const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [showOptions, setShowOptions] = useState(false);
-  const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
-  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
-  const [selectedReportReason, setSelectedReportReason] = useState('');
-  const [otherReportReason, setOtherReportReason] = useState('');
-  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [blockedUsers, setBlockedUsers] = useState<number[]>([]);
-  const [isBlockedUsersDialogOpen, setIsBlockedUsersDialogOpen] = useState(false);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const {
+    messages,
+    setMessages,
+    message,
+    setMessage,
+    maxChars,
+    handleSendMessage,
+    handleKeyDown,
+    handleAddEmoji
+  } = useMessages(userId, userRole);
+
+  const {
+    isImageDialogOpen,
+    setIsImageDialogOpen,
+    imagePreview,
+    isRecording,
+    audioPreview,
+    fileInputRef,
+    handleImageClick,
+    handleImageChange,
+    handleSendImage,
+    handleVoiceMessageClick
+  } = useMediaHandling(userId);
+
+  const {
+    showOptions,
+    setShowOptions,
+    isBlockDialogOpen,
+    setIsBlockDialogOpen,
+    isReportDialogOpen,
+    setIsReportDialogOpen,
+    selectedReportReason,
+    setSelectedReportReason,
+    otherReportReason,
+    setOtherReportReason,
+    blockedUsers,
+    isBlockedUsersDialogOpen,
+    setIsBlockedUsersDialogOpen,
+    handleBlockUser,
+    confirmBlockUser,
+    handleUnblockUser,
+    handleReportUser,
+    handleSubmitReport
+  } = useUserInteractions(userId);
+
   const [isTyping, setIsTyping] = useState(false);
   const [isTranslationEnabled, setIsTranslationEnabled] = useState(false);
   const [isMediaGalleryOpen, setIsMediaGalleryOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioPreview, setAudioPreview] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [mediaGalleryItems, setMediaGalleryItems] = useState<{
     type: 'image' | 'voice' | 'link';
@@ -30,13 +63,7 @@ export const useChat = (userId: number, userRole: string) => {
     timestamp: Date;
   }[]>([]);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const maxChars = userRole === 'vip' ? 200 : 140;
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Auto-scroll state with a ref to track whether we need to scroll
   const [autoScrollToBottom, setAutoScrollToBottom] = useState(false);
   const isAtBottomRef = useRef(true);
   
@@ -131,7 +158,7 @@ export const useChat = (userId: number, userRole: string) => {
     
     // Check if this user is already blocked
     if (signalRService.isUserBlocked(userId)) {
-      setBlockedUsers(prev => [...prev, userId]);
+      // setBlockedUsers(prev => [...prev, userId]); // This line was moved to useUserInteractions
     }
     
     return () => {
@@ -165,208 +192,6 @@ export const useChat = (userId: number, userRole: string) => {
     }
   };
   
-  const handleSendMessage = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    
-    if (!message.trim()) return;
-    
-    if (signalRService.isUserBlocked(userId)) {
-      toast.error(`You have blocked this user and cannot send messages.`);
-      return;
-    }
-    
-    signalRService.sendMessage(userId, message.trim());
-    setMessage('');
-    
-    // Set auto-scroll to true when sending a message
-    setAutoScrollToBottom(true);
-    setTimeout(() => setAutoScrollToBottom(false), 300);
-  };
-  
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    } else if (userRole === 'vip') {
-      // Send typing indication for VIP users
-      signalRService.sendTypingIndication(userId);
-    }
-  };
-  
-  const handleAddEmoji = (emoji: string) => {
-    if (message.length + emoji.length <= maxChars) {
-      setMessage(prev => prev + emoji);
-    }
-  };
-  
-  const handleBlockUser = () => {
-    setIsBlockDialogOpen(true);
-    setShowOptions(false);
-  };
-  
-  const confirmBlockUser = () => {
-    signalRService.blockUser(userId);
-    setBlockedUsers(prev => [...prev, userId]);
-    toast.success(`User has been blocked.`);
-    setIsBlockDialogOpen(false);
-  };
-  
-  const handleUnblockUser = (userId: number, username: string) => {
-    signalRService.unblockUser(userId);
-    setBlockedUsers(prev => prev.filter(id => id !== userId));
-    toast.success(`${username} has been unblocked.`);
-  };
-  
-  const handleReportUser = () => {
-    setIsReportDialogOpen(true);
-    setShowOptions(false);
-  };
-  
-  const handleSubmitReport = () => {
-    if (selectedReportReason === 'other' && !otherReportReason.trim()) {
-      toast.error('Please provide details for your report');
-      return;
-    }
-    
-    const reportReasons = [
-      { id: 'underage', label: 'Underage User: The user appears to be below the required age (18+).' },
-      { id: 'harassment', label: 'Harassment/Hate Speech: The user is engaging in abusive, discriminatory, or hateful language.' },
-      { id: 'illegal', label: 'Illegal Activity: The user is discussing or promoting illegal actions.' },
-      { id: 'personal_info', label: 'Sharing Personal Information and nudity: The user is disclosing sensitive personal details or photos.' },
-      { id: 'other', label: 'Other' }
-    ];
-    
-    const reason = selectedReportReason === 'other' 
-      ? otherReportReason 
-      : reportReasons.find(r => r.id === selectedReportReason)?.label || '';
-    
-    console.log('Reporting user for', reason);
-    toast.success(`Report submitted successfully`);
-    setIsReportDialogOpen(false);
-    setSelectedReportReason('');
-    setOtherReportReason('');
-  };
-  
-  const handleImageClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-  
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    // Check file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
-    
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size exceeds 5MB limit');
-      return;
-    }
-    
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setImagePreview(event.target.result as string);
-        setIsImageDialogOpen(true);
-      }
-    };
-    reader.readAsDataURL(file);
-    
-    // Reset the input so the same file can be selected again
-    e.target.value = '';
-  };
-  
-  const handleSendImage = () => {
-    if (imagePreview) {
-      signalRService.sendImage(userId, imagePreview, true);
-      setIsImageDialogOpen(false);
-      setImagePreview(null);
-    }
-  };
-  
-  const handleVoiceMessageClick = async () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        startRecording(stream);
-      } catch (error) {
-        console.error('Error accessing microphone:', error);
-        toast.error('Could not access microphone. Please check permissions.');
-      }
-    }
-  };
-  
-  const startRecording = (stream: MediaStream) => {
-    const mediaRecorder = new MediaRecorder(stream);
-    mediaRecorderRef.current = mediaRecorder;
-    audioChunksRef.current = [];
-    
-    mediaRecorder.onstart = () => {
-      setIsRecording(true);
-    };
-    
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        audioChunksRef.current.push(event.data);
-      }
-    };
-    
-    mediaRecorder.onstop = () => {
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-      const audioUrl = URL.createObjectURL(audioBlob);
-      setAudioPreview(audioUrl);
-      setIsRecording(false);
-      
-      // No longer need this since we're sending automatically from MessageInput
-      // Send the voice message
-      // sendVoiceMessage(audioUrl);
-      
-      // Stop all tracks to release the microphone
-      stream.getTracks().forEach(track => track.stop());
-    };
-    
-    // Start recording
-    mediaRecorder.start();
-    
-    // Automatically stop recording after 60 seconds (for VIP) or 30 seconds (for regular)
-    const maxRecordingTime = userRole === 'vip' ? 60000 : 30000;
-    setTimeout(() => {
-      if (mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-      }
-    }, maxRecordingTime);
-  };
-  
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-    }
-  };
-  
-  const sendVoiceMessage = (audioUrl: string) => {
-    if (!audioUrl) return;
-    
-    // In a real app, you would upload the audio file to a server
-    // and then send a reference to it via SignalR
-    
-    signalRService.sendVoiceMessage(userId, audioUrl);
-    
-    // Set auto-scroll to true when sending a message
-    setAutoScrollToBottom(true);
-    setTimeout(() => setAutoScrollToBottom(false), 300);
-    
-    // Clear audio preview
-    setAudioPreview(null);
-  };
-  
   const toggleImageBlur = (messageId: string) => {
     setMessages(prev => prev.map(msg => 
       msg.id === messageId ? { ...msg, isBlurred: !msg.isBlurred } : msg
@@ -378,7 +203,6 @@ export const useChat = (userId: number, userRole: string) => {
   };
 
   const showBlockedUsersList = () => {
-    // Get the current blocked users from the service
     const blockedIds = signalRService.getBlockedUsers();
     setBlockedUsers(blockedIds);
     setIsBlockedUsersDialogOpen(true);
@@ -404,13 +228,11 @@ export const useChat = (userId: number, userRole: string) => {
   };
   
   const deleteConversation = () => {
-    // Show confirmation dialog instead of deleting immediately
     setIsDeleteDialogOpen(true);
     setShowOptions(false);
   };
   
   const confirmDeleteConversation = () => {
-    // Actually delete the conversation after confirmation
     setMessages([]);
     setMediaGalleryItems([]);
     toast.success('Conversation deleted');
@@ -421,7 +243,6 @@ export const useChat = (userId: number, userRole: string) => {
     setIsDeleteDialogOpen(false);
   };
   
-  // New function to handle replying to a message
   const replyToMessage = (messageId: string, messageText: string) => {
     if (userRole !== 'vip') {
       toast.error('Replying to messages is a VIP feature');
@@ -460,7 +281,6 @@ export const useChat = (userId: number, userRole: string) => {
     setTimeout(() => setAutoScrollToBottom(false), 300);
   };
   
-  // New function to unsend a message
   const unsendMessage = (messageId: string) => {
     if (userRole !== 'vip') {
       toast.error('Unsending messages is a VIP feature');
@@ -555,7 +375,6 @@ export const useChat = (userId: number, userRole: string) => {
     handleImageChange,
     handleSendImage,
     handleVoiceMessageClick,
-    sendVoiceMessage,
     toggleImageBlur,
     openImagePreview,
     showBlockedUsersList,
