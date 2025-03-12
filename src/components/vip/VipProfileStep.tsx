@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -6,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import axios from 'axios';
-import { Checkbox } from '@/components/ui/checkbox';
 import GenderSelector from './profile/GenderSelector';
 import AvatarSelector from './profile/AvatarSelector';
 
@@ -37,14 +37,6 @@ const popularInterests = [
   'Learning Languages', 'Photography', 'Cooking', 'Fitness'
 ];
 
-const avatarOptions = [
-  { id: 'avatar1', src: 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&w=100&h=100', alt: 'Avatar 1' },
-  { id: 'avatar2', src: 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&w=100&h=100', alt: 'Avatar 2' },
-  { id: 'avatar3', src: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=100&h=100', alt: 'Avatar 3' },
-  { id: 'avatar4', src: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=100&h=100', alt: 'Avatar 4' },
-  { id: 'avatar5', src: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?auto=format&fit=crop&w=100&h=100', alt: 'Avatar 5' },
-];
-
 const ageOptions = Array.from({ length: 63 }, (_, i) => String(18 + i));
 
 const VipProfileStep = ({
@@ -55,6 +47,7 @@ const VipProfileStep = ({
 }: VipProfileStepProps) => {
   const [countries, setCountries] = useState<Country[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const MAX_INTERESTS = 4;
   
   useEffect(() => {
     const fetchCountries = async () => {
@@ -81,9 +74,17 @@ const VipProfileStep = ({
   
   const handleInterestChange = (interest: string, checked: boolean) => {
     if (checked) {
-      updateFormData({ 
-        interests: [...formData.interests, interest] 
-      });
+      if (formData.interests.length < MAX_INTERESTS) {
+        updateFormData({ 
+          interests: [...formData.interests, interest] 
+        });
+      } else {
+        toast({
+          title: "Maximum interests reached",
+          description: `You can select up to ${MAX_INTERESTS} interests`,
+          variant: "destructive"
+        });
+      }
     } else {
       updateFormData({ 
         interests: formData.interests.filter(i => i !== interest) 
@@ -191,7 +192,7 @@ const VipProfileStep = ({
             <div className="flex justify-between items-center">
               <Label>Interests</Label>
               <span className="text-sm text-muted-foreground">
-                {formData.interests.length} selected
+                {formData.interests.length}/{MAX_INTERESTS}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -204,6 +205,10 @@ const VipProfileStep = ({
                       handleInterestChange(interest, checked as boolean)
                     }
                     className="data-[state=checked]:bg-secondary data-[state=checked]:text-secondary-foreground"
+                    disabled={
+                      !formData.interests.includes(interest) && 
+                      formData.interests.length >= MAX_INTERESTS
+                    }
                   />
                   <Label
                     htmlFor={`interest-${interest}`}

@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Eye, EyeOff, Mail, User, Lock } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import NicknameInput from '@/components/profile/NicknameInput';
 
 interface VipSignupFormData {
   email: string;
@@ -102,21 +103,11 @@ const VipSignupStep = ({
             </div>
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="nickname">Nickname</Label>
-            <div className="relative">
-              <Input
-                id="nickname"
-                type="text"
-                placeholder="Choose a nickname"
-                value={formData.nickname}
-                onChange={(e) => updateFormData({ nickname: e.target.value })}
-                className="pl-9"
-                required
-              />
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            </div>
-          </div>
+          <NicknameInput
+            nickname={formData.nickname}
+            onChange={(value) => updateFormData({ nickname: value })}
+            isVip={true}
+          />
           
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>

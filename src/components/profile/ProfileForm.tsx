@@ -2,11 +2,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import InterestsSelector from './InterestsSelector';
 import CountryDisplay from './CountryDisplay';
+import NicknameInput from './NicknameInput';
 import { UserProfile, UserRole } from '@/contexts/UserContext';
 
 interface ProfileFormProps {
@@ -58,7 +58,7 @@ const ProfileForm = ({
       location,
       isOnline: true,
       lastActive: new Date(),
-      role: userRole as UserRole, // Type assertion to fix the error
+      role: userRole as UserRole,
       isVip: userRole === 'vip',
       isAdmin: userRole === 'admin',
       joinedAt: new Date(),
@@ -75,16 +75,12 @@ const ProfileForm = ({
   return (
     <form onSubmit={handleSubmit} className="bg-gradient-to-br from-[#EDE8D0] to-[#EDE8D0]/90 rounded-lg p-4 animate-fade-in">
       <div className="space-y-3">
-        <div className="space-y-1">
-          <Label htmlFor="nickname" className="text-gray-800">Nickname</Label>
-          <Input
-            id="nickname"
-            value={nickname}
-            readOnly
-            className="glass-input bg-gray-100 text-gray-800 placeholder:text-gray-500"
-            required
-          />
-        </div>
+        <NicknameInput 
+          nickname={nickname}
+          onChange={() => {}} // Read-only in this context
+          isVip={userRole === 'vip'}
+          readOnly={true}
+        />
 
         <CountryDisplay 
           country={country}

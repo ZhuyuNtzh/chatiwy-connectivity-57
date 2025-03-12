@@ -1,7 +1,6 @@
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { User2, Users } from 'lucide-react';
 
 interface GenderSelectorProps {
   value: string;
@@ -15,20 +14,18 @@ const GenderSelector = ({ value, onChange }: GenderSelectorProps) => {
       <div className="flex gap-4 justify-center">
         <Button
           variant={value === 'Male' ? 'default' : 'outline'}
-          className="flex-1 h-auto py-6 flex flex-col items-center gap-2"
+          className="flex-1 h-auto py-3"
           onClick={() => onChange('Male')}
         >
-          <User2 size={36} />
-          <span>Male</span>
+          Male
         </Button>
         
         <Button
           variant={value === 'Female' ? 'default' : 'outline'}
-          className="flex-1 h-auto py-6 flex flex-col items-center gap-2"
+          className="flex-1 h-auto py-3"
           onClick={() => onChange('Female')}
         >
-          <Users size={36} />
-          <span>Female</span>
+          Female
         </Button>
       </div>
     </div>

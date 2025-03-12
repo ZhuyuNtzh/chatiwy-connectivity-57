@@ -18,7 +18,7 @@ const PLAN_NAMES = {
 const PaymentSummary = ({ plan }: PaymentSummaryProps) => {
   const price = PLAN_PRICES[plan];
   const planName = PLAN_NAMES[plan];
-  const monthly = plan === 'monthly' ? price : (price / (plan === '6months' ? 6 : 12)).toFixed(2);
+  const monthlyRate = plan === 'monthly' ? price : (price / (plan === '6months' ? 6 : 12)).toFixed(2);
 
   return (
     <div className="bg-muted/20 p-4 rounded-lg space-y-2">
@@ -28,7 +28,7 @@ const PaymentSummary = ({ plan }: PaymentSummaryProps) => {
       </div>
       <div className="flex justify-between text-sm text-muted-foreground">
         <span>Monthly Rate</span>
-        <span>${monthly}/month</span>
+        <span>${monthlyRate}/month</span>
       </div>
       <div className="border-t pt-2 mt-2 flex justify-between font-medium">
         <span>Total</span>
