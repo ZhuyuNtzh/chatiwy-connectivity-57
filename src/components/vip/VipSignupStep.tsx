@@ -8,15 +8,17 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Eye, EyeOff, Mail, User, Lock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
+interface VipSignupFormData {
+  email: string;
+  nickname: string;
+  password: string;
+  confirmPassword: string;
+  acceptTerms: boolean;
+}
+
 interface VipSignupStepProps {
-  formData: {
-    email: string;
-    nickname: string;
-    password: string;
-    confirmPassword: string;
-    acceptTerms: boolean;
-  };
-  updateFormData: (data: Partial<typeof formData>) => void;
+  formData: VipSignupFormData;
+  updateFormData: (data: Partial<VipSignupFormData>) => void;
   onNext: () => void;
 }
 

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -6,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, CreditCard, Paypal, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, CreditCard, WalletCards, ShieldCheck } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface VipPaymentStepProps {
@@ -23,7 +22,6 @@ const VipPaymentStep = ({
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypal'>('card');
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // Card form state
   const [cardDetails, setCardDetails] = useState({
     cardNumber: '',
     cardName: '',
@@ -35,7 +33,6 @@ const VipPaymentStep = ({
   const handleCardChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
-    // Format card number with spaces
     if (name === 'cardNumber') {
       const formattedValue = value
         .replace(/\s/g, '')
@@ -48,7 +45,6 @@ const VipPaymentStep = ({
       return;
     }
     
-    // Format CVC
     if (name === 'cvc') {
       const formattedValue = value.replace(/\D/g, '').slice(0, 3);
       setCardDetails({ ...cardDetails, [name]: formattedValue });
@@ -70,7 +66,6 @@ const VipPaymentStep = ({
     e.preventDefault();
     
     if (paymentMethod === 'card') {
-      // Validate card details
       if (!cardDetails.cardNumber || !cardDetails.cardName || !cardDetails.expMonth || 
           !cardDetails.expYear || !cardDetails.cvc) {
         toast({
@@ -91,10 +86,8 @@ const VipPaymentStep = ({
       }
     }
     
-    // Process payment
     setIsProcessing(true);
     
-    // Simulate payment processing
     setTimeout(() => {
       setIsProcessing(false);
       onComplete();
@@ -125,7 +118,7 @@ const VipPaymentStep = ({
                   <span>Credit Card</span>
                 </TabsTrigger>
                 <TabsTrigger value="paypal" className="flex items-center gap-2">
-                  <Paypal size={16} />
+                  <WalletCards size={16} />
                   <span>PayPal</span>
                 </TabsTrigger>
               </TabsList>
@@ -210,7 +203,7 @@ const VipPaymentStep = ({
               
               <TabsContent value="paypal" className="space-y-4 mt-4">
                 <div className="text-center p-8 border border-dashed rounded-lg">
-                  <Paypal size={48} className="mx-auto mb-4 text-blue-600" />
+                  <WalletCards size={48} className="mx-auto mb-4 text-blue-600" />
                   <p className="text-sm text-muted-foreground">
                     You'll be redirected to PayPal to complete your payment.
                   </p>

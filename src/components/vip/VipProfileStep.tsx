@@ -1,23 +1,24 @@
-
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Male, Female, ChevronLeft, ChevronRight } from 'lucide-react';
+import { User2, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import axios from 'axios';
 import { Checkbox } from '@/components/ui/checkbox';
 
+interface VipProfileFormData {
+  gender: string;
+  interests: string[];
+  country: string;
+  age: string;
+}
+
 interface VipProfileStepProps {
-  formData: {
-    gender: string;
-    interests: string[];
-    country: string;
-    age: string;
-  };
-  updateFormData: (data: Partial<typeof formData>) => void;
+  formData: VipProfileFormData;
+  updateFormData: (data: Partial<VipProfileFormData>) => void;
   onNext: () => void;
   onBack: () => void;
 }
@@ -45,12 +46,10 @@ const VipProfileStep = ({
   const [countries, setCountries] = useState<Country[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Fetch countries
   useEffect(() => {
     const fetchCountries = async () => {
       try {
         const response = await axios.get('https://restcountries.com/v3.1/all?fields=name,flags,cca2');
-        // Sort countries by name
         const sortedCountries = response.data.sort((a: Country, b: Country) => 
           a.name.common.localeCompare(b.name.common)
         );
@@ -85,7 +84,6 @@ const VipProfileStep = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Basic validation
     if (!formData.gender) {
       toast({
         title: "Missing gender",
@@ -137,7 +135,7 @@ const VipProfileStep = ({
                       : 'bg-background border-2 border-muted hover:bg-muted/20'
                   }`}
                 >
-                  <Male size={36} className={formData.gender === 'Male' ? 'text-primary' : 'text-foreground'} />
+                  <User2 size={36} className={formData.gender === 'Male' ? 'text-primary' : 'text-foreground'} />
                   <span className="mt-2 font-medium">Male</span>
                 </Label>
               </div>
@@ -152,7 +150,7 @@ const VipProfileStep = ({
                       : 'bg-background border-2 border-muted hover:bg-muted/20'
                   }`}
                 >
-                  <Female size={36} className={formData.gender === 'Female' ? 'text-primary' : 'text-foreground'} />
+                  <Users size={36} className={formData.gender === 'Female' ? 'text-primary' : 'text-foreground'} />
                   <span className="mt-2 font-medium">Female</span>
                 </Label>
               </div>
