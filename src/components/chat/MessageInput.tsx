@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Send, Image, Mic, Smile, StopCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ interface MessageInputProps {
   isUserBlocked: boolean;
   isVipUser: boolean;
   fileInputRef: React.RefObject<HTMLInputElement>;
+  handleVoiceMessageClick?: () => void;
 }
 
 const commonEmojis = [
@@ -40,14 +41,22 @@ const MessageInput: React.FC<MessageInputProps> = ({
   handleImageClick,
   isUserBlocked,
   isVipUser,
-  fileInputRef
+  fileInputRef,
+  handleVoiceMessageClick
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  const recordingIntervalRef = useRef<number | null>(null);
   
-  let recordingInterval: number | null = null;
+  useEffect(() => {
+    return () => {
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+      }
+    };
+  }, []);
   
   const startRecording = async () => {
     if (!isVipUser) {
@@ -74,20 +83,22 @@ const MessageInput: React.FC<MessageInputProps> = ({
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
         const audioUrl = URL.createObjectURL(audioBlob);
         
-        // Send the voice message
-        // This would integrate with your signalR service
-        console.log('Voice message recorded:', audioUrl);
-        toast.success("Voice message sent");
+        // Send the voice message via the provided handler
+        if (handleVoiceMessageClick) {
+          console.log('Voice message recorded:', audioUrl);
+          // Just notify the parent that recording is done
+          handleVoiceMessageClick();
+        }
         
         // Clean up
         stream.getTracks().forEach(track => track.stop());
-        if (recordingInterval) clearInterval(recordingInterval);
+        if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
       });
       
       recorder.start();
       
       // Start a timer to show recording duration
-      recordingInterval = window.setInterval(() => {
+      recordingIntervalRef.current = window.setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
       
@@ -103,8 +114,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
     
     setIsRecording(false);
-    if (recordingInterval) {
-      clearInterval(recordingInterval);
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
     }
   };
   

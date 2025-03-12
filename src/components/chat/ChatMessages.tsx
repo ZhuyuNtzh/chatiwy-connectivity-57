@@ -108,7 +108,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
         
         {/* Typing indicator for VIP users */}
         {isVip && isTyping && (
-          <div className="flex justify-start">
+          <div className="flex justify-start mb-4">
             <div className="max-w-[80%] rounded-lg p-3 bg-gray-100 dark:bg-gray-700">
               <div className="flex space-x-1">
                 <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"></div>

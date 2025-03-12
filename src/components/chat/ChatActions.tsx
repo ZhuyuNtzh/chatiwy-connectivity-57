@@ -18,7 +18,19 @@ interface ChatActionsProps {
 
 const ChatActions: React.FC<ChatActionsProps> = (props) => {
   return (
-    <MessageInput {...props} />
+    <MessageInput 
+      message={props.message}
+      setMessage={props.setMessage}
+      maxChars={props.maxChars}
+      handleSendMessage={props.handleSendMessage}
+      handleKeyDown={props.handleKeyDown}
+      handleAddEmoji={props.handleAddEmoji}
+      handleImageClick={props.handleImageClick}
+      isUserBlocked={props.isUserBlocked}
+      isVipUser={props.isVipUser}
+      fileInputRef={props.fileInputRef}
+      handleVoiceMessageClick={props.handleVoiceMessageClick}
+    />
   );
 };
 

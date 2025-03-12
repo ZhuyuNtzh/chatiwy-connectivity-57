@@ -69,10 +69,10 @@ const MessageItem: React.FC<MessageItemProps> = ({
   };
   
   return (
-    <div className="relative group">
+    <div className="relative group mb-4">
       {/* Reply reference */}
       {message.replyToId && (
-        <div className={`mb-1 ml-6 p-1 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg max-w-[80%] ${message.sender === 'You' ? 'ml-auto mr-6' : ''}`}>
+        <div className={`mb-1 p-1 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg max-w-[80%] ${message.sender === 'You' ? 'ml-auto mr-6' : 'ml-6'}`}>
           <div className="flex items-center">
             <MessageSquare className="h-3 w-3 mr-1 text-gray-500 dark:text-gray-400" />
             <span className="text-gray-500 dark:text-gray-400">Replying to</span>
@@ -92,6 +92,13 @@ const MessageItem: React.FC<MessageItemProps> = ({
               : 'bg-gray-100 dark:bg-gray-700'
           }`}
         >
+          {/* Sender name for messages not from current user */}
+          {message.sender !== 'You' && (
+            <div className="font-semibold text-sm mb-1 text-gray-700 dark:text-gray-300">
+              {message.sender}
+            </div>
+          )}
+          
           {message.isImage ? (
             <div className="relative">
               <img 
@@ -142,9 +149,9 @@ const MessageItem: React.FC<MessageItemProps> = ({
         </div>
       )}
       
-      {/* VIP Actions Menu */}
+      {/* VIP Actions Menu - Positioned closer to message */}
       {showMessageStatus && (
-        <div className={`absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity ${message.sender === 'You' ? 'left-0 -translate-x-full' : 'right-0 translate-x-full'}`}>
+        <div className={`absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity ${message.sender === 'You' ? 'left-0 -translate-x-full -ml-2' : 'right-0 translate-x-full mr-2'}`}>
           <div className="flex gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-1">
             <Popover open={showReactionPicker} onOpenChange={setShowReactionPicker}>
               <PopoverTrigger asChild>
