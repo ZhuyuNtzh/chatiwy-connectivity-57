@@ -73,15 +73,23 @@ export const useChatInterface = (mockUsers: User[]) => {
   
   // Check if user is logged in on initial load
   useEffect(() => {
+    // First check session storage for role information
+    const storedRole = sessionStorage.getItem('userRole');
+    
     if (!currentUser && sessionStorage.getItem('isLoggedIn') !== 'true') {
+      // Not logged in at all, redirect to login
       navigate('/');
-    } else if (currentUser) {
-      sessionStorage.setItem('isLoggedIn', 'true');
-      
-      // Redirect VIP users to settings if they somehow end up on chat interface
-      if (userRole === 'vip' && window.location.pathname === '/chat-interface') {
-        console.log("VIP user on chat interface, redirecting to settings");
-        navigate('/settings');
+    } else {
+      // User is logged in
+      if (currentUser) {
+        sessionStorage.setItem('isLoggedIn', 'true');
+        
+        // Double safety check - if user is VIP but on chat interface, redirect to settings
+        if ((userRole === 'vip' || storedRole === 'vip' || currentUser.role === 'vip') && 
+            window.location.pathname === '/chat-interface') {
+          console.log("VIP user detected on chat interface, redirecting to settings");
+          navigate('/settings', { replace: true });
+        }
       }
     }
   }, [currentUser, navigate, setIsLoggedIn, userRole]);

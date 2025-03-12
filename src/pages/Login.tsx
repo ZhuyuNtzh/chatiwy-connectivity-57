@@ -40,10 +40,10 @@ const Login = () => {
     );
     
     if (isVipAccount) {
-      // Set up VIP user profile
-      setCurrentUser({
+      // First set up user data in context before navigation
+      const vipUser = {
         username: 'VIPTester',
-        role: 'vip',
+        role: 'vip' as const,
         isVip: true,
         gender: 'Female',
         age: 27,
@@ -51,21 +51,30 @@ const Login = () => {
         interests: ['Music', 'Travel', 'Technology', 'Photography'],
         avatar: 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&w=100&h=100',
         email: 'vip@chatwii.com',
-      });
+      };
+      
+      // Set session storage first to avoid race conditions
+      sessionStorage.setItem('isLoggedIn', 'true');
+      sessionStorage.setItem('userRole', 'vip');
+      
+      // Now update context
+      setCurrentUser(vipUser);
       setUserRole('vip');
       setIsLoggedIn(true);
+      
+      console.log("VIP login successful - redirecting to settings page");
       
       toast({
         title: "VIP Login successful",
         description: "Welcome to Chatwii VIP!",
       });
       
-      // Ensure VIP users are redirected to settings page
-      console.log("VIP user detected, redirecting to settings page");
+      // Complete the login process and navigate
       setTimeout(() => {
         setIsLoading(false);
-        navigate('/settings');
-      }, 500);
+        navigate('/settings', { replace: true }); // Using replace to clear history
+      }, 100);
+      
       return;
     }
     

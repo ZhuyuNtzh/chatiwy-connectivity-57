@@ -1,5 +1,6 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import Header from '../components/chat/Header';
@@ -32,7 +33,19 @@ const mockUsers = [
 
 const ChatInterface = () => {
   const { isDarkMode, toggleDarkMode } = useTheme();
-  const { currentUser } = useUser();
+  const { currentUser, userRole } = useUser();
+  const navigate = useNavigate();
+  
+  // Initial VIP check on component mount
+  useEffect(() => {
+    const storedRole = sessionStorage.getItem('userRole');
+    
+    if (userRole === 'vip' || storedRole === 'vip' || (currentUser && currentUser.role === 'vip')) {
+      console.log("VIP user detected in ChatInterface, redirecting to settings");
+      navigate('/settings', { replace: true });
+    }
+  }, [currentUser, userRole, navigate]);
+  
   const {
     isSidebarOpen,
     sidebarRef,
