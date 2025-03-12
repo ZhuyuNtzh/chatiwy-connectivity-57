@@ -22,8 +22,8 @@ const UserInfo: React.FC<UserInfoProps> = ({ user, countryFlags }) => {
       </div>
       <div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center">
-            <h3 className="font-medium">{user.username}</h3>
+          <div className={`flex items-center ${user.isVip ? 'px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200' : ''}`}>
+            <h3 className={`font-medium ${user.isVip ? 'text-amber-800' : ''}`}>{user.username}</h3>
             {user.isVip && (
               <span className="ml-1.5 inline-flex items-center">
                 <Crown className="h-4 w-4 text-amber-400" />
@@ -48,7 +48,7 @@ const UserInfo: React.FC<UserInfoProps> = ({ user, countryFlags }) => {
           {user.interests.map((interest, idx) => (
             <span 
               key={idx} 
-              className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
+              className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${user.isVip ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'}`}
             >
               {interest}
             </span>

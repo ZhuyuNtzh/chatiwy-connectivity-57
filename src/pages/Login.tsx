@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -28,11 +27,18 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     
-    // VIP test account
-    if (
-      (identifier === 'vip@chatwii.com' || identifier === 'VIPTester') && 
-      password === 'viptest123'
-    ) {
+    // VIP test accounts
+    const vipAccounts = [
+      { identifier: 'vip@chatwii.com', password: 'viptest123', username: 'VIPTester' },
+      { identifier: 'VIPTester', password: 'viptest123', email: 'vip@chatwii.com' }
+    ];
+    
+    // Check if this is a VIP account
+    const isVipAccount = vipAccounts.some(
+      account => (account.identifier === identifier || account.email === identifier) && account.password === password
+    );
+    
+    if (isVipAccount) {
       setCurrentUser({
         username: 'VIPTester',
         role: 'vip',
@@ -40,7 +46,7 @@ const Login = () => {
         gender: 'Female',
         age: 27,
         location: 'United States',
-        interests: ['orange', 'lime', 'gold'],
+        interests: ['Music', 'Travel', 'Technology', 'Photography'],
         avatar: 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&w=100&h=100',
         email: 'vip@chatwii.com',
       });
@@ -56,30 +62,30 @@ const Login = () => {
       return;
     }
     
-    // Mock authentication - in a real app, you'd call an API
+    // Mock authentication - for standard users
     setTimeout(() => {
       setIsLoading(false);
       
-      // For demo purposes, let's assume login successful
+      // For demo purposes, regular users get standard accounts
       setCurrentUser({
         username: identifier.includes('@') ? identifier.split('@')[0] : identifier,
-        role: 'vip',
-        isVip: true,
-        gender: 'Female',
-        age: 27,
+        role: 'standard',
+        isVip: false,
+        gender: 'Male',
+        age: 25,
         location: 'United States',
-        interests: ['orange', 'lime', 'gold'],
+        interests: ['Gaming', 'Music', 'Technology'],
         email: identifier.includes('@') ? identifier : `${identifier}@example.com`,
       });
-      setUserRole('vip');
+      setUserRole('standard');
       setIsLoggedIn(true);
       
       toast({
         title: "Login successful",
-        description: "Welcome back to VIP",
+        description: "Welcome back to Chatwii",
       });
       
-      navigate('/settings');
+      navigate('/chat-interface');
     }, 1000);
   };
   
@@ -109,7 +115,7 @@ const Login = () => {
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
             <CardDescription className="text-center">
-              Enter your credentials to access your VIP account
+              Enter your credentials to access your account
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>

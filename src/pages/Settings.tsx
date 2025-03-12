@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -15,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { useUser } from '@/contexts/UserContext';
-import InterestsSelector from '@/components/vip/profile/InterestsSelector';
+import InterestsSelector from '@/components/profile/InterestsSelector';
 import AvatarSelectPopup from '@/components/vip/profile/AvatarSelectPopup';
 import ChangeEmailDialog from '@/components/vip/profile/ChangeEmailDialog';
 import axios from 'axios';
@@ -48,7 +47,33 @@ const Settings = () => {
   const membershipEndDate = new Date(membershipStartDate);
   membershipEndDate.setFullYear(membershipEndDate.getFullYear() + 1);
 
+  const formattedStartDate = membershipStartDate.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit'
+  });
+  
+  const formattedEndDate = membershipEndDate.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit'
+  });
+
   const ageOptions = Array.from({ length: 63 }, (_, i) => String(18 + i));
+
+  const vipBenefits = [
+    'Send unlimited photos',
+    'Send voice messages',
+    'Longer chat history',
+    'Customer Support',
+    'Unique avatar options',
+    'Appear at the top of the list',
+    'Ad-free',
+    'React, reply, edit, unsend messages',
+    'View message status',
+    'Special Badges',
+    'Control your online status'
+  ];
 
   useEffect(() => {
     if (!currentUser || !currentUser.isVip) {
@@ -112,7 +137,7 @@ const Settings = () => {
   };
 
   const handleDeleteAccount = () => {
-    setShowDeleteConfirm(true);
+    setShowDeleteConfirmDialog(true);
   };
 
   const handleAddInterest = () => {
@@ -160,14 +185,306 @@ const Settings = () => {
   };
 
   const handleDeleteConfirmation = () => {
-    setShowDeleteConfirmDialog(false);
-    setShowDeleteFinalConfirm(true);
+    if (
+      (deleteConfirmation.email === currentUser?.email || 
+       deleteConfirmation.email === currentUser?.username) &&
+      deleteConfirmation.password.length > 0
+    ) {
+      setShowDeleteConfirmDialog(false);
+      setShowDeleteFinalConfirm(true);
+    } else {
+      toast({
+        title: "Invalid credentials",
+        description: "Please check your email/username and password",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleFinalDelete = () => {
     setIsLoggedIn(false);
     setCurrentUser(null);
     navigate('/');
+  };
+
+  const renderTabContent = (activeTab: string) => {
+    switch (activeTab) {
+      case "my-details":
+        return (
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h2 className="text-xl font-semibold">Personal info</h2>
+                  <p className="text-gray-500 text-sm">Update your avatar and personal details here.</p>
+                </div>
+                <div className="flex space-x-2">
+                  {isEditing ? (
+                    <>
+                      <Button variant="outline" onClick={handleCancel}>Cancel</Button>
+                      <Button onClick={handleSave}>Save</Button>
+                    </>
+                  ) : (
+                    <Button 
+                      onClick={() => setIsEditing(true)}
+                      className="bg-orange-400 hover:bg-orange-500"
+                    >
+                      Edit
+                    </Button>
+                  )}
+                </div>
+              </div>
+              
+              <div className="grid gap-6 py-4">
+                <div className="flex flex-col space-y-1.5">
+                  <Label>Your Avatar</Label>
+                  <p className="text-sm text-gray-500">This will be displayed on your profile.</p>
+                  <div className="flex items-start mt-2">
+                    <Avatar className="h-24 w-24 rounded-full border-4 border-gray-100">
+                      {avatar ? (
+                        <AvatarImage src={avatar} alt="Avatar" />
+                      ) : (
+                        <AvatarFallback className="bg-orange-100 text-orange-600">
+                          <User size={40} />
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    
+                    <div className="flex flex-col space-y-2 ml-4">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setShowAvatarPopup(true)}
+                      >
+                        Change Avatar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex-1 space-y-1.5">
+                  <Label htmlFor="username">Username</Label>
+                  <Input 
+                    id="username" 
+                    value={username} 
+                    onChange={(e) => setUsername(e.target.value)}
+                    disabled={true}
+                    className="max-w-md"
+                  />
+                </div>
+                
+                <div className="flex-1 space-y-1.5">
+                  <Label htmlFor="email">Email address</Label>
+                  <div className="flex max-w-md">
+                    <Input 
+                      id="email" 
+                      value={email} 
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={true}
+                      className="flex-1"
+                    />
+                    <Button 
+                      variant="outline" 
+                      className="ml-2 bg-orange-400 text-white hover:bg-orange-500"
+                      onClick={() => setShowChangeEmailDialog(true)}
+                    >
+                      Change
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="age">Age</Label>
+                    <Select 
+                      disabled={!isEditing} 
+                      value={age} 
+                      onValueChange={setAge}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your age" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ageOptions.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-1.5">
+                    <Label>Gender</Label>
+                    <Select 
+                      disabled={!isEditing} 
+                      value={gender} 
+                      onValueChange={setGender}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <Label htmlFor="country">Country</Label>
+                  <Select 
+                    disabled={!isEditing || isLoadingCountries} 
+                    value={country} 
+                    onValueChange={setCountry}
+                  >
+                    <SelectTrigger className="max-w-md">
+                      <SelectValue placeholder={isLoadingCountries ? "Loading countries..." : "Select your country"} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[240px]">
+                      {countries.map((country) => (
+                        <SelectItem key={country.cca2} value={country.name.common}>
+                          <div className="flex items-center gap-2">
+                            <img 
+                              src={country.flags.svg} 
+                              alt={`${country.name.common} flag`} 
+                              className="w-5 h-3 object-cover"
+                            />
+                            {country.name.common}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Label>Online Status</Label>
+                    <Switch 
+                      checked={isOnline} 
+                      onCheckedChange={handleOnlineStatusChange} 
+                    />
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    {isOnline ? "You are visible to other users" : "You are invisible to other users"}
+                  </p>
+                </div>
+                
+                <div className="space-y-3">
+                  <InterestsSelector
+                    selectedInterests={interests}
+                    onChange={setInterests}
+                    maxInterests={5}
+                    userRole="vip"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row justify-between items-center mt-8 pt-6 border-t border-gray-200">
+                <Button 
+                  variant="destructive" 
+                  onClick={handleDeleteAccount}
+                  className="mb-4 sm:mb-0 bg-red-500 hover:bg-red-600"
+                >
+                  Delete Account
+                </Button>
+                
+                <div className="mt-6">
+                  <Button 
+                    onClick={handleStartChatting}
+                    className="w-full bg-orange-400 hover:bg-orange-500"
+                  >
+                    Start Chatting
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      case "membership":
+        return (
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">VIP Membership</h2>
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-amber-200 to-amber-400 text-amber-800">
+                  <Crown className="h-4 w-4 mr-1" />
+                  Active
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-600">Start Date</p>
+                  <p className="text-lg font-medium">{formattedStartDate}</p>
+                </div>
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-600">Expiry Date</p>
+                  <p className="text-lg font-medium">{formattedEndDate}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">VIP Benefits</h3>
+                <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {vipBenefits.map((benefit, index) => (
+                    <li key={index} className="flex items-center text-sm bg-amber-50 rounded-lg p-3 shadow-sm border border-amber-100">
+                      <span className="w-2 h-2 bg-amber-400 rounded-full mr-2"></span>
+                      {benefit}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div className="mt-6">
+                <Button 
+                  onClick={handleStartChatting}
+                  className="w-full bg-orange-400 hover:bg-orange-500"
+                >
+                  Start Chatting
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      case "password":
+        return (
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-6">
+              <h2 className="text-xl font-semibold mb-4">Change Password</h2>
+              <form className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="current-password">Current Password</Label>
+                  <Input id="current-password" type="password" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input id="new-password" type="password" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm New Password</Label>
+                  <Input id="confirm-password" type="password" />
+                </div>
+                <Button type="submit" className="mt-2">Update Password</Button>
+              </form>
+              
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <Button 
+                  onClick={handleStartChatting}
+                  className="w-full bg-orange-400 hover:bg-orange-500"
+                >
+                  Start Chatting
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      default:
+        return null;
+    }
   };
 
   return (
@@ -363,53 +680,19 @@ const Settings = () => {
                   </div>
                   
                   <div className="space-y-3">
-                    <Label>Interest</Label>
-                    <p className="text-sm text-gray-500">You can add new interests or remove old ones</p>
-                    
-                    <div className="flex flex-wrap gap-2">
-                      {interests.map((interest) => (
-                        <div 
-                          key={interest} 
-                          className="flex items-center bg-orange-100 text-orange-800 rounded-full px-3 py-1"
-                        >
-                          <span>{interest}</span>
-                          {isEditing && (
-                            <button 
-                              onClick={() => handleRemoveInterest(interest)}
-                              className="ml-1 text-orange-800 hover:text-orange-900"
-                            >
-                              <X size={14} />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                      
-                      {isEditing && (
-                        <div className="flex items-center gap-2">
-                          <Input
-                            value={newInterest}
-                            onChange={(e) => setNewInterest(e.target.value)}
-                            placeholder="Add interest"
-                            className="w-40 h-8"
-                          />
-                          <Button 
-                            size="sm"
-                            variant="outline"
-                            onClick={handleAddInterest}
-                            disabled={!newInterest}
-                          >
-                            <Plus size={16} />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
+                    <InterestsSelector
+                      selectedInterests={interests}
+                      onChange={setInterests}
+                      maxInterests={5}
+                      userRole="vip"
+                    />
                   </div>
                 </div>
                 
                 <div className="flex flex-col sm:flex-row justify-between items-center mt-8 pt-6 border-t border-gray-200">
                   <Button 
                     variant="destructive" 
-                    onClick={() => setShowDeleteConfirm(true)}
+                    onClick={handleDeleteAccount}
                     className="mb-4 sm:mb-0 bg-red-500 hover:bg-red-600"
                   >
                     Delete Account
@@ -429,90 +712,11 @@ const Settings = () => {
           </TabsContent>
           
           <TabsContent value="membership">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold">VIP Membership</h2>
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-amber-200 to-amber-400 text-amber-800">
-                    <Crown className="h-4 w-4 mr-1" />
-                    Active
-                  </span>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600">Start Date</p>
-                    <p className="text-lg font-medium">
-                      {membershipStartDate.toLocaleDateString('en-GB')}
-                    </p>
-                  </div>
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600">Expiry Date</p>
-                    <p className="text-lg font-medium">
-                      {membershipEndDate.toLocaleDateString('en-GB')}
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">VIP Benefits</h3>
-                  <ul className="space-y-3">
-                    <li className="flex items-center text-sm">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Unlimited messaging with all users
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Advanced profile customization
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Priority support access
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Ad-free experience
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Exclusive features and updates
-                    </li>
-                  </ul>
-                </div>
-                
-                <div className="mt-6">
-                  <Button 
-                    onClick={handleStartChatting}
-                    className="w-full bg-orange-400 hover:bg-orange-500"
-                  >
-                    Start Chatting
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            {renderTabContent("membership")}
           </TabsContent>
           
           <TabsContent value="password">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-6">
-                <h2 className="text-xl font-semibold mb-4">Change Password</h2>
-                <form className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="current-password">Current Password</Label>
-                    <Input id="current-password" type="password" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-password">New Password</Label>
-                    <Input id="new-password" type="password" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirm New Password</Label>
-                    <Input id="confirm-password" type="password" />
-                  </div>
-                  <Button type="submit" className="mt-2">Update Password</Button>
-                </form>
-              </CardContent>
-            </Card>
+            {renderTabContent("password")}
           </TabsContent>
         </Tabs>
       </main>
@@ -543,7 +747,7 @@ const Settings = () => {
           <DialogHeader>
             <DialogTitle>Delete Account</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete your account? This action cannot be undone.
+              Are you sure you want to delete your account? Once you do, there's no coming back.
               Please confirm your credentials to proceed.
             </DialogDescription>
           </DialogHeader>
@@ -586,7 +790,7 @@ const Settings = () => {
           <DialogHeader>
             <DialogTitle>Email Confirmation Required</DialogTitle>
             <DialogDescription>
-              We've sent a confirmation link to your email address. Please check your inbox and follow the link to complete the account deletion process.
+              We've sent a deletion confirmation link to your email address. Please check your inbox and follow the link to complete the account deletion process.
             </DialogDescription>
           </DialogHeader>
           

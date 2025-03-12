@@ -1,55 +1,48 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import Header from '@/components/Header';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from '@/hooks/use-toast';
-import { Star } from 'lucide-react';
 
 const Feedback = () => {
   const { isDarkMode } = useTheme();
-  const [feedback, setFeedback] = useState('');
-  const [rating, setRating] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const [message, setMessage] = useState("");
+  const [rating, setRating] = useState<number>(3);
+  const [email, setEmail] = useState("support@chatwii.com");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
-    if (!rating) {
-      toast({
-        title: "Rating required",
-        description: "Please rate your experience before submitting",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    // In a real app, you'd send this to your backend
-    const feedbackData = {
-      message: feedback,
+    // Mock sending feedback
+    const feedback = {
+      message,
       rating,
       timestamp: new Date().toISOString(),
-      email: 'support@chatwii.com'
+      email,
     };
     
-    console.log('Sending feedback:', feedbackData);
+    console.info("Sending feedback:", feedback);
     
     // Simulate API call
     setTimeout(() => {
-      setIsLoading(false);
       toast({
-        title: "Feedback sent",
-        description: "Thank you for your feedback!"
+        title: "Thank you for your feedback",
+        description: "We appreciate you taking the time to share your thoughts.",
       });
       
-      // Reset form
-      setFeedback('');
-      setRating(null);
+      // Automatically redirect to landing page after submission
+      navigate('/');
     }, 1000);
   };
   
@@ -57,66 +50,76 @@ const Feedback = () => {
     <div className={`min-h-screen flex flex-col ${isDarkMode ? 'dark' : ''}`}>
       <Header />
       
-      <main className="flex-1 container max-w-lg mx-auto px-4 pt-24 pb-12">
-        <Card>
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Feedback</CardTitle>
-            <CardDescription className="text-center">
-              Our friendly team would love to hear from you. We hope to see you very soon!
+      <main className="flex-1 container max-w-lg mx-auto px-4 py-8">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold">We value your feedback</CardTitle>
+            <CardDescription>
+              Help us improve your Chatwii experience by sharing your thoughts.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>How would you rate your experience?</Label>
-                <div className="flex justify-center space-x-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setRating(star)}
-                      className="focus:outline-none"
-                    >
-                      <Star
-                        className={`h-8 w-8 ${
-                          rating && rating >= star 
-                            ? 'text-yellow-400 fill-yellow-400' 
-                            : 'text-gray-300'
-                        }`}
-                      />
-                    </button>
-                  ))}
-                </div>
+                <Label htmlFor="email">Your email (optional)</Label>
+                <Input 
+                  id="email" 
+                  placeholder="email@example.com" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </div>
               
               <div className="space-y-2">
-                <div className="flex justify-between">
-                  <Label htmlFor="feedback">Your message</Label>
-                  <span className="text-xs text-muted-foreground">
-                    {feedback.length}/140
-                  </span>
-                </div>
-                <Textarea
-                  id="feedback"
-                  placeholder="Tell us what you think..."
-                  value={feedback}
-                  onChange={(e) => {
-                    if (e.target.value.length <= 140) {
-                      setFeedback(e.target.value);
-                    }
-                  }}
-                  rows={4}
+                <Label>How would you rate your experience?</Label>
+                <RadioGroup 
+                  defaultValue="3" 
+                  className="flex space-x-1"
+                  value={rating.toString()}
+                  onValueChange={(value) => setRating(parseInt(value))}
+                >
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <div key={value} className="flex flex-col items-center">
+                      <RadioGroupItem 
+                        value={value.toString()} 
+                        id={`rating-${value}`}
+                        className="peer sr-only"
+                      />
+                      <Label
+                        htmlFor={`rating-${value}`}
+                        className="cursor-pointer rounded-full w-12 h-12 p-2 text-center flex items-center justify-center peer-data-[state=checked]:bg-secondary peer-data-[state=checked]:text-secondary-foreground hover:bg-secondary/30"
+                      >
+                        {value}
+                      </Label>
+                      <span className="text-xs mt-1 text-gray-500">
+                        {value === 1 ? 'Poor' : 
+                          value === 2 ? 'Fair' : 
+                          value === 3 ? 'Good' : 
+                          value === 4 ? 'Great' : 'Excellent'}
+                      </span>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="message">Your message</Label>
+                <Textarea 
+                  id="message" 
+                  placeholder="Tell us what you liked or how we can improve..." 
+                  className="min-h-[120px]"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
                 />
               </div>
             </CardContent>
-            
             <CardFooter>
               <Button 
                 type="submit" 
                 className="w-full"
-                disabled={isLoading}
+                disabled={isSubmitting || !message.trim()}
               >
-                {isLoading ? "Sending..." : "Submit Feedback"}
+                {isSubmitting ? "Submitting..." : "Submit Feedback"}
               </Button>
             </CardFooter>
           </form>
