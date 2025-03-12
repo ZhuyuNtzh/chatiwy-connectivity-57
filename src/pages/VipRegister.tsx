@@ -25,7 +25,8 @@ const VipRegister = () => {
     interests: [] as string[],
     country: '',
     age: '25',
-    acceptTerms: false
+    acceptTerms: false,
+    avatar: ''
   });
   
   const handleNext = () => {
@@ -54,7 +55,8 @@ const VipRegister = () => {
       gender: formData.gender,
       interests: formData.interests,
       location: formData.country,
-      age: parseInt(formData.age)
+      age: parseInt(formData.age),
+      avatar: formData.avatar
     });
     setUserRole('vip');
     setIsLoggedIn(true);

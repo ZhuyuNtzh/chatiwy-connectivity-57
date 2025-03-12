@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -8,12 +9,14 @@ import { User2, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import axios from 'axios';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface VipProfileFormData {
   gender: string;
   interests: string[];
   country: string;
   age: string;
+  avatar: string;
 }
 
 interface VipProfileStepProps {
@@ -33,6 +36,14 @@ const popularInterests = [
   'Gaming', 'Music', 'Movies', 'Books', 'Travel',
   'Food', 'Sports', 'Technology', 'Art', 'Fashion',
   'Learning Languages', 'Photography', 'Cooking', 'Fitness'
+];
+
+const avatarOptions = [
+  { id: 'avatar1', src: 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&w=100&h=100', alt: 'Avatar 1' },
+  { id: 'avatar2', src: 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&w=100&h=100', alt: 'Avatar 2' },
+  { id: 'avatar3', src: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=100&h=100', alt: 'Avatar 3' },
+  { id: 'avatar4', src: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=100&h=100', alt: 'Avatar 4' },
+  { id: 'avatar5', src: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?auto=format&fit=crop&w=100&h=100', alt: 'Avatar 5' },
 ];
 
 const ageOptions = Array.from({ length: 63 }, (_, i) => String(18 + i));
@@ -155,6 +166,31 @@ const VipProfileStep = ({
                 </Label>
               </div>
             </RadioGroup>
+          </div>
+          
+          {/* Avatar Selection */}
+          <div className="space-y-3">
+            <Label>Select Avatar</Label>
+            <div className="flex flex-wrap gap-4 justify-center">
+              {avatarOptions.map((avatar) => (
+                <div 
+                  key={avatar.id}
+                  onClick={() => updateFormData({ avatar: avatar.src })}
+                  className={`cursor-pointer transition-all ${
+                    formData.avatar === avatar.src 
+                      ? 'ring-2 ring-primary ring-offset-2' 
+                      : 'hover:opacity-80'
+                  }`}
+                >
+                  <Avatar className="h-16 w-16">
+                    <AvatarImage src={avatar.src} alt={avatar.alt} />
+                    <AvatarFallback>
+                      <User2 className="h-8 w-8" />
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+              ))}
+            </div>
           </div>
           
           <div className="space-y-3">
