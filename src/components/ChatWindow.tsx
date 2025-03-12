@@ -9,6 +9,7 @@ import ChatHeader from './chat/ChatHeader';
 import ChatMessages from './chat/ChatMessages';
 import ChatActions from './chat/ChatActions';
 import UserModals from './chat/UserModals';
+import MediaGalleryDialog from './chat/MediaGalleryDialog';
 
 interface ChatWindowProps {
   user: {
@@ -52,6 +53,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
     maxChars,
     autoScrollToBottom,
     updateScrollPosition,
+    isTyping,
+    isTranslationEnabled,
+    selectedLanguage,
+    setSelectedLanguage,
+    isMediaGalleryOpen,
+    setIsMediaGalleryOpen,
+    mediaGalleryItems,
     handleSendMessage,
     handleKeyDown,
     handleAddEmoji,
@@ -65,7 +73,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
     handleSendImage,
     toggleImageBlur,
     openImagePreview,
-    showBlockedUsersList
+    showBlockedUsersList,
+    toggleTranslation,
+    showMediaGallery,
+    deleteConversation
   } = useChat(user.id, userRole);
   
   return (
@@ -80,6 +91,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
           onBlockUser={handleBlockUser}
           onReportUser={handleReportUser}
           onShowBlockedUsers={showBlockedUsersList}
+          onToggleTranslation={userRole === 'vip' ? toggleTranslation : undefined}
+          isTranslationEnabled={isTranslationEnabled}
+          onSelectLanguage={userRole === 'vip' ? setSelectedLanguage : undefined}
+          selectedLanguage={selectedLanguage}
+          onShowMediaGallery={userRole === 'vip' ? showMediaGallery : undefined}
+          onDeleteConversation={userRole === 'vip' ? deleteConversation : undefined}
         />
       </div>
       
@@ -89,6 +106,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         openImagePreview={openImagePreview}
         autoScrollToBottom={autoScrollToBottom}
         updateScrollPosition={updateScrollPosition}
+        isTyping={isTyping}
+        selectedUserId={user.id}
       />
       
       <ChatActions 
@@ -135,6 +154,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         previewImage={previewImage}
         setPreviewImage={setPreviewImage}
       />
+      
+      {/* New Media Gallery Dialog for VIP users */}
+      {userRole === 'vip' && (
+        <MediaGalleryDialog
+          isOpen={isMediaGalleryOpen}
+          onOpenChange={setIsMediaGalleryOpen}
+          mediaItems={mediaGalleryItems}
+          user={user}
+        />
+      )}
     </div>
   );
 };

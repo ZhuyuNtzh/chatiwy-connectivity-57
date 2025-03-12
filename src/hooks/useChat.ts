@@ -1,7 +1,9 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '../services/signalRService';
 import type { ChatMessage } from '../services/signalR/types';
 import { toast } from "sonner";
+import axios from 'axios';
 
 export const useChat = (userId: number, userRole: string) => {
   const [message, setMessage] = useState('');
@@ -16,8 +18,19 @@ export const useChat = (userId: number, userRole: string) => {
   const [blockedUsers, setBlockedUsers] = useState<number[]>([]);
   const [isBlockedUsersDialogOpen, setIsBlockedUsersDialogOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [isTranslationEnabled, setIsTranslationEnabled] = useState(false);
+  const [isMediaGalleryOpen, setIsMediaGalleryOpen] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [mediaGalleryItems, setMediaGalleryItems] = useState<{
+    type: 'image' | 'voice' | 'link';
+    url: string;
+    timestamp: Date;
+  }[]>([]);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const maxChars = userRole === 'vip' ? 200 : 140;
+  const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Auto-scroll state with a ref to track whether we need to scroll
   const [autoScrollToBottom, setAutoScrollToBottom] = useState(false);
@@ -30,7 +43,26 @@ export const useChat = (userId: number, userRole: string) => {
       // 1. From this user (senderId === userId) to current user
       // 2. From current user to this user (recipientId === userId)
       if (msg.senderId === userId || msg.recipientId === userId) {
-        setMessages(prev => [...prev, msg]);
+        // Apply real-time translation if enabled (for VIP users)
+        if (isTranslationEnabled && userRole === 'vip' && msg.senderId === userId && selectedLanguage !== 'en') {
+          translateMessage(msg).then(translatedMsg => {
+            setMessages(prev => [...prev, translatedMsg]);
+          });
+        } else {
+          setMessages(prev => [...prev, msg]);
+        }
+        
+        // Update media gallery if it's media
+        if (msg.isImage || msg.isVoiceMessage || (msg.content && isLinkMessage(msg.content))) {
+          setMediaGalleryItems(prev => [
+            ...prev, 
+            {
+              type: msg.isImage ? 'image' : msg.isVoiceMessage ? 'voice' : 'link',
+              url: msg.isImage ? (msg.imageUrl || '') : msg.isVoiceMessage ? (msg.audioUrl || '') : extractLink(msg.content || ''),
+              timestamp: new Date(msg.timestamp)
+            }
+          ]);
+        }
         
         // Only auto-scroll if user was already at the bottom
         if (isAtBottomRef.current) {
@@ -44,12 +76,41 @@ export const useChat = (userId: number, userRole: string) => {
       }
     };
     
+    // Simulate user typing indication (for VIP)
+    const handleUserTyping = (typingUserId: number) => {
+      if (typingUserId === userId && userRole === 'vip') {
+        setIsTyping(true);
+        
+        // Clear existing timer
+        if (typingTimerRef.current) {
+          clearTimeout(typingTimerRef.current);
+        }
+        
+        // Set a timer to turn off typing indicator after 3 seconds
+        typingTimerRef.current = setTimeout(() => {
+          setIsTyping(false);
+        }, 3000);
+      }
+    };
+    
     signalRService.onMessageReceived(handleNewMessage);
+    signalRService.onUserTyping(handleUserTyping);
     
     // Load existing messages specifically for this user
     const existingMessages = signalRService.getChatHistory(userId);
     if (existingMessages && existingMessages.length > 0) {
       setMessages(existingMessages);
+      
+      // Load media for the gallery
+      const mediaItems = existingMessages.filter(msg => 
+        msg.isImage || msg.isVoiceMessage || (msg.content && isLinkMessage(msg.content))
+      ).map(msg => ({
+        type: msg.isImage ? 'image' as const : msg.isVoiceMessage ? 'voice' as const : 'link' as const,
+        url: msg.isImage ? (msg.imageUrl || '') : msg.isVoiceMessage ? (msg.audioUrl || '') : extractLink(msg.content || ''),
+        timestamp: new Date(msg.timestamp)
+      }));
+      
+      setMediaGalleryItems(mediaItems);
     }
     
     // Check if this user is already blocked
@@ -60,9 +121,33 @@ export const useChat = (userId: number, userRole: string) => {
     return () => {
       // Cleanup
       signalRService.offMessageReceived(handleNewMessage);
+      signalRService.offUserTyping(handleUserTyping);
+      
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+      }
     };
-  }, [userId]);
+  }, [userId, userRole, isTranslationEnabled, selectedLanguage]);
 
+  // Simulate translation API call (would be replaced with actual API)
+  const translateMessage = async (msg: ChatMessage): Promise<ChatMessage> => {
+    try {
+      // In a real app, you would call a translation API here
+      // For demo, we'll simulate a translation
+      const translatedContent = msg.content ? `[Translated: ${msg.content}]` : msg.content;
+      
+      return {
+        ...msg,
+        content: translatedContent,
+        translated: true
+      };
+    } catch (error) {
+      console.error('Translation error:', error);
+      toast.error('Failed to translate message');
+      return msg;
+    }
+  };
+  
   const handleSendMessage = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
@@ -85,6 +170,9 @@ export const useChat = (userId: number, userRole: string) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    } else if (userRole === 'vip') {
+      // Send typing indication for VIP users
+      signalRService.sendTypingIndication(userId);
     }
   };
   
@@ -206,6 +294,41 @@ export const useChat = (userId: number, userRole: string) => {
   const updateScrollPosition = (isAtBottom: boolean) => {
     isAtBottomRef.current = isAtBottom;
   };
+  
+  const toggleTranslation = () => {
+    if (userRole !== 'vip') {
+      toast.error('Translation is a VIP feature');
+      return;
+    }
+    setIsTranslationEnabled(prev => !prev);
+    toast.success(isTranslationEnabled ? 'Translation disabled' : 'Translation enabled');
+  };
+  
+  const showMediaGallery = () => {
+    setIsMediaGalleryOpen(true);
+    setShowOptions(false);
+  };
+  
+  const deleteConversation = () => {
+    // In a real app, this would call an API to delete the conversation
+    setMessages([]);
+    setMediaGalleryItems([]);
+    toast.success('Conversation deleted');
+    setShowOptions(false);
+  };
+  
+  // Helper function to check if a message contains a link
+  const isLinkMessage = (content: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return urlRegex.test(content);
+  };
+  
+  // Helper function to extract link from message
+  const extractLink = (content: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const matches = content.match(urlRegex);
+    return matches ? matches[0] : '';
+  };
 
   return {
     message,
@@ -233,6 +356,13 @@ export const useChat = (userId: number, userRole: string) => {
     maxChars,
     autoScrollToBottom,
     updateScrollPosition,
+    isTyping,
+    isTranslationEnabled,
+    selectedLanguage,
+    setSelectedLanguage,
+    isMediaGalleryOpen,
+    setIsMediaGalleryOpen,
+    mediaGalleryItems,
     // functions
     handleSendMessage,
     handleKeyDown,
@@ -247,6 +377,9 @@ export const useChat = (userId: number, userRole: string) => {
     handleSendImage,
     toggleImageBlur,
     openImagePreview,
-    showBlockedUsersList
+    showBlockedUsersList,
+    toggleTranslation,
+    showMediaGallery,
+    deleteConversation
   };
 };

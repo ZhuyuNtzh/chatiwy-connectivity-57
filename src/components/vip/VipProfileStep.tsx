@@ -95,7 +95,7 @@ const VipProfileStep = ({
   };
   
   return (
-    <Card className="w-full shadow-lg">
+    <Card className="w-full shadow-lg dark:bg-gray-800 dark:border-gray-700">
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-6 pt-6">
           <GenderSelector 
@@ -139,7 +139,7 @@ const VipProfileStep = ({
           </Button>
           <Button 
             type="submit" 
-            className="w-1/2 bg-secondary hover:bg-secondary/90"
+            className="w-1/2 bg-secondary hover:bg-secondary/90 dark:bg-amber-500 dark:hover:bg-amber-600"
           >
             Next
             <ChevronRight className="ml-1 h-4 w-4" />

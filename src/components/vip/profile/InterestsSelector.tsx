@@ -19,7 +19,7 @@ const popularInterests = [
 const InterestsSelector = ({
   selectedInterests,
   onChange,
-  maxInterests
+  maxInterests = 4
 }: InterestsSelectorProps) => {
   
   const handleInterestToggle = (interest: string) => {
@@ -32,7 +32,7 @@ const InterestsSelector = ({
     } else {
       toast({
         title: "Maximum interests reached",
-        description: `You can select up to ${maxInterests} interests`,
+        description: `You can select up to ${maxInterests} interests as a VIP member`,
         variant: "destructive"
       });
     }
@@ -57,7 +57,7 @@ const InterestsSelector = ({
               type="button"
               variant={isSelected ? "secondary" : "outline"}
               size="sm"
-              className={`justify-start ${isSelected ? 'bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-200' : ''}`}
+              className={`justify-start ${isSelected ? 'bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-200 dark:bg-amber-900/40 dark:text-amber-200 dark:hover:bg-amber-800/60 dark:border-amber-700/50' : ''} ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               onClick={() => handleInterestToggle(interest)}
               disabled={isDisabled}
             >

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Check } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 interface InterestsSelectorProps {
   selectedInterests: string[];
@@ -31,14 +32,20 @@ const InterestsSelector = ({
     } else if (selectedInterests.length < maxInterests) {
       // Add interest if not at max
       onChange([...selectedInterests, interest]);
+    } else {
+      toast({
+        title: "Maximum interests reached",
+        description: `You can select up to ${maxInterests} interests`,
+        variant: "destructive"
+      });
     }
   };
   
   return (
     <div className="space-y-1">
-      <div className="text-sm text-gray-800 flex justify-between items-center">
+      <div className="text-sm text-gray-800 dark:text-gray-200 flex justify-between items-center">
         <span>Interests (Select up to {maxInterests})</span>
-        <span className="text-xs text-gray-600">{selectedInterests.length}/{maxInterests}</span>
+        <span className="text-xs text-gray-600 dark:text-gray-400">{selectedInterests.length}/{maxInterests}</span>
       </div>
       
       <div className="grid grid-cols-2 gap-2">
@@ -53,7 +60,7 @@ const InterestsSelector = ({
               variant={isSelected ? "secondary" : "outline"}
               size="sm"
               className={`justify-start h-8 px-2 py-1 text-xs font-normal ${
-                isSelected ? 'bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-200' : ''
+                isSelected ? 'bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-200 dark:bg-orange-900/40 dark:text-orange-200 dark:hover:bg-orange-800/60 dark:border-orange-700/50' : ''
               } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               onClick={() => handleInterestToggle(interest)}
               disabled={isDisabled}
@@ -66,7 +73,7 @@ const InterestsSelector = ({
       </div>
       
       {userRole === 'standard' && (
-        <p className="text-xs text-gray-600 mt-1">
+        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
           Upgrade to VIP to select more interests
         </p>
       )}

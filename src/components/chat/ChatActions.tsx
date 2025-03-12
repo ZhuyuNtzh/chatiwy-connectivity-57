@@ -15,41 +15,9 @@ interface ChatActionsProps {
   fileInputRef: React.RefObject<HTMLInputElement>;
 }
 
-const ChatActions: React.FC<ChatActionsProps> = ({
-  message,
-  setMessage,
-  maxChars,
-  handleSendMessage,
-  handleKeyDown,
-  handleAddEmoji,
-  handleImageClick,
-  isUserBlocked,
-  isVipUser,
-  fileInputRef
-}) => {
+const ChatActions: React.FC<ChatActionsProps> = (props) => {
   return (
-    <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
-      <MessageInput 
-        message={message}
-        setMessage={setMessage}
-        maxChars={maxChars}
-        handleSendMessage={handleSendMessage}
-        handleKeyDown={handleKeyDown}
-        handleAddEmoji={handleAddEmoji}
-        handleImageClick={handleImageClick}
-        isUserBlocked={isUserBlocked}
-        isVipUser={isVipUser}
-        fileInputRef={fileInputRef}
-      />
-      
-      <input 
-        type="file" 
-        ref={fileInputRef}
-        accept="image/*"
-        className="hidden"
-        onChange={() => {}} // This will be handled by the parent component
-      />
-    </div>
+    <MessageInput {...props} />
   );
 };
 

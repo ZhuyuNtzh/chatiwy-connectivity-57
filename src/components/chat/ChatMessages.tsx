@@ -4,6 +4,7 @@ import type { ChatMessage } from '../../services/signalR/types';
 import MessageItem from './MessageItem';
 import { Button } from '@/components/ui/button';
 import { ArrowDown } from 'lucide-react';
+import { useUser } from '@/contexts/UserContext';
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -11,6 +12,8 @@ interface ChatMessagesProps {
   openImagePreview: (imageUrl: string) => void;
   autoScrollToBottom: boolean;
   updateScrollPosition?: (isAtBottom: boolean) => void;
+  isTyping?: boolean;
+  selectedUserId?: number;
 }
 
 const ChatMessages: React.FC<ChatMessagesProps> = ({
@@ -18,13 +21,17 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   toggleImageBlur,
   openImagePreview,
   autoScrollToBottom,
-  updateScrollPosition
+  updateScrollPosition,
+  isTyping = false,
+  selectedUserId
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const [newMessageCount, setNewMessageCount] = useState(0);
   const previousMessagesLengthRef = useRef(messages.length);
+  const { userRole } = useUser();
+  const isVip = userRole === 'vip';
   
   // Detect when user scrolls up manually
   useEffect(() => {
@@ -95,8 +102,23 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
             message={msg}
             toggleImageBlur={toggleImageBlur}
             openImagePreview={openImagePreview}
+            showMessageStatus={isVip}
           />
         ))}
+        
+        {/* Typing indicator for VIP users */}
+        {isVip && isTyping && (
+          <div className="flex justify-start">
+            <div className="max-w-[80%] rounded-lg p-3 bg-gray-100 dark:bg-gray-700">
+              <div className="flex space-x-1">
+                <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"></div>
+                <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+              </div>
+              <div className="text-xs opacity-70 mt-1 text-gray-500 dark:text-gray-400">typing...</div>
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
       
