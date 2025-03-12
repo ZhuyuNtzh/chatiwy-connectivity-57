@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -21,6 +20,7 @@ const VipPaymentStep = ({
 }: VipPaymentStepProps) => {
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypal'>('card');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | '6months' | 'yearly'>('monthly');
   
   const [cardDetails, setCardDetails] = useState({
     cardNumber: '',
@@ -109,11 +109,7 @@ const VipPaymentStep = ({
             </Tabs>
           </div>
           
-          <PaymentSummary
-            subscription="VIP Membership"
-            billing="Monthly"
-            total="$4.99/month"
-          />
+          <PaymentSummary plan={selectedPlan} />
         </CardContent>
         
         <CardFooter className="flex justify-between space-x-4">

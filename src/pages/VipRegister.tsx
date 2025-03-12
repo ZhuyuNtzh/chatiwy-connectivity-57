@@ -2,11 +2,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
-import Header from '@/components/Header';
 import { useUser } from '@/contexts/UserContext';
 import VipSignupStep from '@/components/vip/VipSignupStep';
 import VipProfileStep from '@/components/vip/VipProfileStep';
 import VipPaymentStep from '@/components/vip/VipPaymentStep';
+import VipProgressSteps from '@/components/vip/VipProgressSteps';
 import { toast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -26,20 +26,13 @@ const VipRegister = () => {
     country: '',
     age: '25',
     acceptTerms: false,
-    avatar: ''
+    avatar: '',
+    plan: 'monthly' as 'monthly' | '6months' | 'yearly'
   });
   
-  const handleNext = () => {
-    setCurrentStep((prev) => prev + 1);
-  };
-  
-  const handleBack = () => {
-    setCurrentStep((prev) => Math.max(0, prev - 1));
-  };
-  
-  const updateFormData = (data: Partial<typeof formData>) => {
-    setFormData(prev => ({ ...prev, ...data }));
-  };
+  const handleNext = () => setCurrentStep((prev) => prev + 1);
+  const handleBack = () => setCurrentStep((prev) => Math.max(0, prev - 1));
+  const updateFormData = (data: Partial<typeof formData>) => setFormData(prev => ({ ...prev, ...data }));
   
   const handleComplete = () => {
     toast({
@@ -47,7 +40,6 @@ const VipRegister = () => {
       description: "Welcome to VIP membership"
     });
     
-    // Update user context
     setCurrentUser({
       username: formData.nickname,
       role: 'vip',
@@ -61,10 +53,9 @@ const VipRegister = () => {
     setUserRole('vip');
     setIsLoggedIn(true);
     
-    // Navigate to main app
     navigate('/chat-interface');
   };
-  
+
   const steps = [
     {
       title: "Create Account",
@@ -98,71 +89,20 @@ const VipRegister = () => {
       )
     }
   ];
-  
-  // Animation variants
-  const slideVariants = {
-    enter: (direction: number) => ({
-      x: direction > 0 ? '100%' : '-100%',
-      opacity: 0
-    }),
-    center: {
-      x: 0,
-      opacity: 1
-    },
-    exit: (direction: number) => ({
-      x: direction < 0 ? '100%' : '-100%',
-      opacity: 0
-    })
-  };
-  
+
   return (
     <div className={`min-h-screen flex flex-col ${isDarkMode ? 'dark' : ''}`}>
-      <Header />
-      
       <main className="flex-1 container max-w-6xl mx-auto px-4 pt-24 pb-12">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">Join VIP Membership</h1>
-          <div className="flex justify-center items-center space-x-2 md:space-x-4">
-            {steps.map((step, index) => (
-              <div key={index} className="flex items-center">
-                <div 
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm
-                    ${currentStep >= index 
-                      ? 'bg-secondary text-white' 
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                    }`}
-                >
-                  {index + 1}
-                </div>
-                {index < steps.length - 1 && (
-                  <div 
-                    className={`hidden md:block h-1 w-16 mx-2
-                      ${currentStep > index 
-                        ? 'bg-secondary' 
-                        : 'bg-gray-200 dark:bg-gray-700'
-                      }`}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-          <h2 className="mt-4 text-xl font-medium">{steps[currentStep].title}</h2>
-        </div>
+        <VipProgressSteps steps={steps} currentStep={currentStep} />
         
         <div className="w-full max-w-md mx-auto relative overflow-hidden">
-          <AnimatePresence custom={currentStep} initial={false}>
+          <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
-              custom={currentStep}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{
-                x: { type: "spring", stiffness: 300, damping: 30 },
-                opacity: { duration: 0.2 }
-              }}
-              className="w-full"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
             >
               {steps[currentStep].component}
             </motion.div>

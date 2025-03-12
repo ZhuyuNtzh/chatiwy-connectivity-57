@@ -10,12 +10,17 @@ interface AvatarPopupProps {
 }
 
 const avatarOptions = [
-  '/path-to-your-first-avatar.png',  // We'll update these paths once you provide the images
-  '/path-to-your-second-avatar.png',
-  '/path-to-your-third-avatar.png',
-  '/path-to-your-fourth-avatar.png',
-  '/path-to-your-fifth-avatar.png',
-  '/path-to-your-sixth-avatar.png',
+  '/lovable-uploads/4845de90-3785-43c0-ad49-9bd7bfc5460b.png',
+  '/lovable-uploads/f017b15a-42fd-4c65-a699-e2acdd6d3114.png',
+  '/lovable-uploads/478ecc2a-5615-483d-a0a3-85588c1e4ef0.png',
+  '/lovable-uploads/56d990de-ea0d-46ea-8c0b-70daaaf5229f.png',
+  '/lovable-uploads/05772536-8f6d-4665-8498-a99d05858b5b.png',
+  '/lovable-uploads/163c1fd4-77ea-4b97-abad-0dbf500c23ba.png',
+  '/lovable-uploads/ad793e65-aea6-41c6-8254-cbc05feb3e91.png',
+  '/lovable-uploads/4e33e9b9-8e0e-413f-906b-890b7ff4b5d1.png',
+  '/lovable-uploads/178a0355-721a-45f1-90cc-832950101724.png',
+  '/lovable-uploads/772522f9-93a5-4bb9-87eb-12f150810678.png',
+  '/lovable-uploads/68ed686d-c5da-4c4f-9514-08727ea05561.png'
 ];
 
 const AvatarPopup = ({ selectedAvatar, onSelect }: AvatarPopupProps) => {
