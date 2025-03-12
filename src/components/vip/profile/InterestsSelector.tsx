@@ -57,7 +57,7 @@ const InterestsSelector = ({
               type="button"
               variant={isSelected ? "secondary" : "outline"}
               size="sm"
-              className={`justify-start ${isSelected ? 'bg-secondary text-secondary-foreground' : ''}`}
+              className={`justify-start ${isSelected ? 'bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-200' : ''}`}
               onClick={() => handleInterestToggle(interest)}
               disabled={isDisabled}
             >

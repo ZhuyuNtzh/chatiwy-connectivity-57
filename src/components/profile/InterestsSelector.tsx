@@ -53,8 +53,8 @@ const InterestsSelector = ({
               variant={isSelected ? "secondary" : "outline"}
               size="sm"
               className={`justify-start h-8 px-2 py-1 text-xs font-normal ${
-                isDisabled ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+                isSelected ? 'bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-200' : ''
+              } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               onClick={() => handleInterestToggle(interest)}
               disabled={isDisabled}
             >

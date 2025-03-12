@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -10,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { User, Crown, X, Plus } from 'lucide-react';
+import { User, Crown, X, Plus, Gift, Calendar, Sparkles } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useUser } from '@/contexts/UserContext';
@@ -18,6 +17,7 @@ import AvatarSelectPopup from '@/components/vip/profile/AvatarSelectPopup';
 import ChangeEmailDialog from '@/components/vip/profile/ChangeEmailDialog';
 import DeleteAccountDialog from '@/components/vip/profile/DeleteAccountDialog';
 import axios from 'axios';
+import InterestsSelector from '@/components/vip/profile/InterestsSelector';
 
 const Settings = () => {
   const { isDarkMode } = useTheme();
@@ -349,46 +349,11 @@ const Settings = () => {
                   </div>
                   
                   <div className="space-y-3">
-                    <Label>Interest</Label>
-                    <p className="text-sm text-gray-500">You can add new interests or remove old ones</p>
-                    
-                    <div className="flex flex-wrap gap-2">
-                      {interests.map((interest) => (
-                        <div 
-                          key={interest} 
-                          className="flex items-center bg-orange-100 text-orange-800 rounded-full px-3 py-1"
-                        >
-                          <span>{interest}</span>
-                          {isEditing && (
-                            <button 
-                              onClick={() => handleRemoveInterest(interest)}
-                              className="ml-1 text-orange-800 hover:text-orange-900"
-                            >
-                              <X size={14} />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                      
-                      {isEditing && (
-                        <div className="flex items-center gap-2">
-                          <Input
-                            value={newInterest}
-                            onChange={(e) => setNewInterest(e.target.value)}
-                            placeholder="Add interest"
-                            className="w-40 h-8"
-                          />
-                          <Button 
-                            size="sm"
-                            variant="outline"
-                            onClick={handleAddInterest}
-                            disabled={!newInterest}
-                          >
-                            <Plus size={16} />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
+                    <InterestsSelector
+                      selectedInterests={interests}
+                      onChange={setInterests}
+                      maxInterests={10}
+                    />
                   </div>
                 </div>
                 
@@ -415,88 +380,100 @@ const Settings = () => {
           </TabsContent>
           
           <TabsContent value="membership">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-6">
+            <Card className="border-0 shadow-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold">VIP Membership</h2>
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-amber-200 to-amber-400 text-amber-800">
+                  <h2 className="text-xl font-semibold text-gray-800">VIP Membership</h2>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-amber-200 to-amber-400 text-amber-800 shadow-sm">
                     <Crown className="h-4 w-4 mr-1" />
                     Active
                   </span>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600">Start Date</p>
-                    <p className="text-lg font-medium">
+                  <div className="p-4 bg-white rounded-lg shadow-sm border border-amber-100">
+                    <div className="flex items-center mb-2">
+                      <Calendar className="h-4 w-4 text-amber-500 mr-2" />
+                      <p className="text-sm font-medium text-gray-700">Start Date</p>
+                    </div>
+                    <p className="text-lg font-medium text-gray-800">
                       {membershipStartDate.toLocaleDateString('en-GB')}
                     </p>
                   </div>
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600">Expiry Date</p>
-                    <p className="text-lg font-medium">
+                  <div className="p-4 bg-white rounded-lg shadow-sm border border-amber-100">
+                    <div className="flex items-center mb-2">
+                      <Gift className="h-4 w-4 text-amber-500 mr-2" />
+                      <p className="text-sm font-medium text-gray-700">Expiry Date</p>
+                    </div>
+                    <p className="text-lg font-medium text-gray-800">
                       {membershipEndDate.toLocaleDateString('en-GB')}
                     </p>
                   </div>
                 </div>
-                
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">VIP Benefits</h3>
-                  <ul className="space-y-3">
-                    <li className="flex items-center text-sm">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Send unlimited photos
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Send voice messages
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Longer chat history
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Customer Support
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Unique avatar options
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Appear at the top of the list
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Ad-free
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      React, reply, edit, unsend messages
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      View message status
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Special Badges
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
-                      Control your online status
-                    </li>
-                  </ul>
-                </div>
-                
-                <div className="mt-6">
-                  <Button 
-                    onClick={handleStartChatting}
-                    className="w-full bg-orange-400 hover:bg-orange-500"
-                  >
-                    Start Chatting
-                  </Button>
+              </div>
+              
+              <CardContent className="p-6">
+                <div className="space-y-6">
+                  <div className="flex items-center">
+                    <Sparkles className="h-5 w-5 text-amber-500 mr-2" />
+                    <h3 className="text-lg font-medium text-gray-800">VIP Benefits</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
+                    <div className="flex items-center text-sm space-x-2">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                      <span>Send unlimited photos</span>
+                    </div>
+                    <div className="flex items-center text-sm space-x-2">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                      <span>Send voice messages</span>
+                    </div>
+                    <div className="flex items-center text-sm space-x-2">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                      <span>Longer chat history</span>
+                    </div>
+                    <div className="flex items-center text-sm space-x-2">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                      <span>Customer Support</span>
+                    </div>
+                    <div className="flex items-center text-sm space-x-2">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                      <span>Unique avatar options</span>
+                    </div>
+                    <div className="flex items-center text-sm space-x-2">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                      <span>Appear at the top of the list</span>
+                    </div>
+                    <div className="flex items-center text-sm space-x-2">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                      <span>Ad-free</span>
+                    </div>
+                    <div className="flex items-center text-sm space-x-2">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                      <span>React, reply, edit, unsend messages</span>
+                    </div>
+                    <div className="flex items-center text-sm space-x-2">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                      <span>View message status</span>
+                    </div>
+                    <div className="flex items-center text-sm space-x-2">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                      <span>Special Badges</span>
+                    </div>
+                    <div className="flex items-center text-sm space-x-2">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                      <span>Control your online status</span>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 pt-4 border-t border-gray-100">
+                    <Button 
+                      onClick={handleStartChatting}
+                      className="w-full bg-gradient-to-r from-orange-400 to-amber-500 hover:from-orange-500 hover:to-amber-600 text-white"
+                    >
+                      Start Chatting
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

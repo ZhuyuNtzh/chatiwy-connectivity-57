@@ -53,6 +53,12 @@ const UserList: React.FC<UserListProps> = ({
             selectedUserId === user.id 
               ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-100') 
               : (isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50')
+          } ${
+            user.isVip 
+              ? (isDarkMode 
+                  ? 'bg-gradient-to-r from-gray-800 to-gray-700 border-l-4 border-amber-400' 
+                  : 'bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-400')
+              : ''
           }`}
           onClick={(e) => {
             e.preventDefault();
@@ -62,8 +68,10 @@ const UserList: React.FC<UserListProps> = ({
         >
           <div className="flex items-start gap-2 md:gap-3">
             <div className="relative flex-shrink-0">
-              <div className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full bg-orange-100">
-                <UserIcon className="h-5 w-5 md:h-6 md:w-6 text-orange-600" />
+              <div className={`flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full ${
+                user.isVip ? 'bg-gradient-to-br from-amber-100 to-orange-100' : 'bg-orange-100'
+              }`}>
+                <UserIcon className={`h-5 w-5 md:h-6 md:w-6 ${user.isVip ? 'text-amber-600' : 'text-orange-600'}`} />
               </div>
               {user.isOnline && (
                 <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 md:h-3 md:w-3 rounded-full bg-green-400 ring-2 ring-white dark:ring-gray-800" />
@@ -99,7 +107,7 @@ const UserList: React.FC<UserListProps> = ({
               </p>
               
               <div className="mt-1 md:mt-2 flex flex-wrap gap-0.5 md:gap-1">
-                {user.interests.map((interest, idx) => (
+                {user.interests.slice(0, 3).map((interest, idx) => (
                   <span 
                     key={idx} 
                     className={`inline-flex items-center px-1.5 md:px-2.5 py-0.5 rounded text-[10px] md:text-xs font-medium ${getInterestColor(interest)}`}
@@ -107,6 +115,11 @@ const UserList: React.FC<UserListProps> = ({
                     {interest}
                   </span>
                 ))}
+                {user.interests.length > 3 && (
+                  <span className="inline-flex items-center px-1.5 md:px-2.5 py-0.5 rounded text-[10px] md:text-xs font-medium bg-gray-100 text-gray-700">
+                    +{user.interests.length - 3}
+                  </span>
+                )}
               </div>
             </div>
           </div>

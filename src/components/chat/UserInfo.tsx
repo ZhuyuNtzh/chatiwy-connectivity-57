@@ -17,13 +17,17 @@ interface UserInfoProps {
 const UserInfo: React.FC<UserInfoProps> = ({ user, countryFlags }) => {
   return (
     <div className="flex items-start">
-      <div className="mr-3 flex items-center justify-center w-10 h-10 rounded-full bg-orange-100">
-        <User className="h-6 w-6 text-orange-600" />
+      <div className={`mr-3 flex items-center justify-center w-10 h-10 rounded-full ${
+        user.isVip ? 'bg-gradient-to-br from-amber-100 to-orange-100' : 'bg-orange-100'
+      }`}>
+        <User className={`h-6 w-6 ${user.isVip ? 'text-amber-600' : 'text-orange-600'}`} />
       </div>
       <div>
         <div className="flex items-center gap-2">
           <div className="flex items-center">
-            <h3 className="font-medium">{user.username}</h3>
+            <h3 className={`font-medium ${user.isVip ? 'bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent' : ''}`}>
+              {user.username}
+            </h3>
             {user.isVip && (
               <span className="ml-1.5 inline-flex items-center">
                 <Crown className="h-4 w-4 text-amber-400" />
@@ -48,7 +52,11 @@ const UserInfo: React.FC<UserInfoProps> = ({ user, countryFlags }) => {
           {user.interests.map((interest, idx) => (
             <span 
               key={idx} 
-              className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
+              className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
+                user.isVip 
+                  ? 'bg-gradient-to-r from-amber-100 to-orange-50 text-amber-800' 
+                  : 'bg-gray-100 text-gray-800'
+              }`}
             >
               {interest}
             </span>
