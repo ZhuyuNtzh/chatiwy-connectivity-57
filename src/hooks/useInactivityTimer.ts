@@ -6,11 +6,16 @@ import { signalRService } from '../services/signalRService';
 
 export const useInactivityTimer = () => {
   const navigate = useNavigate();
-  const { setCurrentUser, setIsLoggedIn } = useUser();
+  const { currentUser, setCurrentUser, setIsLoggedIn, userRole } = useUser();
   const [lastActivity, setLastActivity] = useState<Date>(new Date());
   const inactivityTimerRef = useRef<number | null>(null);
   
   useEffect(() => {
+    // Skip inactivity checks for VIP users
+    if (userRole === 'vip') {
+      return;
+    }
+    
     const resetTimer = () => {
       setLastActivity(new Date());
     };
@@ -20,6 +25,9 @@ export const useInactivityTimer = () => {
     window.addEventListener('click', resetTimer);
     
     const checkInactivity = () => {
+      // Only check for non-VIP users
+      if (userRole === 'vip') return;
+      
       const now = new Date();
       const inactiveTime = (now.getTime() - lastActivity.getTime()) / (1000 * 60);
       
@@ -27,7 +35,7 @@ export const useInactivityTimer = () => {
         signalRService.disconnect();
         setCurrentUser(null);
         setIsLoggedIn(false);
-        navigate('/');
+        navigate('/feedback');
       }
     };
     
@@ -39,7 +47,7 @@ export const useInactivityTimer = () => {
       window.removeEventListener('click', resetTimer);
       window.clearInterval(intervalId);
     };
-  }, [lastActivity, navigate, setCurrentUser, setIsLoggedIn]);
+  }, [lastActivity, navigate, setCurrentUser, setIsLoggedIn, userRole]);
   
   return {
     lastActivity,

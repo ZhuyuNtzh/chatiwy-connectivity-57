@@ -28,6 +28,29 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     
+    // VIP test account
+    if (email === 'vip@chatwii.com' && password === 'viptest123') {
+      setCurrentUser({
+        username: 'VIPTester',
+        role: 'vip',
+        isVip: true,
+        gender: 'Other',
+        age: 30,
+        location: 'United States',
+        interests: ['Technology', 'Travel', 'Music'],
+      });
+      setUserRole('vip');
+      setIsLoggedIn(true);
+      
+      toast({
+        title: "VIP Login successful",
+        description: "Welcome to Chatwii VIP!",
+      });
+      
+      navigate('/chat-interface');
+      return;
+    }
+    
     // Mock authentication - in a real app, you'd call an API
     setTimeout(() => {
       setIsLoading(false);
@@ -135,7 +158,7 @@ const Login = () => {
               </Button>
               <p className="text-center text-sm mt-2">
                 Don't have an account?{" "}
-                <Link to="/vip-register" className="text-accent font-medium hover:underline">
+                <Link to="/vip-membership" className="text-accent font-medium hover:underline">
                   Register
                 </Link>
               </p>

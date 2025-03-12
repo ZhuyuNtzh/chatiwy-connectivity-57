@@ -17,7 +17,7 @@ export const useAuthActions = () => {
     sessionStorage.removeItem('isLoggedIn');
     sessionStorage.removeItem('rulesAccepted');
     signalRService.disconnect();
-    navigate('/');
+    navigate('/feedback'); // Redirect to feedback page instead of home
   };
   
   const cancelLogout = () => {

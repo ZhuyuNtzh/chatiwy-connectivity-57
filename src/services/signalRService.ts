@@ -268,6 +268,11 @@ class SignalRService implements ISignalRService {
     return filteredHistory;
   }
 
+  public clearAllChatHistory(): void {
+    this.chatHistory = {};
+    console.log('All chat history cleared');
+  }
+
   private simulateReceiveMessage(fromUserId: number, username: string, content: string, isImage = false, imageUrl = '', isBlurred = false, recipientId = 0) {
     // If user is blocked, don't simulate receiving a message
     if (this.blockedUsers.has(fromUserId)) {

@@ -65,16 +65,16 @@ const VipMembership = () => {
           <h1 className="text-4xl font-bold mb-4">VIP Membership Pricing</h1>
         </div>
         
-        <div className="hidden md:grid grid-cols-3 gap-6">
+        <div className="hidden md:grid grid-cols-3 gap-6 mt-6">
           {plans.map((plan) => (
             <div 
               key={plan.id} 
               className={`relative bg-card rounded-xl p-6 shadow-md border ${
                 isDarkMode ? 'border-gray-700' : 'border-gray-200'
-              } flex flex-col`}
+              } flex flex-col ${plan.popular ? 'mt-4 mb-4' : ''}`}
             >
               {plan.popular && (
-                <div className="absolute -top-2 right-4 bg-secondary text-secondary-foreground text-xs px-3 py-1 rounded-full">
+                <div className="absolute -top-3 right-4 bg-secondary text-secondary-foreground text-xs px-3 py-1 rounded-full">
                   Most popular!
                 </div>
               )}
@@ -113,10 +113,10 @@ const VipMembership = () => {
                   <div 
                     className={`relative bg-card rounded-xl p-6 shadow-md border ${
                       isDarkMode ? 'border-gray-700' : 'border-gray-200'
-                    } flex flex-col mx-auto max-w-sm`}
+                    } flex flex-col mx-auto max-w-sm ${plan.popular ? 'mt-4 mb-4' : ''}`}
                   >
                     {plan.popular && (
-                      <div className="absolute -top-2 right-4 bg-secondary text-secondary-foreground text-xs px-3 py-1 rounded-full">
+                      <div className="absolute -top-3 right-4 bg-secondary text-secondary-foreground text-xs px-3 py-1 rounded-full">
                         Most popular!
                       </div>
                     )}

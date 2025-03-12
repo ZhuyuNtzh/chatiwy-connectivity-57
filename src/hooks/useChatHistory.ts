@@ -1,5 +1,6 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useUser } from '../contexts/UserContext';
 import { signalRService } from '../services/signalRService';
 import type { ChatMessage } from '../services/signalR/types';
 
@@ -16,6 +17,22 @@ interface User {
 export const useChatHistory = () => {
   const [chatHistory, setChatHistory] = useState<Record<number, ChatMessage[]>>({});
   const [inboxMessages, setInboxMessages] = useState<Record<number, ChatMessage[]>>({});
+  const { userRole } = useUser();
+  
+  // Clear chat history every 10 hours for VIP users
+  useEffect(() => {
+    if (userRole !== 'vip') return;
+    
+    const clearInterval = 10 * 60 * 60 * 1000; // 10 hours
+    const intervalId = setInterval(() => {
+      console.log('Clearing chat history for VIP user');
+      signalRService.clearAllChatHistory();
+      setChatHistory({});
+      setInboxMessages({});
+    }, clearInterval);
+    
+    return () => clearInterval(intervalId);
+  }, [userRole]);
   
   const handleShowHistory = () => {
     const allHistory = signalRService.getAllChatHistory();
