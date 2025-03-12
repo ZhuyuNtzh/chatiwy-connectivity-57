@@ -23,7 +23,7 @@ export const useChatHistory = () => {
   useEffect(() => {
     if (userRole !== 'vip') return;
     
-    const clearInterval = 10 * 60 * 60 * 1000; // 10 hours
+    const clearInterval = 10 * 60 * 60 * 1000; // 10 hours in milliseconds
     const intervalId = setInterval(() => {
       console.log('Clearing chat history for VIP user');
       signalRService.clearAllChatHistory();
