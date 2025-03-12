@@ -13,6 +13,7 @@ interface ChatActionsProps {
   isUserBlocked: boolean;
   isVipUser: boolean;
   fileInputRef: React.RefObject<HTMLInputElement>;
+  handleVoiceMessageClick?: () => void;
 }
 
 const ChatActions: React.FC<ChatActionsProps> = (props) => {

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '../services/signalRService';
 import type { ChatMessage } from '../services/signalR/types';
@@ -22,6 +21,8 @@ export const useChat = (userId: number, userRole: string) => {
   const [isTranslationEnabled, setIsTranslationEnabled] = useState(false);
   const [isMediaGalleryOpen, setIsMediaGalleryOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioPreview, setAudioPreview] = useState<string | null>(null);
   const [mediaGalleryItems, setMediaGalleryItems] = useState<{
     type: 'image' | 'voice' | 'link';
     url: string;
@@ -29,6 +30,8 @@ export const useChat = (userId: number, userRole: string) => {
   }[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const maxChars = userRole === 'vip' ? 200 : 140;
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -140,7 +143,7 @@ export const useChat = (userId: number, userRole: string) => {
         ...msg,
         content: translatedContent,
         translated: true
-      };
+      } as ChatMessage;
     } catch (error) {
       console.error('Translation error:', error);
       toast.error('Failed to translate message');
@@ -273,6 +276,103 @@ export const useChat = (userId: number, userRole: string) => {
     }
   };
   
+  const handleVoiceMessageClick = async () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        startRecording(stream);
+      } catch (error) {
+        console.error('Error accessing microphone:', error);
+        toast.error('Could not access microphone. Please check permissions.');
+      }
+    }
+  };
+  
+  const startRecording = (stream: MediaStream) => {
+    const mediaRecorder = new MediaRecorder(stream);
+    mediaRecorderRef.current = mediaRecorder;
+    audioChunksRef.current = [];
+    
+    mediaRecorder.onstart = () => {
+      setIsRecording(true);
+    };
+    
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        audioChunksRef.current.push(event.data);
+      }
+    };
+    
+    mediaRecorder.onstop = () => {
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      setAudioPreview(audioUrl);
+      setIsRecording(false);
+      
+      // Send the voice message
+      sendVoiceMessage(audioUrl);
+      
+      // Stop all tracks to release the microphone
+      stream.getTracks().forEach(track => track.stop());
+    };
+    
+    // Start recording
+    mediaRecorder.start();
+    
+    // Automatically stop recording after 60 seconds (for VIP) or 30 seconds (for regular)
+    const maxRecordingTime = userRole === 'vip' ? 60000 : 30000;
+    setTimeout(() => {
+      if (mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+      }
+    }, maxRecordingTime);
+  };
+  
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+  };
+  
+  const sendVoiceMessage = (audioUrl: string) => {
+    // In a real app, you would upload the audio file to a server
+    // and then send a reference to it via SignalR
+    
+    // For demo purposes, we'll just send the audio URL directly
+    const message: ChatMessage = {
+      id: `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      content: 'Voice Message',
+      sender: 'You',
+      senderId: 0, // Current user
+      recipientId: userId,
+      timestamp: new Date(),
+      isVoiceMessage: true,
+      audioUrl
+    };
+    
+    // Add to messages
+    setMessages(prev => [...prev, message]);
+    
+    // Add to media gallery
+    setMediaGalleryItems(prev => [
+      ...prev,
+      {
+        type: 'voice',
+        url: audioUrl,
+        timestamp: new Date()
+      }
+    ]);
+    
+    // Set auto-scroll to true when sending a message
+    setAutoScrollToBottom(true);
+    setTimeout(() => setAutoScrollToBottom(false), 300);
+    
+    // Clear audio preview
+    setAudioPreview(null);
+  };
+  
   const toggleImageBlur = (messageId: string) => {
     setMessages(prev => prev.map(msg => 
       msg.id === messageId ? { ...msg, isBlurred: !msg.isBlurred } : msg
@@ -363,6 +463,8 @@ export const useChat = (userId: number, userRole: string) => {
     isMediaGalleryOpen,
     setIsMediaGalleryOpen,
     mediaGalleryItems,
+    isRecording,
+    audioPreview,
     // functions
     handleSendMessage,
     handleKeyDown,
@@ -375,6 +477,7 @@ export const useChat = (userId: number, userRole: string) => {
     handleImageClick,
     handleImageChange,
     handleSendImage,
+    handleVoiceMessageClick,
     toggleImageBlur,
     openImagePreview,
     showBlockedUsersList,

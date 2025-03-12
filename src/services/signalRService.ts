@@ -1,7 +1,7 @@
 import * as signalR from '@microsoft/signalr';
 import { toast } from "sonner";
 import { MockHubConnection } from './signalR/mockConnection';
-import { ChatMessage, ConnectionStatus, ISignalRService, MessageCallback, ConnectionStatusCallback, ConnectedUsersCallback } from './signalR/types';
+import { ChatMessage, ConnectionStatus, ISignalRService, MessageCallback, ConnectionStatusCallback, ConnectedUsersCallback, TypingCallback } from './signalR/types';
 
 export type { ChatMessage } from './signalR/types';
 
@@ -11,6 +11,7 @@ class SignalRService implements ISignalRService {
   private messageCallbacks: MessageCallback[] = [];
   private connectionStatusCallbacks: ConnectionStatusCallback[] = [];
   private connectedUsersCallbacks: ConnectedUsersCallback[] = [];
+  private typingCallbacks: TypingCallback[] = [];
   private blockedUsers: Set<number> = new Set();
   private chatHistory: Record<number, ChatMessage[]> = {};
   private userName: string = '';
@@ -83,6 +84,11 @@ class SignalRService implements ISignalRService {
         }
       });
 
+      // Set up typing indicator
+      this.connection.on('userTyping', (userId: number) => {
+        this.typingCallbacks.forEach(callback => callback(userId));
+      });
+
       toast.success("Connected to chat server!");
     } catch (error) {
       console.error("Error connecting to chat server:", error);
@@ -100,6 +106,14 @@ class SignalRService implements ISignalRService {
   
   public offMessageReceived(callback: MessageCallback): void {
     this.messageCallbacks = this.messageCallbacks.filter(cb => cb !== callback);
+  }
+
+  public onUserTyping(callback: TypingCallback): void {
+    this.typingCallbacks.push(callback);
+  }
+  
+  public offUserTyping(callback: TypingCallback): void {
+    this.typingCallbacks = this.typingCallbacks.filter(cb => cb !== callback);
   }
 
   public onConnectionStatusChanged(callback: ConnectionStatusCallback): void {
@@ -219,6 +233,35 @@ class SignalRService implements ISignalRService {
     });
   }
 
+  public sendTypingIndication(recipientId: number): void {
+    // Ensure connection is active
+    if (this.connectionStatus !== 'connected') {
+      return;
+    }
+    
+    if (this.blockedUsers.has(recipientId)) {
+      return;
+    }
+
+    if (this.useMockConnection) {
+      // For mock implementation, simulate typing indication
+      this.simulateTypingIndication(recipientId);
+    } else {
+      // For real implementation, use the SignalR hub method
+      try {
+        this.connection!.invoke("SendTypingIndication", recipientId.toString());
+        console.log("Typing indication sent to user:", recipientId);
+      } catch (error) {
+        console.error("Error sending typing indication:", error);
+      }
+    }
+  }
+
+  private simulateTypingIndication(recipientId: number): void {
+    // No need to do anything in the mock implementation
+    // The actual typing indication is handled by the client
+  }
+
   private async reconnectIfNeeded(): Promise<void> {
     if (this.connectionStatus === 'disconnected' && !this.isInitializing && this.userName) {
       console.log("Attempting to reconnect...");
@@ -273,7 +316,7 @@ class SignalRService implements ISignalRService {
     console.log('All chat history cleared');
   }
 
-  private simulateReceiveMessage(fromUserId: number, username: string, content: string, isImage = false, imageUrl = '', isBlurred = false, recipientId = 0) {
+  private simulateReceiveMessage(fromUserId: number, username: string, content: string, isImage = false, imageUrl = '', isBlurred = false, recipientId = 0, isVoiceMessage = false, audioUrl = '') {
     // If user is blocked, don't simulate receiving a message
     if (this.blockedUsers.has(fromUserId)) {
       return;
@@ -292,7 +335,9 @@ class SignalRService implements ISignalRService {
         timestamp: new Date(),
         isImage,
         imageUrl,
-        isBlurred
+        isBlurred,
+        isVoiceMessage,
+        audioUrl
       };
       
       // Store in chat history for this specific user only

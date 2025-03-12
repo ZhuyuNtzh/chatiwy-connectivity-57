@@ -60,6 +60,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
     isMediaGalleryOpen,
     setIsMediaGalleryOpen,
     mediaGalleryItems,
+    isRecording,
     handleSendMessage,
     handleKeyDown,
     handleAddEmoji,
@@ -71,6 +72,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
     handleImageClick,
     handleImageChange,
     handleSendImage,
+    handleVoiceMessageClick,
     toggleImageBlur,
     openImagePreview,
     showBlockedUsersList,
@@ -121,6 +123,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         isUserBlocked={signalRService.isUserBlocked(user.id)}
         isVipUser={userRole === 'vip'}
         fileInputRef={fileInputRef}
+        handleVoiceMessageClick={userRole === 'vip' ? handleVoiceMessageClick : undefined}
       />
       
       <input 
