@@ -10,14 +10,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useUser } from '@/contexts/UserContext';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Mail } from 'lucide-react';
 
 const Login = () => {
   const { isDarkMode } = useTheme();
   const navigate = useNavigate();
   const { setCurrentUser, setIsLoggedIn, setUserRole } = useUser();
   
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState(''); // Can be email or nickname
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,15 +29,20 @@ const Login = () => {
     setIsLoading(true);
     
     // VIP test account
-    if (email === 'vip@chatwii.com' && password === 'viptest123') {
+    if (
+      (identifier === 'vip@chatwii.com' || identifier === 'VIPTester') && 
+      password === 'viptest123'
+    ) {
       setCurrentUser({
         username: 'VIPTester',
         role: 'vip',
         isVip: true,
-        gender: 'Other',
-        age: 30,
+        gender: 'Female',
+        age: 27,
         location: 'United States',
-        interests: ['Technology', 'Travel', 'Music'],
+        interests: ['orange', 'lime', 'gold'],
+        avatar: 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&w=100&h=100',
+        email: 'vip@chatwii.com',
       });
       setUserRole('vip');
       setIsLoggedIn(true);
@@ -47,7 +52,7 @@ const Login = () => {
         description: "Welcome to Chatwii VIP!",
       });
       
-      navigate('/chat-interface');
+      navigate('/settings');
       return;
     }
     
@@ -57,9 +62,14 @@ const Login = () => {
       
       // For demo purposes, let's assume login successful
       setCurrentUser({
-        username: email.split('@')[0],
+        username: identifier.includes('@') ? identifier.split('@')[0] : identifier,
         role: 'vip',
-        isVip: true
+        isVip: true,
+        gender: 'Female',
+        age: 27,
+        location: 'United States',
+        interests: ['orange', 'lime', 'gold'],
+        email: identifier.includes('@') ? identifier : `${identifier}@example.com`,
       });
       setUserRole('vip');
       setIsLoggedIn(true);
@@ -69,7 +79,7 @@ const Login = () => {
         description: "Welcome back to VIP",
       });
       
-      navigate('/profile-setup');
+      navigate('/settings');
     }, 1000);
   };
   
@@ -105,13 +115,13 @@ const Login = () => {
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="identifier">Email or Nickname</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="yourname@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="identifier"
+                  type="text"
+                  placeholder="yourname@example.com or nickname"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   required
                 />
               </div>
@@ -156,6 +166,12 @@ const Login = () => {
               >
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
+              <div className="mt-2 text-center">
+                <Button type="button" variant="outline" className="w-full flex items-center justify-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Google
+                </Button>
+              </div>
               <p className="text-center text-sm mt-2">
                 Don't have an account?{" "}
                 <Link to="/vip-membership" className="text-accent font-medium hover:underline">
