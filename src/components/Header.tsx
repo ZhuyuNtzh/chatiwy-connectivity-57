@@ -1,110 +1,148 @@
-
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useUser } from '../contexts/UserContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { 
-  Bell, 
-  User,
-  Moon,
-  Sun,
-  History,
-  LogOut
-} from 'lucide-react';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useUser } from '@/contexts/UserContext';
-import { useAuthActions } from '@/hooks/useAuthActions';
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { ChevronLeft, LogOut, Settings, User, Moon, Sun, History } from 'lucide-react';
 
 const Header = () => {
+  const { currentUser, setCurrentUser, setIsLoggedIn, userRole } = useUser();
   const { isDarkMode, toggleDarkMode } = useTheme();
-  const { currentUser, isLoggedIn } = useUser();
-  const { handleLogout, confirmLogout, cancelLogout } = useAuthActions();
   const navigate = useNavigate();
-  
-  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  
-  const onLogoutClick = () => {
-    if (handleLogout()) {
-      setShowLogoutDialog(true);
-    }
+  const location = useLocation();
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setIsLoggedIn(false);
+    navigate('/');
   };
-  
-  const onConfirmLogout = () => {
-    confirmLogout();
-    setShowLogoutDialog(false);
-  };
-  
-  const onCancelLogout = () => {
-    cancelLogout();
-    setShowLogoutDialog(false);
-  };
-  
+
+  const showBackButton = location.pathname !== '/' && location.pathname !== '/user-selection';
+  const showUserControls = currentUser && location.pathname !== '/';
+  const hideExtraButtons = location.pathname === '/profile-setup' || 
+                          location.pathname === '/login' || 
+                          location.pathname === '/register' ||
+                          location.pathname === '/vip-membership';
+
   return (
-    <header className="bg-background border-b border-input sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-        <div className="hidden md:block">
-          <Link to="/" className="text-xl font-bold text-foreground">
-            chatwii.
+    <header 
+      className={`fixed top-0 left-0 right-0 z-50 py-4 px-6 md:px-10 transition-all duration-300 ${
+        scrolled ? 'glass shadow-md' : 'bg-transparent'
+      }`}
+    >
+      <div className="container max-w-7xl mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          {showBackButton && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate(-1)}
+              className="transition-all duration-300 hover:bg-white/20"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          )}
+          <Link to="/" className="text-xl font-semibold hidden md:flex items-center">
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
+              Chatwii
+            </span>
           </Link>
         </div>
-        
-        <div className="flex items-center space-x-1 md:space-x-4">
-          {isLoggedIn ? (
-            <>
-              <Button variant="ghost" size="icon" className="md:hidden" onClick={() => navigate('/chat-interface')}>
-                <User className="h-5 w-5" />
+
+        {showUserControls ? (
+          <div className="flex items-center gap-3">
+            <div className="hidden md:flex items-center">
+              <span className="text-sm font-medium mr-2">
+                {currentUser.username}
+              </span>
+              {userRole === 'vip' && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gradient-to-r from-amber-200 to-amber-400 text-amber-800">
+                  VIP
+                </span>
+              )}
+              {userRole === 'admin' && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-destructive/20 text-destructive">
+                  Admin
+                </span>
+              )}
+            </div>
+            <div className="flex items-center justify-center w-8 h-8">
+              <User className="h-5 w-5" />
+            </div>
+            {userRole === 'admin' && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="transition-all duration-300 hover:bg-white/20"
+                onClick={() => navigate('/admin-dashboard')}
+              >
+                <Settings className="h-5 w-5" />
               </Button>
-              
-              <Button variant="ghost" size="icon" onClick={() => navigate('/chat-history')}>
-                <History className="h-5 w-5" />
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="transition-all duration-300 hover:bg-white/20"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleDarkMode}
+              className="transition-all duration-300 hover:bg-white/20"
+              aria-label="Toggle dark mode"
+            >
+              {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+            
+            {!hideExtraButtons && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs flex items-center gap-1 bg-gray-100/10"
+                onClick={() => navigate('/chat-history')}
+              >
+                <History className="h-4 w-4" />
+                <span className="hidden md:inline">History</span>
               </Button>
-              
-              <Button variant="ghost" size="icon" onClick={onLogoutClick}>
-                <LogOut className="h-5 w-5" />
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="ghost" size="icon" asChild>
-                <Link to="/login">
-                  <User className="h-5 w-5" />
-                </Link>
-              </Button>
-            </>
-          )}
-          
-          <div className="flex items-center">
-            <Switch 
-              checked={isDarkMode} 
-              onCheckedChange={toggleDarkMode}
-              className="data-[state=checked]:bg-primary"
-            />
-            {isDarkMode ? (
-              <Moon size={16} className="ml-2 text-foreground" />
-            ) : (
-              <Sun size={16} className="ml-2 text-foreground" />
             )}
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleDarkMode}
+              className="transition-all duration-300 hover:bg-white/20"
+              aria-label="Toggle dark mode"
+            >
+              {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+            
+            {location.pathname === '/' && (
+              <Button
+                variant="ghost"
+                className="transition-all duration-300 hover:bg-white/20"
+                onClick={() => navigate('/vip-membership')}
+              >
+                VIP Membership
+              </Button>
+            )}
+          </div>
+        )}
       </div>
-      
-      <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogTitle>Log out</DialogTitle>
-          <DialogDescription>
-            Are you sure you want to log out? You will be redirected to the feedback page.
-          </DialogDescription>
-          <DialogFooter>
-            <Button variant="outline" onClick={onCancelLogout}>
-              Cancel
-            </Button>
-            <Button onClick={onConfirmLogout}>
-              Logout
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </header>
   );
 };

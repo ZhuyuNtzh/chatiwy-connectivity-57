@@ -23,7 +23,7 @@ interface User {
 
 export const useChatInterface = (mockUsers: User[]) => {
   const navigate = useNavigate();
-  const { currentUser, setIsLoggedIn, userRole } = useUser();
+  const { currentUser, setIsLoggedIn } = useUser();
   
   // Initialize all the smaller hooks
   const { handleLogout, confirmLogout, cancelLogout } = useAuthActions();
@@ -71,46 +71,14 @@ export const useChatInterface = (mockUsers: User[]) => {
   // Connect to SignalR - using proper type handling
   useSignalRConnection(currentUser, setConnectedUsersCount);
   
-  // Check if user is logged in on initial load and handle VIP redirection
+  // Check if user is logged in on initial load
   useEffect(() => {
-    // First check session storage for role information
-    const storedRole = sessionStorage.getItem('userRole');
-    const allowVIPChatAccess = sessionStorage.getItem('allowVIPChatAccess');
-    
     if (!currentUser && sessionStorage.getItem('isLoggedIn') !== 'true') {
-      // Not logged in at all, redirect to login
-      console.log("Not logged in, redirecting to login page");
-      navigate('/', { replace: true });
-    } else {
-      // User is logged in
-      if (currentUser) {
-        sessionStorage.setItem('isLoggedIn', 'true');
-        
-        // Add more explicit logging to track the decision flow
-        console.log("Checking VIP status:", {
-          userRoleFromContext: userRole,
-          storedRole,
-          currentUserRole: currentUser.role,
-          allowVIPChatAccess,
-          currentPath: window.location.pathname
-        });
-        
-        // Only redirect VIP users if they haven't explicitly chosen to chat
-        if ((userRole === 'vip' || storedRole === 'vip' || currentUser.role === 'vip') && 
-            window.location.pathname === '/chat-interface' && 
-            allowVIPChatAccess !== 'true') {
-          console.log("VIP user detected on chat interface, redirecting to settings");
-          navigate('/settings', { replace: true });
-        }
-        
-        // Clear the temporary flag once used
-        if (allowVIPChatAccess === 'true') {
-          console.log("Clearing allowVIPChatAccess flag");
-          sessionStorage.removeItem('allowVIPChatAccess');
-        }
-      }
+      navigate('/');
+    } else if (currentUser) {
+      sessionStorage.setItem('isLoggedIn', 'true');
     }
-  }, [currentUser, navigate, setIsLoggedIn, userRole]);
+  }, [currentUser, navigate, setIsLoggedIn]);
   
   // Extended user click handler that gets chat history
   const handleUserClick = (user: User) => {
