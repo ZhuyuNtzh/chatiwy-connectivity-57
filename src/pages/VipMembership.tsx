@@ -74,7 +74,7 @@ const VipMembership = () => {
               } flex flex-col`}
             >
               {plan.popular && (
-                <div className="absolute -top-3 right-4 bg-secondary text-secondary-foreground text-xs px-3 py-1 rounded-full">
+                <div className="absolute -top-2 right-4 bg-secondary text-secondary-foreground text-xs px-3 py-1 rounded-full">
                   Most popular!
                 </div>
               )}
@@ -116,7 +116,7 @@ const VipMembership = () => {
                     } flex flex-col mx-auto max-w-sm`}
                   >
                     {plan.popular && (
-                      <div className="absolute -top-3 right-4 bg-secondary text-secondary-foreground text-xs px-3 py-1 rounded-full">
+                      <div className="absolute -top-2 right-4 bg-secondary text-secondary-foreground text-xs px-3 py-1 rounded-full">
                         Most popular!
                       </div>
                     )}

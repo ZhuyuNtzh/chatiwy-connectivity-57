@@ -1,6 +1,7 @@
 
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { Check } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface InterestsSelectorProps {
@@ -21,19 +22,19 @@ const InterestsSelector = ({
   maxInterests
 }: InterestsSelectorProps) => {
   
-  const handleInterestChange = (interest: string, checked: boolean) => {
-    if (checked) {
-      if (selectedInterests.length < maxInterests) {
-        onChange([...selectedInterests, interest]);
-      } else {
-        toast({
-          title: "Maximum interests reached",
-          description: `You can select up to ${maxInterests} interests`,
-          variant: "destructive"
-        });
-      }
-    } else {
+  const handleInterestToggle = (interest: string) => {
+    if (selectedInterests.includes(interest)) {
+      // Remove interest if already selected
       onChange(selectedInterests.filter(i => i !== interest));
+    } else if (selectedInterests.length < maxInterests) {
+      // Add interest if not at max
+      onChange([...selectedInterests, interest]);
+    } else {
+      toast({
+        title: "Maximum interests reached",
+        description: `You can select up to ${maxInterests} interests`,
+        variant: "destructive"
+      });
     }
   };
   
@@ -46,28 +47,25 @@ const InterestsSelector = ({
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        {popularInterests.map((interest) => (
-          <div key={interest} className="flex items-center space-x-2">
-            <Checkbox
-              id={`interest-${interest}`}
-              checked={selectedInterests.includes(interest)}
-              onCheckedChange={(checked) => 
-                handleInterestChange(interest, checked as boolean)
-              }
-              className="data-[state=checked]:bg-secondary data-[state=checked]:text-secondary-foreground"
-              disabled={
-                !selectedInterests.includes(interest) && 
-                selectedInterests.length >= maxInterests
-              }
-            />
-            <Label
-              htmlFor={`interest-${interest}`}
-              className="text-sm font-normal cursor-pointer"
+        {popularInterests.map((interest) => {
+          const isSelected = selectedInterests.includes(interest);
+          const isDisabled = !isSelected && selectedInterests.length >= maxInterests;
+          
+          return (
+            <Button
+              key={interest}
+              type="button"
+              variant={isSelected ? "secondary" : "outline"}
+              size="sm"
+              className={`justify-start ${isSelected ? 'bg-secondary text-secondary-foreground' : ''}`}
+              onClick={() => handleInterestToggle(interest)}
+              disabled={isDisabled}
             >
-              {interest}
-            </Label>
-          </div>
-        ))}
+              {isSelected && <Check className="mr-1 h-4 w-4" />}
+              <span className="text-sm">{interest}</span>
+            </Button>
+          );
+        })}
       </div>
     </div>
   );

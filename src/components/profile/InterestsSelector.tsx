@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { Check } from 'lucide-react';
 
 interface InterestsSelectorProps {
   selectedInterests: string[];
@@ -23,13 +24,13 @@ const InterestsSelector = ({
   userRole
 }: InterestsSelectorProps) => {
   
-  const handleInterestChange = (interest: string, checked: boolean) => {
-    if (checked) {
-      if (selectedInterests.length < maxInterests) {
-        onChange([...selectedInterests, interest]);
-      }
-    } else {
+  const handleInterestToggle = (interest: string) => {
+    if (selectedInterests.includes(interest)) {
+      // Remove interest if already selected
       onChange(selectedInterests.filter(i => i !== interest));
+    } else if (selectedInterests.length < maxInterests) {
+      // Add interest if not at max
+      onChange([...selectedInterests, interest]);
     }
   };
   
@@ -40,29 +41,28 @@ const InterestsSelector = ({
         <span className="text-xs text-gray-600">{selectedInterests.length}/{maxInterests}</span>
       </div>
       
-      <div className="grid grid-cols-2 gap-1">
-        {popularInterests.map((interest) => (
-          <div key={interest} className="flex items-center space-x-1">
-            <Checkbox
-              id={`interest-${interest}`}
-              checked={selectedInterests.includes(interest)}
-              onCheckedChange={(checked) => 
-                handleInterestChange(interest, checked as boolean)
-              }
-              disabled={
-                !selectedInterests.includes(interest) && 
-                selectedInterests.length >= maxInterests
-              }
-              className="border-[#FB9E41] text-[#FB9E41] data-[state=checked]:bg-[#FB9E41] data-[state=checked]:text-white"
-            />
-            <label
-              htmlFor={`interest-${interest}`}
-              className="text-xs font-medium leading-none text-gray-800 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+      <div className="grid grid-cols-2 gap-2">
+        {popularInterests.map((interest) => {
+          const isSelected = selectedInterests.includes(interest);
+          const isDisabled = !isSelected && selectedInterests.length >= maxInterests;
+          
+          return (
+            <Button
+              key={interest}
+              type="button"
+              variant={isSelected ? "secondary" : "outline"}
+              size="sm"
+              className={`justify-start h-8 px-2 py-1 text-xs font-normal ${
+                isDisabled ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              onClick={() => handleInterestToggle(interest)}
+              disabled={isDisabled}
             >
+              {isSelected && <Check className="mr-1 h-3 w-3" />}
               {interest}
-            </label>
-          </div>
-        ))}
+            </Button>
+          );
+        })}
       </div>
       
       {userRole === 'standard' && (

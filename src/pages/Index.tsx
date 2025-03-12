@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -29,13 +28,11 @@ const Index = () => {
   };
 
   const validateNickname = (value: string): boolean => {
-    // Check for more than 2 consecutive numbers
-    const consecutiveNumbersPattern = /\d{3,}/;
+    const consecutiveNumbersPattern = /\d{4,}/;
     if (consecutiveNumbersPattern.test(value)) {
       return false;
     }
     
-    // Check for alphanumeric characters only
     const alphanumericPattern = /^[a-zA-Z0-9]*$/;
     if (!alphanumericPattern.test(value)) {
       return false;
@@ -57,7 +54,7 @@ const Index = () => {
       } else {
         toast({
           title: "Invalid nickname",
-          description: "Nickname must be alphanumeric with no more than 2 consecutive numbers",
+          description: "Nickname must be alphanumeric with no more than 3 consecutive numbers",
           variant: "destructive"
         });
       }
@@ -79,7 +76,7 @@ const Index = () => {
     if (!validateNickname(username)) {
       toast({
         title: "Invalid nickname",
-        description: "Nickname must be alphanumeric with no more than 2 consecutive numbers",
+        description: "Nickname must be alphanumeric with no more than 3 consecutive numbers",
         variant: "destructive"
       });
       return;
@@ -253,4 +250,3 @@ const Index = () => {
 };
 
 export default Index;
-
