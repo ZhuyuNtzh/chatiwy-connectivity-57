@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '@/services/signalRService';
 import type { ChatMessage } from '@/services/signalR/types';
@@ -24,11 +25,14 @@ export const useChat = (userId: number, userRole: string) => {
     imagePreview,
     isRecording,
     audioPreview,
+    previewImage,
+    setPreviewImage,
     fileInputRef,
     handleImageClick,
     handleImageChange,
     handleSendImage,
-    handleVoiceMessageClick
+    handleVoiceMessageClick,
+    sendVoiceMessage
   } = useMediaHandling(userId);
 
   const {
@@ -43,6 +47,7 @@ export const useChat = (userId: number, userRole: string) => {
     otherReportReason,
     setOtherReportReason,
     blockedUsers,
+    setBlockedUsers,
     isBlockedUsersDialogOpen,
     setIsBlockedUsersDialogOpen,
     handleBlockUser,
@@ -158,7 +163,7 @@ export const useChat = (userId: number, userRole: string) => {
     
     // Check if this user is already blocked
     if (signalRService.isUserBlocked(userId)) {
-      // setBlockedUsers(prev => [...prev, userId]); // This line was moved to useUserInteractions
+      setBlockedUsers(prev => [...prev, userId]);
     }
     
     return () => {
@@ -171,7 +176,7 @@ export const useChat = (userId: number, userRole: string) => {
         clearTimeout(typingTimerRef.current);
       }
     };
-  }, [userId, userRole, isTranslationEnabled, selectedLanguage]);
+  }, [userId, userRole, isTranslationEnabled, selectedLanguage, setBlockedUsers, setMessages]);
   
   // Helper function to simulate message translation
   const translateMessage = async (msg: ChatMessage): Promise<ChatMessage> => {
@@ -375,6 +380,7 @@ export const useChat = (userId: number, userRole: string) => {
     handleImageChange,
     handleSendImage,
     handleVoiceMessageClick,
+    sendVoiceMessage,
     toggleImageBlur,
     openImagePreview,
     showBlockedUsersList,

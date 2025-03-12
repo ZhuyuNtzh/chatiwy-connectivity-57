@@ -8,6 +8,7 @@ export const useMediaHandling = (userId: number) => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [audioPreview, setAudioPreview] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -95,7 +96,7 @@ export const useMediaHandling = (userId: number) => {
       if (mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
       }
-    }, 60000);
+    }, 60000); // 60 seconds max recording time
   };
 
   const stopRecording = () => {
@@ -116,10 +117,13 @@ export const useMediaHandling = (userId: number) => {
     imagePreview,
     isRecording,
     audioPreview,
+    previewImage,
+    setPreviewImage,
     fileInputRef,
     handleImageClick,
     handleImageChange,
     handleSendImage,
-    handleVoiceMessageClick
+    handleVoiceMessageClick,
+    sendVoiceMessage
   };
 };

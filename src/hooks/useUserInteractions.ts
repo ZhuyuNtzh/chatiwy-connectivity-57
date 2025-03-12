@@ -72,6 +72,7 @@ export const useUserInteractions = (userId: number) => {
     otherReportReason,
     setOtherReportReason,
     blockedUsers,
+    setBlockedUsers,
     isBlockedUsersDialogOpen,
     setIsBlockedUsersDialogOpen,
     handleBlockUser,
