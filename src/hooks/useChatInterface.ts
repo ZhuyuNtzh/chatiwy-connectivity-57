@@ -23,7 +23,7 @@ interface User {
 
 export const useChatInterface = (mockUsers: User[]) => {
   const navigate = useNavigate();
-  const { currentUser, setIsLoggedIn } = useUser();
+  const { currentUser, setIsLoggedIn, userRole } = useUser();
   
   // Initialize all the smaller hooks
   const { handleLogout, confirmLogout, cancelLogout } = useAuthActions();
@@ -77,8 +77,14 @@ export const useChatInterface = (mockUsers: User[]) => {
       navigate('/');
     } else if (currentUser) {
       sessionStorage.setItem('isLoggedIn', 'true');
+      
+      // Redirect VIP users to settings if they somehow end up on chat interface
+      if (userRole === 'vip' && window.location.pathname === '/chat-interface') {
+        console.log("VIP user on chat interface, redirecting to settings");
+        navigate('/settings');
+      }
     }
-  }, [currentUser, navigate, setIsLoggedIn]);
+  }, [currentUser, navigate, setIsLoggedIn, userRole]);
   
   // Extended user click handler that gets chat history
   const handleUserClick = (user: User) => {

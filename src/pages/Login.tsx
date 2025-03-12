@@ -40,6 +40,7 @@ const Login = () => {
     );
     
     if (isVipAccount) {
+      // Set up VIP user profile
       setCurrentUser({
         username: 'VIPTester',
         role: 'vip',
@@ -59,8 +60,12 @@ const Login = () => {
         description: "Welcome to Chatwii VIP!",
       });
       
-      // This is where we need to fix the redirection - ensure VIP users go to settings
-      navigate('/settings');
+      // Ensure VIP users are redirected to settings page
+      console.log("VIP user detected, redirecting to settings page");
+      setTimeout(() => {
+        setIsLoading(false);
+        navigate('/settings');
+      }, 500);
       return;
     }
     
@@ -87,6 +92,7 @@ const Login = () => {
         description: "Welcome back to Chatwii",
       });
       
+      console.log("Standard user detected, redirecting to chat interface");
       navigate('/chat-interface');
     }, 1000);
   };

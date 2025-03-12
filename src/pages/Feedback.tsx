@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -40,8 +41,9 @@ const Feedback = () => {
         description: "We appreciate you taking the time to share your thoughts.",
       });
       
-      // Immediately redirect to landing page after submission
-      navigate('/');
+      // Immediately redirect to landing page after submission with a clean redirect
+      console.log("Feedback submitted, redirecting to landing page");
+      navigate('/', { replace: true });
     }, 1000);
   };
   
