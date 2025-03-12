@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Eye, EyeOff, Maximize2, MessageSquare, Check, CheckCheck, Smile, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,7 +30,6 @@ const MessageItem: React.FC<MessageItemProps> = ({
   const [reaction, setReaction] = useState<string | null>(null);
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState('');
-  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
   const isFromCurrentUser = message.sender === 'You';
@@ -44,13 +42,11 @@ const MessageItem: React.FC<MessageItemProps> = ({
   
   const handleStartReply = () => {
     setIsReplying(true);
-    setReplyTo(message);
   };
   
   const handleCancelReply = () => {
     setIsReplying(false);
     setReplyText('');
-    setReplyTo(null);
   };
   
   const handleSendReply = () => {
@@ -58,7 +54,6 @@ const MessageItem: React.FC<MessageItemProps> = ({
       onReply(message.id, message.content || '');
       setIsReplying(false);
       setReplyText('');
-      setReplyTo(null);
     }
   };
   
@@ -67,6 +62,13 @@ const MessageItem: React.FC<MessageItemProps> = ({
       onUnsendMessage(message.id);
     }
     setIsDeleteDialogOpen(false);
+  };
+  
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendReply();
+    }
   };
   
   // Don't render if message is deleted
@@ -86,7 +88,6 @@ const MessageItem: React.FC<MessageItemProps> = ({
     );
   }
   
-  // Render message status indicator for VIP users
   const renderMessageStatus = () => {
     if (!showMessageStatus || !isFromCurrentUser) return null;
     
@@ -235,6 +236,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
               type="text" 
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="Type your reply..."
               className="flex-1 px-3 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700"
             />

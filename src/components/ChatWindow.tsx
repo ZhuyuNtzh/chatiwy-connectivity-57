@@ -1,16 +1,15 @@
-
 import React from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
 import { useChat } from '@/hooks/useChat';
 
 // Import refactored components
-import ChatHeader from './chat/ChatHeader';
-import ChatMessages from './chat/ChatMessages';
-import ChatActions from './chat/ChatActions';
-import UserModals from './chat/UserModals';
-import MediaGalleryDialog from './chat/MediaGalleryDialog';
-import DeleteConfirmationDialog from './chat/DeleteConfirmationDialog';
+import ChatHeader from '@/components/chat/ChatHeader';
+import ChatMessages from '@/components/chat/ChatMessages';
+import ChatActions from '@/components/chat/ChatActions';
+import UserModals from '@/components/chat/UserModals';
+import MediaGalleryDialog from '@/components/chat/MediaGalleryDialog';
+import DeleteConfirmationDialog from '@/components/chat/DeleteConfirmationDialog';
 
 interface ChatWindowProps {
   user: {
@@ -76,6 +75,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
     handleImageChange,
     handleSendImage,
     handleVoiceMessageClick,
+    sendVoiceMessage,
     toggleImageBlur,
     openImagePreview,
     showBlockedUsersList,
@@ -83,7 +83,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
     showMediaGallery,
     deleteConversation,
     confirmDeleteConversation,
-    cancelDeleteConversation
+    cancelDeleteConversation,
+    replyToMessage,
+    unsendMessage
   } = useChat(user.id, userRole);
   
   return (
@@ -115,6 +117,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         updateScrollPosition={updateScrollPosition}
         isTyping={isTyping}
         selectedUserId={user.id}
+        onReplyToMessage={replyToMessage}
+        onUnsendMessage={unsendMessage}
       />
       
       <ChatActions 
@@ -129,6 +133,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         isVipUser={userRole === 'vip'}
         fileInputRef={fileInputRef}
         handleVoiceMessageClick={userRole === 'vip' ? handleVoiceMessageClick : undefined}
+        sendVoiceMessage={userRole === 'vip' ? sendVoiceMessage : undefined}
       />
       
       <input 
@@ -187,4 +192,3 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
 };
 
 export default ChatWindow;
-

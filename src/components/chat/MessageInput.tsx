@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Image, Mic, Smile, StopCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -85,20 +84,16 @@ const MessageInput: React.FC<MessageInputProps> = ({
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
         const audioUrl = URL.createObjectURL(audioBlob);
         
-        // Automatically send the voice message without requiring another click
         if (sendVoiceMessage) {
-          console.log('Voice message recorded:', audioUrl);
           sendVoiceMessage(audioUrl);
         }
         
-        // Clean up
         stream.getTracks().forEach(track => track.stop());
         if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
       });
       
       recorder.start();
       
-      // Start a timer to show recording duration
       recordingIntervalRef.current = window.setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
