@@ -15,6 +15,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import VipRegister from './pages/VipRegister';
 import Feedback from './pages/Feedback';
+import VipProfile from './pages/VipProfile'; // Import the new VIP profile page
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ function App() {
             <Route path="/profile-setup" element={<ProfileSetup />} />
             <Route path="/user-selection" element={<UserSelection />} />
             <Route path="/vip-membership" element={<VipMembership />} />
+            <Route path="/vip-profile" element={<VipProfile />} /> {/* Add the new VIP profile route */}
             <Route path="/chat-interface" element={<ChatInterface />} />
             <Route path="/chat-history" element={<ChatHistory />} />
             <Route path="/feedback" element={<Feedback />} /> {/* New feedback route */}

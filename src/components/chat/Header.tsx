@@ -1,83 +1,137 @@
-
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { User, LogOut, Moon, Sun, History, Inbox } from 'lucide-react';
+import { Moon, SunMedium, LogOut, History, Inbox, User, Crown, UserCircle } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { useUser } from '@/contexts/UserContext';
 
 interface HeaderProps {
   username: string;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
   onLogout: () => void;
-  onHistory?: () => void;
-  onInbox?: () => void;
+  onHistory: () => void;
+  onInbox: () => void;
 }
 
-const Header = ({ 
-  username, 
-  isDarkMode, 
-  toggleDarkMode, 
+const Header: React.FC<HeaderProps> = ({
+  username,
+  isDarkMode,
+  toggleDarkMode,
   onLogout,
   onHistory,
   onInbox
-}: HeaderProps) => {
+}) => {
+  
+  const { userRole } = useUser();
+  
   return (
-    <header className={`fixed top-0 left-0 right-0 z-10 py-3 px-4 ${isDarkMode ? 'bg-gray-900' : 'bg-white'} border-b border-gray-200 dark:border-gray-700`}>
-      <div className="flex items-center justify-between max-w-7xl mx-auto">
-        <div className="hidden md:flex items-center">
-          <span className="text-xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-pink-500">
-            Chatiwy
-          </span>
-        </div>
+    <header className={`sticky top-0 z-[100] w-full ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'} border-b shadow-sm`}>
+      <div className="container px-4 py-2 flex items-center justify-between">
+        <Link to="/" className="flex items-center">
+          <img src="/lovable-uploads/a1551f2b-73e8-42c5-b33d-842ef4dd9fd8.png" alt="ChatWii Logo" className="h-10" />
+        </Link>
         
-        <div className="flex items-center gap-2 ml-auto">
-          {onHistory && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="flex items-center gap-1"
-              onClick={onHistory}
-            >
-              <History className="h-4 w-4" />
-              <span className="hidden sm:inline">History</span>
-            </Button>
-          )}
+        <div className="flex items-center gap-3">
+          <span className="hidden md:inline-flex items-center gap-1">
+            <User className="h-4 w-4" />
+            <span className="text-sm font-medium">{username}</span>
+            {userRole === 'vip' && (
+              <span className="ml-1 inline-flex items-center">
+                <Crown className="h-4 w-4 text-amber-400" />
+              </span>
+            )}
+          </span>
           
-          {onInbox && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="flex items-center gap-1"
-              onClick={onInbox}
-            >
-              <Inbox className="h-4 w-4" />
-              <span className="hidden sm:inline">Inbox</span>
-            </Button>
-          )}
-          
-          <div className="flex items-center ml-2 md:ml-4">
-            <span className="hidden sm:inline text-sm font-medium mr-2">{username}</span>
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-orange-100">
-              <User className="h-5 w-5 text-orange-600" />
-            </div>
-          </div>
-          
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleDarkMode}
-            className="ml-1 md:ml-2"
-            aria-label="Toggle dark mode"
-          >
-            {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button>
-          
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onLogout}
-            className="ml-1 md:ml-2"
-          >
-            <LogOut className="h-5 w-5" />
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-9 w-9" 
+                  onClick={toggleDarkMode}
+                >
+                  {isDarkMode ? <SunMedium className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Toggle dark mode</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-9 w-9"
+                  onClick={onInbox}
+                >
+                  <Inbox className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Inbox</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-9 w-9"
+                  onClick={onHistory}
+                >
+                  <History className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Chat history</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            {userRole === 'vip' && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link to="/vip-profile">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-9 w-9"
+                    >
+                      <UserCircle className="h-5 w-5" />
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>VIP Profile</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-9 w-9"
+                  onClick={onLogout}
+                >
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Log out</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
     </header>

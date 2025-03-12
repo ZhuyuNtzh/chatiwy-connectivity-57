@@ -1,56 +1,73 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { signalRService } from '../services/signalRService';
+import { UserRole } from '@/contexts/UserContext';
 
-export const useInactivityTimer = () => {
+export const useInactivityTimer = (timeout = 60 * 60 * 1000) => { // Default 1 hour
   const navigate = useNavigate();
-  const { currentUser, setCurrentUser, setIsLoggedIn, userRole } = useUser();
+  const { userRole, setIsLoggedIn } = useUser();
   const [lastActivity, setLastActivity] = useState<Date>(new Date());
-  const inactivityTimerRef = useRef<number | null>(null);
+  const [timerRunning, setTimerRunning] = useState<boolean>(true);
+  
+  const resetTimer = useCallback(() => {
+    setLastActivity(new Date());
+  }, []);
+  
+  const stopTimer = useCallback(() => {
+    setTimerRunning(false);
+  }, []);
+  
+  const startTimer = useCallback(() => {
+    setTimerRunning(true);
+  }, []);
   
   useEffect(() => {
-    // Skip inactivity checks for VIP users
+    if (!timerRunning) return;
+    
+    // Don't run timer for VIP users
     if (userRole === 'vip') {
+      stopTimer();
       return;
     }
     
-    const resetTimer = () => {
-      setLastActivity(new Date());
-    };
-    
-    window.addEventListener('mousemove', resetTimer);
-    window.addEventListener('keypress', resetTimer);
-    window.addEventListener('click', resetTimer);
-    
     const checkInactivity = () => {
-      // Only check for non-VIP users
-      if (userRole === 'vip') return;
-      
       const now = new Date();
-      const inactiveTime = (now.getTime() - lastActivity.getTime()) / (1000 * 60);
+      const timeElapsed = now.getTime() - lastActivity.getTime();
       
-      if (inactiveTime >= 30) {
-        signalRService.disconnect();
-        setCurrentUser(null);
+      if (timeElapsed > timeout) {
+        console.log('Logging out due to inactivity');
+        // Log out the user
         setIsLoggedIn(false);
-        navigate('/feedback');
+        signalRService.disconnect();
+        navigate('/');
       }
     };
     
-    const intervalId = window.setInterval(checkInactivity, 60000);
+    const intervalId = setInterval(checkInactivity, 60000); // Check every minute
+    
+    return () => clearInterval(intervalId);
+  }, [lastActivity, navigate, setIsLoggedIn, timeout, timerRunning, userRole, stopTimer]);
+  
+  // Set up event listeners for user activity
+  useEffect(() => {
+    const activityEvents = ['mousedown', 'keydown', 'touchstart', 'scroll'];
+    
+    const handleUserActivity = () => {
+      resetTimer();
+    };
+    
+    activityEvents.forEach(event => {
+      window.addEventListener(event, handleUserActivity);
+    });
     
     return () => {
-      window.removeEventListener('mousemove', resetTimer);
-      window.removeEventListener('keypress', resetTimer);
-      window.removeEventListener('click', resetTimer);
-      window.clearInterval(intervalId);
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, handleUserActivity);
+      });
     };
-  }, [lastActivity, navigate, setCurrentUser, setIsLoggedIn, userRole]);
+  }, [resetTimer]);
   
-  return {
-    lastActivity,
-    setLastActivity
-  };
+  return { resetTimer, stopTimer, startTimer };
 };
