@@ -21,6 +21,12 @@ const NicknameInput: React.FC<NicknameInputProps> = ({
   const [isValid, setIsValid] = useState(true);
   
   const validateNickname = (value: string): boolean => {
+    // Check for "admin" in any case variation (case-insensitive)
+    const adminPattern = /admin/i;
+    if (adminPattern.test(value)) {
+      return false;
+    }
+    
     // Check for more than 3 consecutive numbers
     const consecutiveNumbersPattern = /\d{4,}/;
     if (consecutiveNumbersPattern.test(value)) {
@@ -30,12 +36,6 @@ const NicknameInput: React.FC<NicknameInputProps> = ({
     // Check for alphanumeric characters only
     const alphanumericPattern = /^[a-zA-Z0-9]*$/;
     if (!alphanumericPattern.test(value)) {
-      return false;
-    }
-    
-    // Check if nickname is "admin" (case insensitive)
-    const adminPattern = /^admin$/i;
-    if (adminPattern.test(value)) {
       return false;
     }
     
@@ -53,10 +53,10 @@ const NicknameInput: React.FC<NicknameInputProps> = ({
         onChange(value);
       } else {
         // Check for admin specifically to give a more specific error message
-        if (/^admin$/i.test(value)) {
+        if (/admin/i.test(value)) {
           toast({
             title: "Invalid nickname",
-            description: "The name 'admin' is not allowed",
+            description: "The word 'admin' is not allowed in any form",
             variant: "destructive"
           });
         } else {

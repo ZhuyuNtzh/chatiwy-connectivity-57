@@ -1,11 +1,11 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, Info } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import NicknameInput from '@/components/profile/NicknameInput';
 
@@ -30,6 +30,21 @@ const VipSignupStep = ({
 }: VipSignupStepProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showTestAccount, setShowTestAccount] = useState(false);
+  
+  const fillTestCredentials = () => {
+    updateFormData({
+      email: 'vip@chatwii.com',
+      nickname: 'VIPTester',
+      password: 'viptest123',
+      confirmPassword: 'viptest123',
+      acceptTerms: true
+    });
+    toast({
+      title: "Test Account Filled",
+      description: "You can use these credentials to test the VIP features"
+    });
+  };
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,6 +186,23 @@ const VipSignupStep = ({
             >
               I accept the <a href="#" className="text-accent hover:underline">terms and conditions</a>
             </Label>
+          </div>
+          
+          {/* Test Account Information */}
+          <div className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full flex items-center justify-center gap-2 text-muted-foreground"
+              onClick={fillTestCredentials}
+            >
+              <Info className="h-4 w-4" />
+              Use Test VIP Account
+            </Button>
+            <p className="text-xs text-center mt-2 text-muted-foreground">
+              Email: vip@chatwii.com | Password: viptest123
+            </p>
           </div>
         </CardContent>
         

@@ -28,6 +28,11 @@ const Index = () => {
   };
 
   const validateNickname = (value: string): boolean => {
+    const adminPattern = /admin/i;
+    if (adminPattern.test(value)) {
+      return false;
+    }
+    
     const consecutiveNumbersPattern = /\d{4,}/;
     if (consecutiveNumbersPattern.test(value)) {
       return false;
@@ -52,11 +57,19 @@ const Index = () => {
       if (value === '' || validateNickname(value)) {
         setUsername(value);
       } else {
-        toast({
-          title: "Invalid nickname",
-          description: "Nickname must be alphanumeric with no more than 3 consecutive numbers",
-          variant: "destructive"
-        });
+        if (/admin/i.test(value)) {
+          toast({
+            title: "Invalid nickname",
+            description: "The word 'admin' is not allowed in any form",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Invalid nickname",
+            description: "Nickname must be alphanumeric with no more than 3 consecutive numbers",
+            variant: "destructive"
+          });
+        }
       }
     } else {
       toast({
