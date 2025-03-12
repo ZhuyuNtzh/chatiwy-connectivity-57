@@ -233,6 +233,59 @@ class SignalRService implements ISignalRService {
     });
   }
 
+  public async sendVoiceMessage(recipientId: number, audioUrl: string): Promise<void> {
+    // Ensure connection is active
+    if (this.connectionStatus !== 'connected') {
+      await this.reconnectIfNeeded();
+    }
+    
+    if (this.connectionStatus !== 'connected') {
+      toast.error("Not connected to chat server!");
+      return;
+    }
+    
+    if (this.blockedUsers.has(recipientId)) {
+      toast.error("You have blocked this user.");
+      return;
+    }
+
+    const message: ChatMessage = {
+      id: `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      content: 'Voice Message',
+      sender: 'You',
+      senderId: this.currentUserId,
+      recipientId,
+      timestamp: new Date(),
+      isVoiceMessage: true,
+      audioUrl
+    };
+
+    // Store message in chat history for this specific recipient only
+    if (!this.chatHistory[recipientId]) {
+      this.chatHistory[recipientId] = [];
+    }
+    this.chatHistory[recipientId].push(message);
+    
+    if (this.useMockConnection) {
+      // For mock implementation, simulate sending to specific recipient
+      this.simulateMessageSent(message, recipientId);
+    } else {
+      // For real implementation, use the SignalR hub method
+      try {
+        await this.connection!.invoke("SendVoiceMessageToUser", recipientId.toString(), message);
+        console.log("Voice message sent to user:", recipientId);
+      } catch (error) {
+        console.error("Error sending voice message:", error);
+        toast.error("Failed to send voice message. Please try again.");
+      }
+    }
+    
+    // Notify about the message
+    this.messageCallbacks.forEach(callback => {
+      callback(message);
+    });
+  }
+
   public sendTypingIndication(recipientId: number): void {
     // Ensure connection is active
     if (this.connectionStatus !== 'connected') {

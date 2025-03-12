@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { useUser } from '../contexts/UserContext';
-import { signalRService } from '../services/signalRService';
-import { useChat } from '../hooks/useChat';
+import { useUser } from '@/contexts/UserContext';
+import { signalRService } from '@/services/signalRService';
+import { useChat } from '@/hooks/useChat';
 
 // Import refactored components
 import ChatHeader from './chat/ChatHeader';
@@ -10,6 +10,7 @@ import ChatMessages from './chat/ChatMessages';
 import ChatActions from './chat/ChatActions';
 import UserModals from './chat/UserModals';
 import MediaGalleryDialog from './chat/MediaGalleryDialog';
+import DeleteConfirmationDialog from './chat/DeleteConfirmationDialog';
 
 interface ChatWindowProps {
   user: {
@@ -61,6 +62,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
     setIsMediaGalleryOpen,
     mediaGalleryItems,
     isRecording,
+    isDeleteDialogOpen,
+    setIsDeleteDialogOpen,
     handleSendMessage,
     handleKeyDown,
     handleAddEmoji,
@@ -78,7 +81,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
     showBlockedUsersList,
     toggleTranslation,
     showMediaGallery,
-    deleteConversation
+    deleteConversation,
+    confirmDeleteConversation,
+    cancelDeleteConversation
   } = useChat(user.id, userRole);
   
   return (
@@ -158,7 +163,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         setPreviewImage={setPreviewImage}
       />
       
-      {/* New Media Gallery Dialog for VIP users */}
+      {/* Media Gallery Dialog for VIP users */}
       {userRole === 'vip' && (
         <MediaGalleryDialog
           isOpen={isMediaGalleryOpen}
@@ -167,8 +172,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
           user={user}
         />
       )}
+      
+      {/* Delete Confirmation Dialog */}
+      {userRole === 'vip' && (
+        <DeleteConfirmationDialog
+          isOpen={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          onConfirm={confirmDeleteConversation}
+          onCancel={cancelDeleteConversation}
+        />
+      )}
     </div>
   );
 };
 
 export default ChatWindow;
+

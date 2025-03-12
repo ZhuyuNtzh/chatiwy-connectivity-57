@@ -23,6 +23,7 @@ export const useChat = (userId: number, userRole: string) => {
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [isRecording, setIsRecording] = useState(false);
   const [audioPreview, setAudioPreview] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [mediaGalleryItems, setMediaGalleryItems] = useState<{
     type: 'image' | 'voice' | 'link';
     url: string;
@@ -337,33 +338,12 @@ export const useChat = (userId: number, userRole: string) => {
   };
   
   const sendVoiceMessage = (audioUrl: string) => {
+    if (!audioUrl) return;
+    
     // In a real app, you would upload the audio file to a server
     // and then send a reference to it via SignalR
     
-    // For demo purposes, we'll just send the audio URL directly
-    const message: ChatMessage = {
-      id: `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      content: 'Voice Message',
-      sender: 'You',
-      senderId: 0, // Current user
-      recipientId: userId,
-      timestamp: new Date(),
-      isVoiceMessage: true,
-      audioUrl
-    };
-    
-    // Add to messages
-    setMessages(prev => [...prev, message]);
-    
-    // Add to media gallery
-    setMediaGalleryItems(prev => [
-      ...prev,
-      {
-        type: 'voice',
-        url: audioUrl,
-        timestamp: new Date()
-      }
-    ]);
+    signalRService.sendVoiceMessage(userId, audioUrl);
     
     // Set auto-scroll to true when sending a message
     setAutoScrollToBottom(true);
@@ -410,11 +390,21 @@ export const useChat = (userId: number, userRole: string) => {
   };
   
   const deleteConversation = () => {
-    // In a real app, this would call an API to delete the conversation
+    // Show confirmation dialog instead of deleting immediately
+    setIsDeleteDialogOpen(true);
+    setShowOptions(false);
+  };
+  
+  const confirmDeleteConversation = () => {
+    // Actually delete the conversation after confirmation
     setMessages([]);
     setMediaGalleryItems([]);
     toast.success('Conversation deleted');
-    setShowOptions(false);
+    setIsDeleteDialogOpen(false);
+  };
+  
+  const cancelDeleteConversation = () => {
+    setIsDeleteDialogOpen(false);
   };
   
   // Helper function to check if a message contains a link
@@ -465,6 +455,8 @@ export const useChat = (userId: number, userRole: string) => {
     mediaGalleryItems,
     isRecording,
     audioPreview,
+    isDeleteDialogOpen,
+    setIsDeleteDialogOpen,
     // functions
     handleSendMessage,
     handleKeyDown,
@@ -483,6 +475,8 @@ export const useChat = (userId: number, userRole: string) => {
     showBlockedUsersList,
     toggleTranslation,
     showMediaGallery,
-    deleteConversation
+    deleteConversation,
+    confirmDeleteConversation,
+    cancelDeleteConversation
   };
 };
