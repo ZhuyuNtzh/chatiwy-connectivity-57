@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { useUser } from '@/contexts/UserContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Shuffle, LogIn, UserPlus } from 'lucide-react';
+import { Shuffle, LogIn, UserPlus, Moon, Sun } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -69,16 +70,25 @@ const Index = () => {
     <div className={`min-h-screen bg-background flex flex-col ${isDarkMode ? 'dark' : ''}`}>
       <header className="w-full px-8 py-4 flex justify-between items-center">
         <div className="text-2xl font-bold text-foreground">chativy.</div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Dark mode</span>
-            <Switch checked={isDarkMode} onCheckedChange={toggleDarkMode} />
+            <Switch 
+              checked={isDarkMode} 
+              onCheckedChange={toggleDarkMode}
+              className="data-[state=checked]:bg-primary"
+            />
+            {isDarkMode ? (
+              <Moon size={16} className="text-foreground" />
+            ) : (
+              <Sun size={16} className="text-foreground" />
+            )}
           </div>
           <Button 
-            className="bg-primary hover:bg-primary/90 text-white rounded-md px-6"
+            className="bg-primary hover:bg-primary/90 text-white rounded-md"
             onClick={handleVipClick}
           >
-            VIP Membership
+            <span className="hidden md:inline">VIP Membership</span>
+            <span className="md:hidden">VIP</span>
           </Button>
         </div>
       </header>

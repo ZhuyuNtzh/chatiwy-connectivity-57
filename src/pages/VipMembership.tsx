@@ -105,14 +105,14 @@ const VipMembership = () => {
         </div>
         
         <div className="md:hidden w-full">
-          <Carousel className="w-full">
-            <CarouselContent>
+          <Carousel className="w-full" opts={{ align: "center", loop: true }}>
+            <CarouselContent className="mx-auto">
               {plans.map((plan) => (
-                <CarouselItem key={plan.id}>
+                <CarouselItem key={plan.id} className="basis-full sm:basis-full">
                   <div 
                     className={`relative bg-card rounded-xl p-6 shadow-md border ${
                       isDarkMode ? 'border-gray-700' : 'border-gray-200'
-                    } flex flex-col mx-1`}
+                    } flex flex-col mx-auto max-w-sm`}
                   >
                     {plan.popular && (
                       <div className="absolute -top-3 right-4 bg-secondary text-secondary-foreground text-xs px-3 py-1 rounded-full">
@@ -146,8 +146,10 @@ const VipMembership = () => {
                 </CarouselItem>
               ))}
             </CarouselContent>
-            <CarouselPrevious />
-            <CarouselNext />
+            <div className="flex justify-center gap-2 mt-4">
+              <CarouselPrevious className="static transform-none mx-1" />
+              <CarouselNext className="static transform-none mx-1" />
+            </div>
           </Carousel>
         </div>
         
