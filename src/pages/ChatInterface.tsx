@@ -39,10 +39,18 @@ const ChatInterface = () => {
   // Initial VIP check on component mount
   useEffect(() => {
     const storedRole = sessionStorage.getItem('userRole');
+    const allowVIPChatAccess = sessionStorage.getItem('allowVIPChatAccess');
     
-    if (userRole === 'vip' || storedRole === 'vip' || (currentUser && currentUser.role === 'vip')) {
+    // Only redirect if not explicitly allowed
+    if ((userRole === 'vip' || storedRole === 'vip' || (currentUser && currentUser.role === 'vip')) && 
+        allowVIPChatAccess !== 'true') {
       console.log("VIP user detected in ChatInterface, redirecting to settings");
       navigate('/settings', { replace: true });
+    }
+    
+    // Clear the flag once used
+    if (allowVIPChatAccess === 'true') {
+      sessionStorage.removeItem('allowVIPChatAccess');
     }
   }, [currentUser, userRole, navigate]);
   

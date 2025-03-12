@@ -75,6 +75,7 @@ export const useChatInterface = (mockUsers: User[]) => {
   useEffect(() => {
     // First check session storage for role information
     const storedRole = sessionStorage.getItem('userRole');
+    const allowVIPChatAccess = sessionStorage.getItem('allowVIPChatAccess');
     
     if (!currentUser && sessionStorage.getItem('isLoggedIn') !== 'true') {
       // Not logged in at all, redirect to login
@@ -84,11 +85,17 @@ export const useChatInterface = (mockUsers: User[]) => {
       if (currentUser) {
         sessionStorage.setItem('isLoggedIn', 'true');
         
-        // Double safety check - if user is VIP but on chat interface, redirect to settings
+        // Only redirect VIP users if they haven't explicitly chosen to chat
         if ((userRole === 'vip' || storedRole === 'vip' || currentUser.role === 'vip') && 
-            window.location.pathname === '/chat-interface') {
+            window.location.pathname === '/chat-interface' && 
+            allowVIPChatAccess !== 'true') {
           console.log("VIP user detected on chat interface, redirecting to settings");
           navigate('/settings', { replace: true });
+        }
+        
+        // Clear the temporary flag once used
+        if (allowVIPChatAccess === 'true') {
+          sessionStorage.removeItem('allowVIPChatAccess');
         }
       }
     }

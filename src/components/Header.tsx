@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { 
   Bell, 
-  Settings, 
   User,
   Moon,
   Sun,
@@ -59,10 +58,6 @@ const Header = () => {
               
               <Button variant="ghost" size="icon" onClick={() => navigate('/chat-history')}>
                 <History className="h-5 w-5" />
-              </Button>
-              
-              <Button variant="ghost" size="icon" onClick={() => navigate('/settings')}>
-                <Settings className="h-5 w-5" />
               </Button>
               
               <Button variant="ghost" size="icon" onClick={onLogoutClick}>

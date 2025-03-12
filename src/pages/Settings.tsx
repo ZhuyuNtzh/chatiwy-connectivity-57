@@ -153,6 +153,7 @@ const Settings = () => {
   };
 
   const handleStartChatting = () => {
+    sessionStorage.setItem('allowVIPChatAccess', 'true');
     navigate('/chat-interface');
   };
 
