@@ -18,10 +18,11 @@ import InterestsSelector from '@/components/profile/InterestsSelector';
 import AvatarSelectPopup from '@/components/vip/profile/AvatarSelectPopup';
 import ChangeEmailDialog from '@/components/vip/profile/ChangeEmailDialog';
 import axios from 'axios';
+import { DeleteAccountFlow } from '@/components/vip/profile/DeleteAccountFlow';
 
 const Settings = () => {
-  const { isDarkMode } = useTheme();
   const navigate = useNavigate();
+  const { isDarkMode } = useTheme();
   const { currentUser, setCurrentUser, setIsLoggedIn } = useUser();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -384,13 +385,7 @@ const Settings = () => {
               </div>
               
               <div className="flex flex-col sm:flex-row justify-between items-center mt-8 pt-6 border-t border-gray-200">
-                <Button 
-                  variant="destructive" 
-                  onClick={handleDeleteAccount}
-                  className="mb-4 sm:mb-0 bg-red-500 hover:bg-red-600"
-                >
-                  Delete Account
-                </Button>
+                <DeleteAccountFlow onDeleteComplete={handleDeleteComplete} />
                 
                 <div className="mt-6">
                   <Button 
@@ -485,6 +480,12 @@ const Settings = () => {
       default:
         return null;
     }
+  };
+
+  const handleDeleteComplete = () => {
+    setCurrentUser(null);
+    setIsLoggedIn(false);
+    navigate('/');
   };
 
   return (
@@ -690,13 +691,7 @@ const Settings = () => {
                 </div>
                 
                 <div className="flex flex-col sm:flex-row justify-between items-center mt-8 pt-6 border-t border-gray-200">
-                  <Button 
-                    variant="destructive" 
-                    onClick={handleDeleteAccount}
-                    className="mb-4 sm:mb-0 bg-red-500 hover:bg-red-600"
-                  >
-                    Delete Account
-                  </Button>
+                  <DeleteAccountFlow onDeleteComplete={handleDeleteComplete} />
                   
                   <div className="mt-6">
                     <Button 
