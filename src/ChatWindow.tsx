@@ -1,16 +1,15 @@
-
 import React, { useState } from 'react';
-import { useUser } from '../contexts/UserContext';
-import { signalRService } from '../services/signalRService';
-import { useChat } from '../hooks/useChat';
+import { useUser } from '@/contexts/UserContext';
+import { signalRService } from '@/services/signalRService';
+import { useChat } from '@/hooks/useChat';
 
 // Import refactored components
-import ChatHeader from './chat/ChatHeader';
-import ChatMessages from './chat/ChatMessages';
-import ChatActions from './chat/ChatActions';
-import UserModals from './chat/UserModals';
-import MediaGalleryDialog from './chat/MediaGalleryDialog';
-import DeleteConfirmationDialog from './chat/DeleteConfirmationDialog';
+import ChatHeader from '@/components/chat/ChatHeader';
+import ChatMessages from '@/components/chat/ChatMessages';
+import ChatActions from '@/components/chat/ChatActions';
+import UserModals from '@/components/chat/UserModals';
+import MediaGalleryDialog from '@/components/chat/MediaGalleryDialog';
+import DeleteConfirmationDialog from '@/components/chat/DeleteConfirmationDialog';
 
 interface ChatWindowProps {
   user: {
@@ -174,10 +173,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
       {/* Delete Confirmation Dialog */}
       <DeleteConfirmationDialog
         isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
+        onOpenChange={setIsDeleteDialogOpen}
         onConfirm={handleConfirmDelete}
-        title="Delete Conversation"
-        description="Are you sure you want to delete this conversation? This action cannot be undone."
+        onCancel={() => setIsDeleteDialogOpen(false)}
       />
       
       {/* New Media Gallery Dialog for VIP users */}
