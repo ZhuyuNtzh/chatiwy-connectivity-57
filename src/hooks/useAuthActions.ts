@@ -16,6 +16,7 @@ export const useAuthActions = () => {
     setIsLoggedIn(false);
     sessionStorage.removeItem('isLoggedIn');
     sessionStorage.removeItem('rulesAccepted');
+    sessionStorage.removeItem('allowVIPChatAccess'); // Clear the VIP chat access flag
     signalRService.disconnect();
     navigate('/feedback'); // Redirect to feedback page instead of home
   };

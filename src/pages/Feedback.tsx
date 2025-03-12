@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ const Feedback = () => {
   const [feedback, setFeedback] = useState('');
   const [rating, setRating] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +52,9 @@ const Feedback = () => {
       // Reset form
       setFeedback('');
       setRating(null);
+      
+      // Redirect to landing page
+      navigate('/', { replace: true });
     }, 1000);
   };
   

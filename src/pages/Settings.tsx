@@ -9,14 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { User, Crown } from 'lucide-react';
+import { User, Crown, X, Plus } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { useUser } from '@/contexts/UserContext';
-import InterestsSelector from '@/components/vip/profile/InterestsSelector';
 import AvatarSelectPopup from '@/components/vip/profile/AvatarSelectPopup';
 import ChangeEmailDialog from '@/components/vip/profile/ChangeEmailDialog';
+import DeleteAccountDialog from '@/components/vip/profile/DeleteAccountDialog';
 import axios from 'axios';
 
 const Settings = () => {
@@ -39,9 +38,6 @@ const Settings = () => {
   const [newInterest, setNewInterest] = useState('');
   const [countries, setCountries] = useState<any[]>([]);
   const [isLoadingCountries, setIsLoadingCountries] = useState(true);
-  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState({ email: '', password: '' });
-  const [showDeleteFinalConfirm, setShowDeleteFinalConfirm] = useState(false);
 
   const membershipStartDate = new Date(currentUser?.joinedAt || Date.now());
   const membershipEndDate = new Date(membershipStartDate);
@@ -126,6 +122,7 @@ const Settings = () => {
   };
 
   const handleStartChatting = () => {
+    sessionStorage.setItem('allowVIPChatAccess', 'true');
     navigate('/chat-interface');
   };
 
@@ -156,17 +153,6 @@ const Settings = () => {
         description: status ? "Other users can see you" : "You're now invisible to other users",
       });
     }
-  };
-
-  const handleDeleteConfirmation = () => {
-    setShowDeleteConfirmDialog(false);
-    setShowDeleteFinalConfirm(true);
-  };
-
-  const handleFinalDelete = () => {
-    setIsLoggedIn(false);
-    setCurrentUser(null);
-    navigate('/');
   };
 
   return (
@@ -408,7 +394,7 @@ const Settings = () => {
                 <div className="flex flex-col sm:flex-row justify-between items-center mt-8 pt-6 border-t border-gray-200">
                   <Button 
                     variant="destructive" 
-                    onClick={() => setShowDeleteConfirm(true)}
+                    onClick={handleDeleteAccount}
                     className="mb-4 sm:mb-0 bg-red-500 hover:bg-red-600"
                   >
                     Delete Account
@@ -537,65 +523,10 @@ const Settings = () => {
         currentEmail={email}
       />
       
-      <Dialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Account</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete your account? This action cannot be undone.
-              Please confirm your credentials to proceed.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Email or Nickname</Label>
-              <Input
-                value={deleteConfirmation.email}
-                onChange={(e) => setDeleteConfirmation(prev => ({ ...prev, email: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Password</Label>
-              <Input
-                type="password"
-                value={deleteConfirmation.password}
-                onChange={(e) => setDeleteConfirmation(prev => ({ ...prev, password: e.target.value }))}
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteConfirmDialog(false)}>
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleDeleteConfirmation}
-              disabled={!deleteConfirmation.email || !deleteConfirmation.password}
-            >
-              Confirm
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      <Dialog open={showDeleteFinalConfirm} onOpenChange={setShowDeleteFinalConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Email Confirmation Required</DialogTitle>
-            <DialogDescription>
-              We've sent a confirmation link to your email address. Please check your inbox and follow the link to complete the account deletion process.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteFinalConfirm(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteAccountDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+      />
     </div>
   );
 };
