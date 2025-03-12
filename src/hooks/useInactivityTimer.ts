@@ -1,73 +1,56 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { signalRService } from '../services/signalRService';
-import { UserRole } from '@/contexts/UserContext';
 
-export const useInactivityTimer = (timeout = 60 * 60 * 1000) => { // Default 1 hour
+export const useInactivityTimer = () => {
   const navigate = useNavigate();
-  const { userRole, setIsLoggedIn } = useUser();
+  const { currentUser, setCurrentUser, setIsLoggedIn, userRole } = useUser();
   const [lastActivity, setLastActivity] = useState<Date>(new Date());
-  const [timerRunning, setTimerRunning] = useState<boolean>(true);
-  
-  const resetTimer = useCallback(() => {
-    setLastActivity(new Date());
-  }, []);
-  
-  const stopTimer = useCallback(() => {
-    setTimerRunning(false);
-  }, []);
-  
-  const startTimer = useCallback(() => {
-    setTimerRunning(true);
-  }, []);
+  const inactivityTimerRef = useRef<number | null>(null);
   
   useEffect(() => {
-    if (!timerRunning) return;
-    
-    // Don't run timer for VIP users
+    // Skip inactivity checks for VIP users
     if (userRole === 'vip') {
-      stopTimer();
       return;
     }
     
+    const resetTimer = () => {
+      setLastActivity(new Date());
+    };
+    
+    window.addEventListener('mousemove', resetTimer);
+    window.addEventListener('keypress', resetTimer);
+    window.addEventListener('click', resetTimer);
+    
     const checkInactivity = () => {
-      const now = new Date();
-      const timeElapsed = now.getTime() - lastActivity.getTime();
+      // Only check for non-VIP users
+      if (userRole === 'vip') return;
       
-      if (timeElapsed > timeout) {
-        console.log('Logging out due to inactivity');
-        // Log out the user
-        setIsLoggedIn(false);
+      const now = new Date();
+      const inactiveTime = (now.getTime() - lastActivity.getTime()) / (1000 * 60);
+      
+      if (inactiveTime >= 30) {
         signalRService.disconnect();
-        navigate('/');
+        setCurrentUser(null);
+        setIsLoggedIn(false);
+        navigate('/feedback');
       }
     };
     
-    const intervalId = setInterval(checkInactivity, 60000); // Check every minute
-    
-    return () => clearInterval(intervalId);
-  }, [lastActivity, navigate, setIsLoggedIn, timeout, timerRunning, userRole, stopTimer]);
-  
-  // Set up event listeners for user activity
-  useEffect(() => {
-    const activityEvents = ['mousedown', 'keydown', 'touchstart', 'scroll'];
-    
-    const handleUserActivity = () => {
-      resetTimer();
-    };
-    
-    activityEvents.forEach(event => {
-      window.addEventListener(event, handleUserActivity);
-    });
+    const intervalId = window.setInterval(checkInactivity, 60000);
     
     return () => {
-      activityEvents.forEach(event => {
-        window.removeEventListener(event, handleUserActivity);
-      });
+      window.removeEventListener('mousemove', resetTimer);
+      window.removeEventListener('keypress', resetTimer);
+      window.removeEventListener('click', resetTimer);
+      window.clearInterval(intervalId);
     };
-  }, [resetTimer]);
+  }, [lastActivity, navigate, setCurrentUser, setIsLoggedIn, userRole]);
   
-  return { resetTimer, stopTimer, startTimer };
+  return {
+    lastActivity,
+    setLastActivity
+  };
 };

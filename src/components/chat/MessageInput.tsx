@@ -16,8 +16,6 @@ interface MessageInputProps {
   isUserBlocked: boolean;
   isVipUser: boolean;
   fileInputRef: React.RefObject<HTMLInputElement>;
-  onMicClick?: () => void;
-  isRecording?: boolean;
 }
 
 const commonEmojis = [
@@ -41,9 +39,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   handleImageClick,
   isUserBlocked,
   isVipUser,
-  fileInputRef,
-  onMicClick,
-  isRecording = false
+  fileInputRef
 }) => {
   return (
     <form onSubmit={handleSendMessage} className="flex items-center gap-2 sticky bottom-0 bg-white dark:bg-gray-800 p-2 border-t border-gray-200 dark:border-gray-700">
@@ -83,10 +79,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
         type="button" 
         variant="ghost" 
         size="icon" 
-        className={`h-9 w-9 shrink-0 ${isRecording ? 'bg-red-100 text-red-500 dark:bg-red-900 dark:text-red-300' : ''}`}
-        disabled={!isVipUser || isRecording}
+        className="h-9 w-9 shrink-0"
+        disabled={!isVipUser}
         title={!isVipUser ? "VIP feature" : "Voice message"}
-        onClick={onMicClick}
       >
         <Mic className={`h-5 w-5 ${!isVipUser ? "opacity-50" : ""}`} />
       </Button>
@@ -96,10 +91,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
           value={message}
           onChange={(e) => setMessage(e.target.value.slice(0, maxChars))}
           onKeyDown={handleKeyDown}
-          placeholder={isRecording ? "Recording voice message..." : "Type a message..."}
+          placeholder="Type a message..."
           className="pr-16"
           maxLength={maxChars}
-          disabled={isUserBlocked || isRecording}
+          disabled={isUserBlocked}
         />
         <div className="absolute right-2 bottom-1 text-xs text-gray-400">
           {message.length}/{maxChars}
@@ -109,7 +104,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       <Button 
         type="submit" 
         size="icon" 
-        disabled={(!message.trim() && !isRecording) || isUserBlocked}
+        disabled={!message.trim() || isUserBlocked}
         className="h-9 w-9 shrink-0"
       >
         <Send className="h-5 w-5" />
