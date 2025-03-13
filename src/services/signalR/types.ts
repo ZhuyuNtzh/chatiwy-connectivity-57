@@ -47,6 +47,7 @@ export interface ISignalRService {
   blockUser(userId: number): void;
   unblockUser(userId: number): void;
   isUserBlocked(userId: number): boolean;
+  isAdminUser(userId: number): boolean;
   getBlockedUsers(): number[];
   getChatHistory(userId: number): ChatMessage[];
   getAllChatHistory(): Record<number, ChatMessage[]>;

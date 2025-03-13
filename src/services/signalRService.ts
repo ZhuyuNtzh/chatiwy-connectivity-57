@@ -22,11 +22,9 @@ class SignalRService implements ISignalRService {
   private hubUrl: string = 'https://your-backend-url.com/chathub'; // Update this with your actual backend URL
 
   public async initialize(userId: number, username: string): Promise<void> {
-    // Store the username and userId for later use
     this.userName = username;
     this.currentUserId = userId;
     
-    // Only initialize if not already connected or initializing
     if (this.connectionStatus === 'connected' || this.isInitializing) {
       return;
     }
@@ -37,21 +35,18 @@ class SignalRService implements ISignalRService {
 
     try {
       if (this.useMockConnection) {
-        // Use mock connection for development/testing
         await new Promise(resolve => setTimeout(resolve, 1000));
         this.connection = new MockHubConnection() as unknown as signalR.HubConnection;
       } else {
-        // Use real SignalR connection for production
         this.connection = new signalR.HubConnectionBuilder()
           .withUrl(this.hubUrl)
-          .withAutomaticReconnect([0, 2000, 10000, 30000]) // Retry after 0ms, 2s, 10s, 30s
+          .withAutomaticReconnect([0, 2000, 10000, 30000])
           .configureLogging(signalR.LogLevel.Information)
           .build();
           
         await this.connection.start();
         console.log("Connected to SignalR hub.");
         
-        // Send user information to the server
         await this.connection.invoke('RegisterUser', userId, username);
       }
       
@@ -60,18 +55,12 @@ class SignalRService implements ISignalRService {
       
       this.updateConnectedUsersCount();
       
-      // Set up the message receiver
       this.connection.on('receiveMessage', (message: ChatMessage) => {
-        // Don't receive messages from blocked users
         if (this.blockedUsers.has(message.senderId)) {
           return;
         }
         
-        // Only process messages if:
-        // 1. The message is sent TO the current user (recipientId matches currentUserId)
-        // 2. The message is FROM the current user (senderId matches currentUserId)
         if (message.recipientId === this.currentUserId || message.senderId === this.currentUserId) {
-          // Store message in chat history for the specific conversation partner
           const conversationPartnerId = message.senderId === this.currentUserId ? 
             message.recipientId! : message.senderId;
           
@@ -80,17 +69,14 @@ class SignalRService implements ISignalRService {
           }
           this.chatHistory[conversationPartnerId].push(message);
           
-          // Only notify about messages relevant to this user
           this.messageCallbacks.forEach(callback => callback(message));
         }
       });
 
-      // Set up typing indicator
       this.connection.on('userTyping', (userId: number) => {
         this.typingCallbacks.forEach(callback => callback(userId));
       });
       
-      // Set up message deletion handler
       this.connection.on('messageDeleted', (messageId: string) => {
         this.messageDeletedCallbacks.forEach(callback => callback(messageId));
       });
@@ -143,7 +129,6 @@ class SignalRService implements ISignalRService {
   }
 
   public async sendMessage(recipientId: number, content: string): Promise<void> {
-    // Ensure connection is active
     if (this.connectionStatus !== 'connected') {
       await this.reconnectIfNeeded();
     }
@@ -167,17 +152,14 @@ class SignalRService implements ISignalRService {
       timestamp: new Date()
     };
     
-    // Store message in chat history for this specific recipient only
     if (!this.chatHistory[recipientId]) {
       this.chatHistory[recipientId] = [];
     }
     this.chatHistory[recipientId].push(message);
     
     if (this.useMockConnection) {
-      // For mock implementation, simulate sending to specific recipient
       this.simulateMessageSent(message, recipientId);
     } else {
-      // For real implementation, use the SignalR hub method
       try {
         await this.connection!.invoke("SendMessageToUser", recipientId.toString(), message);
         console.log("Message sent to user:", recipientId);
@@ -187,14 +169,12 @@ class SignalRService implements ISignalRService {
       }
     }
     
-    // Notify only about this specific message to the current user
     this.messageCallbacks.forEach(callback => {
       callback(message);
     });
   }
 
   public async sendImage(recipientId: number, imageUrl: string, isBlurred: boolean = true): Promise<void> {
-    // Ensure connection is active
     if (this.connectionStatus !== 'connected') {
       await this.reconnectIfNeeded();
     }
@@ -221,17 +201,14 @@ class SignalRService implements ISignalRService {
       isBlurred
     };
 
-    // Store message in chat history for this specific recipient only
     if (!this.chatHistory[recipientId]) {
       this.chatHistory[recipientId] = [];
     }
     this.chatHistory[recipientId].push(message);
     
     if (this.useMockConnection) {
-      // For mock implementation, simulate sending to specific recipient
       this.simulateMessageSent(message, recipientId);
     } else {
-      // For real implementation, use the SignalR hub method
       try {
         await this.connection!.invoke("SendImageToUser", recipientId.toString(), message);
         console.log("Image sent to user:", recipientId);
@@ -241,14 +218,12 @@ class SignalRService implements ISignalRService {
       }
     }
     
-    // Notify about the message
     this.messageCallbacks.forEach(callback => {
       callback(message);
     });
   }
 
   public async sendVoiceMessage(recipientId: number, audioUrl: string): Promise<void> {
-    // Ensure connection is active
     if (this.connectionStatus !== 'connected') {
       await this.reconnectIfNeeded();
     }
@@ -274,17 +249,14 @@ class SignalRService implements ISignalRService {
       audioUrl
     };
 
-    // Store message in chat history for this specific recipient only
     if (!this.chatHistory[recipientId]) {
       this.chatHistory[recipientId] = [];
     }
     this.chatHistory[recipientId].push(message);
     
     if (this.useMockConnection) {
-      // For mock implementation, simulate sending to specific recipient
       this.simulateMessageSent(message, recipientId);
     } else {
-      // For real implementation, use the SignalR hub method
       try {
         await this.connection!.invoke("SendVoiceMessageToUser", recipientId.toString(), message);
         console.log("Voice message sent to user:", recipientId);
@@ -294,14 +266,12 @@ class SignalRService implements ISignalRService {
       }
     }
     
-    // Notify about the message
     this.messageCallbacks.forEach(callback => {
       callback(message);
     });
   }
   
   public async deleteMessage(messageId: string, recipientId: number): Promise<void> {
-    // Ensure connection is active
     if (this.connectionStatus !== 'connected') {
       await this.reconnectIfNeeded();
     }
@@ -312,10 +282,8 @@ class SignalRService implements ISignalRService {
     }
     
     if (this.useMockConnection) {
-      // For mock implementation, simulate message deletion
       this.simulateMessageDeleted(messageId, recipientId);
     } else {
-      // For real implementation, use the SignalR hub method
       try {
         await this.connection!.invoke("DeleteMessage", messageId, recipientId.toString());
         console.log("Message deleted:", messageId);
@@ -325,21 +293,18 @@ class SignalRService implements ISignalRService {
       }
     }
     
-    // Update the chat history for this specific recipient
     if (this.chatHistory[recipientId]) {
       this.chatHistory[recipientId] = this.chatHistory[recipientId].map(msg => 
         msg.id === messageId ? { ...msg, isDeleted: true } : msg
       );
     }
     
-    // Notify about the deleted message
     this.messageDeletedCallbacks.forEach(callback => {
       callback(messageId);
     });
   }
   
   private simulateMessageDeleted(messageId: string, recipientId: number): void {
-    // Notify about the deleted message after a slight delay
     setTimeout(() => {
       this.messageDeletedCallbacks.forEach(callback => {
         callback(messageId);
@@ -348,7 +313,6 @@ class SignalRService implements ISignalRService {
   }
 
   public sendTypingIndication(recipientId: number): void {
-    // Ensure connection is active
     if (this.connectionStatus !== 'connected') {
       return;
     }
@@ -358,10 +322,8 @@ class SignalRService implements ISignalRService {
     }
 
     if (this.useMockConnection) {
-      // For mock implementation, simulate typing indication
       this.simulateTypingIndication(recipientId);
     } else {
-      // For real implementation, use the SignalR hub method
       try {
         this.connection!.invoke("SendTypingIndication", recipientId.toString());
         console.log("Typing indication sent to user:", recipientId);
@@ -373,7 +335,6 @@ class SignalRService implements ISignalRService {
 
   private simulateTypingIndication(recipientId: number): void {
     // No need to do anything in the mock implementation
-    // The actual typing indication is handled by the client
   }
 
   private async reconnectIfNeeded(): Promise<void> {
@@ -393,6 +354,10 @@ class SignalRService implements ISignalRService {
   }
 
   public blockUser(userId: number): void {
+    if (this.isAdminUser(userId)) {
+      toast.error(`You cannot block an admin.`);
+      return;
+    }
     this.blockedUsers.add(userId);
   }
   
@@ -404,6 +369,11 @@ class SignalRService implements ISignalRService {
     return this.blockedUsers.has(userId);
   }
   
+  public isAdminUser(userId: number): boolean {
+    const adminUserIds = [0, 99, 100, 999, 1000];
+    return adminUserIds.includes(userId);
+  }
+  
   public getBlockedUsers(): number[] {
     return Array.from(this.blockedUsers);
   }
@@ -413,7 +383,6 @@ class SignalRService implements ISignalRService {
   }
   
   public getAllChatHistory(): Record<number, ChatMessage[]> {
-    // Filter out empty histories
     const filteredHistory: Record<number, ChatMessage[]> = {};
     
     Object.entries(this.chatHistory).forEach(([userId, messages]) => {
@@ -431,12 +400,10 @@ class SignalRService implements ISignalRService {
   }
 
   private simulateReceiveMessage(fromUserId: number, username: string, content: string, isImage = false, imageUrl = '', isBlurred = false, recipientId = 0, isVoiceMessage = false, audioUrl = '') {
-    // If user is blocked, don't simulate receiving a message
     if (this.blockedUsers.has(fromUserId)) {
       return;
     }
     
-    // Add a realistic delay for bot responses (5-10 seconds)
     const realisticDelay = 5000 + Math.random() * 5000;
     
     setTimeout(() => {
@@ -445,7 +412,7 @@ class SignalRService implements ISignalRService {
         content,
         sender: username,
         senderId: fromUserId,
-        recipientId: this.currentUserId, // Set the recipient to the current user
+        recipientId: this.currentUserId,
         timestamp: new Date(),
         isImage,
         imageUrl,
@@ -454,13 +421,11 @@ class SignalRService implements ISignalRService {
         audioUrl
       };
       
-      // Store in chat history for this specific user only
       if (!this.chatHistory[fromUserId]) {
         this.chatHistory[fromUserId] = [];
       }
       this.chatHistory[fromUserId].push(message);
       
-      // Notify about the message, but only for the specific conversation
       this.messageCallbacks.forEach(callback => {
         callback(message);
       });
@@ -468,9 +433,6 @@ class SignalRService implements ISignalRService {
   }
 
   private simulateMessageSent(message: ChatMessage, recipientId: number) {
-    // Only respond if the message is from the user (not from a bot)
-    // And don't auto-respond with a random message - make it contextual
-    
     const mockUser = this.getMockUserById(recipientId);
     if (!mockUser) return;
     
@@ -486,13 +448,12 @@ class SignalRService implements ISignalRService {
         false,
         "",
         false,
-        this.currentUserId // Set the correct recipient ID
+        this.currentUserId
       );
     }
   }
   
   private getMockUserById(userId: number) {
-    // Mock user data - this would come from a real database in production
     const mockUsers = [
       { id: 1, username: "Alice", interests: ["Art", "Photography", "Travel"] },
       { id: 2, username: "Bob", interests: ["Music", "Technology", "Gaming"] },
@@ -510,11 +471,9 @@ class SignalRService implements ISignalRService {
   }
   
   private getContextualResponses(message: ChatMessage, user: {id: number, username: string, interests: string[]}) {
-    // Simple contextual responses based on message content and user interests
     const content = message.content.toLowerCase();
     const responses: string[] = [];
     
-    // Image responses
     if (message.isImage) {
       return [
         "Thanks for sharing the image!",
@@ -525,7 +484,6 @@ class SignalRService implements ISignalRService {
       ];
     }
     
-    // Greeting responses
     if (content.includes('hi') || content.includes('hello') || content.includes('hey')) {
       responses.push(
         `Hi ${this.userName}! How are you doing today?`,
@@ -534,7 +492,6 @@ class SignalRService implements ISignalRService {
       );
     }
     
-    // Interest-based responses
     user.interests.forEach(interest => {
       if (content.includes(interest.toLowerCase())) {
         responses.push(
@@ -545,7 +502,6 @@ class SignalRService implements ISignalRService {
       }
     });
     
-    // Question responses
     if (content.includes('?')) {
       responses.push(
         "That's an interesting question. Let me think about it...",
@@ -554,7 +510,6 @@ class SignalRService implements ISignalRService {
       );
     }
     
-    // Default responses if nothing specific was detected
     if (responses.length === 0) {
       responses.push(
         `That's interesting! Tell me more about yourself.`,
@@ -568,30 +523,23 @@ class SignalRService implements ISignalRService {
   }
 
   private updateConnectedUsersCount() {
-    // Start with a stable number for better UX
     const baseCount = 12;
     
-    // Immediately notify with initial count
     this.connectedUsersCallbacks.forEach(callback => callback(baseCount));
     
-    // Then update periodically with slight variations
     setInterval(() => {
-      // Vary by -2 to +2 from base count, never below 5
       const variation = Math.floor(Math.random() * 5) - 2;
       const count = Math.max(5, baseCount + variation);
       this.connectedUsersCallbacks.forEach(callback => callback(count));
-    }, 30000); // Update every 30 seconds for a more stable count
+    }, 30000);
   }
 
-  // Helper method to set hub URL
   public setHubUrl(url: string): void {
     this.hubUrl = url;
   }
 
-  // Helper method to enable/disable mock connection
   public setUseMockConnection(useMock: boolean): void {
     this.useMockConnection = useMock;
-    // Disconnect current connection if connected
     if (this.connection && this.connectionStatus === 'connected') {
       this.disconnect();
     }
