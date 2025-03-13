@@ -1,11 +1,11 @@
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 // User type definitions
 export type UserRole = 'standard' | 'vip' | 'admin';
 
 export interface UserProfile {
-  username: string; // Validation handled in components
+  username: string;
   age?: number;
   gender?: string;
   interests?: string[];
@@ -19,7 +19,21 @@ export interface UserProfile {
   isAdmin?: boolean;
   isVerified?: boolean;
   joinedAt?: Date;
-  email?: string; // Adding email field to fix type errors
+  email?: string;
+  isBanned?: boolean;
+  banExpiresAt?: Date;
+  isBot?: boolean;
+  tempVipExpiresAt?: Date;
+}
+
+export interface BannedUser {
+  username: string;
+  userId: number;
+  banReason?: string;
+  bannedAt: Date;
+  banExpiresAt?: Date;
+  bannedBy: string;
+  ipAddress?: string;
 }
 
 interface UserContextType {
@@ -31,6 +45,10 @@ interface UserContextType {
   setRulesAccepted: (status: boolean) => void;
   userRole: UserRole | null;
   setUserRole: (role: UserRole | null) => void;
+  bannedUsers: BannedUser[];
+  setBannedUsers: (users: BannedUser[]) => void;
+  addBannedUser: (user: BannedUser) => void;
+  removeBannedUser: (userId: number) => void;
 }
 
 const defaultValue: UserContextType = {
@@ -42,6 +60,10 @@ const defaultValue: UserContextType = {
   setRulesAccepted: () => {},
   userRole: null,
   setUserRole: () => {},
+  bannedUsers: [],
+  setBannedUsers: () => {},
+  addBannedUser: () => {},
+  removeBannedUser: () => {},
 };
 
 export const UserContext = createContext<UserContextType>(defaultValue);
@@ -63,15 +85,44 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [rulesAccepted, setRulesAccepted] = useState<boolean>(false);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [bannedUsers, setBannedUsers] = useState<BannedUser[]>([]);
+
+  // Load banned users from localStorage on component mount
+  useEffect(() => {
+    const storedBannedUsers = localStorage.getItem('bannedUsers');
+    if (storedBannedUsers) {
+      try {
+        const parsedUsers = JSON.parse(storedBannedUsers);
+        setBannedUsers(parsedUsers);
+      } catch (error) {
+        console.error('Error parsing banned users from localStorage:', error);
+      }
+    }
+  }, []);
+
+  // Save banned users to localStorage when they change
+  useEffect(() => {
+    if (bannedUsers.length > 0) {
+      localStorage.setItem('bannedUsers', JSON.stringify(bannedUsers));
+    }
+  }, [bannedUsers]);
 
   // Update userRole when currentUser changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (currentUser) {
       setUserRole(currentUser.role);
     } else {
       setUserRole(null);
     }
   }, [currentUser]);
+
+  const addBannedUser = (user: BannedUser) => {
+    setBannedUsers(prev => [...prev, user]);
+  };
+
+  const removeBannedUser = (userId: number) => {
+    setBannedUsers(prev => prev.filter(user => user.userId !== userId));
+  };
 
   return (
     <UserContext.Provider
@@ -84,6 +135,10 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         setRulesAccepted,
         userRole,
         setUserRole,
+        bannedUsers,
+        setBannedUsers,
+        addBannedUser,
+        removeBannedUser,
       }}
     >
       {children}

@@ -13,6 +13,11 @@ export const useInactivityTimer = (timeoutMinutes = 10) => {
   const warningTimerRef = useRef<number | null>(null);
   
   const resetTimer = () => {
+    // Admin users should never be logged out due to inactivity
+    if (userRole === 'admin') {
+      return;
+    }
+    
     setIsWarningShown(false);
     setRemainingTime(timeoutMinutes * 60);
     
@@ -32,6 +37,11 @@ export const useInactivityTimer = (timeoutMinutes = 10) => {
   };
   
   const showWarning = () => {
+    // Skip warning for admin users
+    if (userRole === 'admin') {
+      return;
+    }
+    
     setIsWarningShown(true);
     setRemainingTime(60); // 1 minute left
     
@@ -54,9 +64,9 @@ export const useInactivityTimer = (timeoutMinutes = 10) => {
   };
   
   const logout = () => {
-    // Don't log out VIP users automatically
-    if (userRole === 'vip') {
-      resetTimer(); // Just reset the timer for VIP users
+    // Don't log out VIP or admin users automatically
+    if (userRole === 'vip' || userRole === 'admin') {
+      resetTimer(); // Just reset the timer for these users
       return;
     }
     
@@ -82,10 +92,18 @@ export const useInactivityTimer = (timeoutMinutes = 10) => {
   };
   
   const handleUserActivity = () => {
-    resetTimer();
+    // Admin users don't need to reset the timer
+    if (userRole !== 'admin') {
+      resetTimer();
+    }
   };
   
   useEffect(() => {
+    // Skip setting up timers for admin users
+    if (userRole === 'admin') {
+      return;
+    }
+    
     // Set up event listeners for user activity
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
     
@@ -110,7 +128,7 @@ export const useInactivityTimer = (timeoutMinutes = 10) => {
         clearInterval(warningTimerRef.current);
       }
     };
-  }, []);
+  }, [userRole]);
   
   return {
     isWarningShown,
