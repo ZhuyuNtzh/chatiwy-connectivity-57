@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 // User type definitions
@@ -62,6 +63,15 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [rulesAccepted, setRulesAccepted] = useState<boolean>(false);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
+
+  // Update userRole when currentUser changes
+  React.useEffect(() => {
+    if (currentUser) {
+      setUserRole(currentUser.role);
+    } else {
+      setUserRole(null);
+    }
+  }, [currentUser]);
 
   return (
     <UserContext.Provider

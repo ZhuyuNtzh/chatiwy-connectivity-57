@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, LogOut, Settings, User, Moon, Sun, History } from 'lucide-react';
+import { ChevronLeft, LogOut, Settings, User, Moon, Sun, History, Shield } from 'lucide-react';
 
 const Header = () => {
   const { currentUser, setCurrentUser, setIsLoggedIn, userRole } = useUser();
@@ -83,10 +84,11 @@ const Header = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="transition-all duration-300 hover:bg-white/20"
+                className="transition-all duration-300 hover:bg-white/20 text-amber-500"
                 onClick={() => navigate('/admin-dashboard')}
+                title="Admin Dashboard"
               >
-                <Settings className="h-5 w-5" />
+                <Shield className="h-5 w-5" />
               </Button>
             )}
             <Button

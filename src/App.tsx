@@ -16,6 +16,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import VipRegister from './pages/VipRegister';
 import Feedback from './pages/Feedback';
 import Settings from './pages/Settings';
+import AdminLogin from './pages/AdminLogin';
+import AdminDashboard from './pages/AdminDashboard';
 
 const queryClient = new QueryClient();
 
@@ -35,7 +37,12 @@ function App() {
             <Route path="/chat-interface" element={<ChatInterface />} />
             <Route path="/chat-history" element={<ChatHistory />} />
             <Route path="/feedback" element={<Feedback />} /> {/* Feedback route */}
-            <Route path="/settings" element={<Settings />} /> {/* New settings route */}
+            <Route path="/settings" element={<Settings />} /> {/* Settings route */}
+            
+            {/* Admin routes with obscure path names */}
+            <Route path="/secure-admin-access-8472" element={<AdminLogin />} />
+            <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
