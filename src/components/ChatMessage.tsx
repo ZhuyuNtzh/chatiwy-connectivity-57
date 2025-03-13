@@ -5,6 +5,7 @@ import { Check, CheckCheck, Image as ImageIcon, Flag, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUser, UserRole } from '../contexts/UserContext';
+import UserTypeDisplay from './UserTypeDisplay';
 
 interface ChatMessageProps {
   id: string;
@@ -70,7 +71,10 @@ const ChatMessage = ({
     <div className={`flex max-w-full ${isMine ? 'justify-end' : 'justify-start'} mb-3 group`}>
       <div className={`relative max-w-[80%] md:max-w-[70%] px-4 py-2 rounded-2xl ${isMine ? myColorClass : roleColorClass()} shadow-sm transition-all duration-300`}>
         {!isMine && (
-          <div className="text-xs font-medium opacity-70 mb-0.5">{sender}</div>
+          <div className="flex items-center gap-1.5 text-xs font-medium opacity-90 mb-1">
+            <span>{sender}</span>
+            <UserTypeDisplay role={senderRole} showLabel={false} size="sm" />
+          </div>
         )}
         
         {isImage ? (

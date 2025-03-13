@@ -3,21 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { UserProfile } from '../contexts/UserContext';
 import { Button } from '@/components/ui/button';
 import { MessageCircle, Shield, Award } from 'lucide-react';
+import UserTypeDisplay from './UserTypeDisplay';
 
 interface UserCardProps {
   user: UserProfile;
   animationDelay?: number;
+  onClick?: () => void;
 }
 
-const UserCard = ({ user, animationDelay = 0 }: UserCardProps) => {
+const UserCard = ({ user, animationDelay = 0, onClick }: UserCardProps) => {
   const navigate = useNavigate();
   
-  const roleIcon = () => {
-    if (user.role === 'admin') return <Shield className="h-4 w-4 text-destructive" />;
-    if (user.role === 'vip') return <Award className="h-4 w-4 text-accent" />;
-    return null;
-  };
-
   const roleClass = () => {
     if (user.role === 'admin') return 'border-destructive/30 hover:border-destructive/50';
     if (user.role === 'vip') return 'border-accent/30 hover:border-accent/50';
@@ -25,7 +21,11 @@ const UserCard = ({ user, animationDelay = 0 }: UserCardProps) => {
   };
 
   const handleStartChat = () => {
-    navigate(`/chat/${user.username}`);
+    if (onClick) {
+      onClick();
+    } else {
+      navigate(`/chat/${user.username}`);
+    }
   };
 
   return (
@@ -50,7 +50,7 @@ const UserCard = ({ user, animationDelay = 0 }: UserCardProps) => {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <h3 className="text-base font-medium truncate">{user.username}</h3>
-            {roleIcon()}
+            <UserTypeDisplay role={user.role} showLabel={false} size="sm" />
           </div>
           
           <div className="text-xs text-muted-foreground mt-1">

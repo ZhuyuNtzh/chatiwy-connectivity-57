@@ -18,6 +18,10 @@ const badgeVariants = cva(
         outline: "text-foreground",
         admin: "border-transparent bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-glow hover:from-purple-600 hover:to-pink-600",
         moderator: "border-transparent bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-glow hover:from-blue-600 hover:to-indigo-600",
+        vip: "border-transparent bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-900 shadow-glow hover:from-amber-500 hover:to-yellow-600",
+        standard: "border-transparent bg-gray-200 text-gray-800 hover:bg-gray-300",
+        online: "border-transparent bg-green-100 text-green-800 hover:bg-green-200",
+        offline: "border-transparent bg-gray-100 text-gray-700 hover:bg-gray-200",
       },
     },
     defaultVariants: {

@@ -1,3 +1,5 @@
+
+// This updates the existing UserList page component to use consistent role handling
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -8,6 +10,7 @@ import UserCard from '../components/UserCard';
 import RulesModal from '../components/RulesModal';
 import { useUser, UserProfile } from '../contexts/UserContext';
 import { Search, UserPlus, RefreshCw, X } from 'lucide-react';
+import UserListWithCategories from '@/components/UserListWithCategories';
 
 const UserList = () => {
   const navigate = useNavigate();
@@ -39,6 +42,7 @@ const UserList = () => {
         location: 'San Francisco',
         isOnline: true,
         role: 'vip',
+        isVip: true,
       },
       {
         username: 'BookLover22',
@@ -66,6 +70,7 @@ const UserList = () => {
         location: 'Los Angeles',
         isOnline: false,
         role: 'vip',
+        isVip: true,
       },
       {
         username: 'SiteAdmin',
@@ -75,6 +80,7 @@ const UserList = () => {
         location: 'London',
         isOnline: true,
         role: 'admin',
+        isAdmin: true,
       },
     ];
     
@@ -118,8 +124,8 @@ const UserList = () => {
     }, 1000);
   };
   
-  const handleChatUser = (username: string) => {
-    navigate(`/chat/${username}`);
+  const handleChatUser = (user: UserProfile) => {
+    navigate(`/chat/${user.username}`);
   };
 
   return (
@@ -136,49 +142,17 @@ const UserList = () => {
               </p>
             </div>
             
-            <div className="mt-4 md:mt-0 w-full md:w-auto">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name, interests, or location"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="glass-input pl-10 pr-10 w-full md:w-64"
-                />
-                {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 rounded-full"
-                    onClick={() => setSearchQuery('')}
-                  >
-                    <span className="sr-only">Clear search</span>
-                    <X className="h-3 w-3" />
-                  </Button>
-                )}
-              </div>
+            <div className="mt-4 md:mt-0 flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleRefresh}
+                className="h-9 w-9 rounded-full hover:bg-muted"
+                disabled={isLoading}
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
             </div>
-          </div>
-          
-          <div className="mb-6">
-            <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-              <div className="flex justify-between items-center">
-                <TabsList className="glass">
-                  <TabsTrigger value="all">All Users</TabsTrigger>
-                  <TabsTrigger value="online">Online Now</TabsTrigger>
-                </TabsList>
-                
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleRefresh}
-                  className="h-9 w-9 rounded-full hover:bg-muted"
-                  disabled={isLoading}
-                >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                </Button>
-              </div>
-            </Tabs>
           </div>
           
           {isLoading ? (
@@ -195,32 +169,12 @@ const UserList = () => {
                 </div>
               ))}
             </div>
-          ) : filteredUsers.length === 0 ? (
-            <div className="glass-card p-8 text-center animate-fade-in">
-              <UserPlus className="h-16 w-16 mx-auto mb-4 text-muted" />
-              <h3 className="text-xl font-medium mb-2">No users found</h3>
-              <p className="text-muted-foreground mb-4">
-                {searchQuery 
-                  ? "No users match your search criteria" 
-                  : activeTab === 'online' 
-                    ? "No users are currently online" 
-                    : "No users available to chat"
-                }
-              </p>
-              <Button onClick={() => { setSearchQuery(''); setActiveTab('all'); }}>
-                Reset Filters
-              </Button>
-            </div>
           ) : (
-            <div className="space-y-4">
-              {filteredUsers.map((user, index) => (
-                <UserCard 
-                  key={user.username} 
-                  user={user} 
-                  animationDelay={index * 0.05}
-                />
-              ))}
-            </div>
+            <UserListWithCategories
+              users={filteredUsers}
+              onUserSelect={handleChatUser}
+              maxHeight="800px"
+            />
           )}
         </div>
       </main>
