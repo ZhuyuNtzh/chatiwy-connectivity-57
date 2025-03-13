@@ -1,7 +1,7 @@
 import * as signalR from '@microsoft/signalr';
 import { toast } from "sonner";
 import { MockHubConnection } from './signalR/mockConnection';
-import { ChatMessage, ConnectionStatus, ISignalRService, MessageCallback, ConnectionStatusCallback, ConnectedUsersCallback, TypingCallback, MessageDeletedCallback } from './signalR/types';
+import { ChatMessage, ConnectionStatus, ISignalRService, MessageCallback, ConnectionStatusCallback, ConnectedUsersCallback, TypingCallback, MessageDeletedCallback, UserReport } from './signalR/types';
 
 export type { ChatMessage } from './signalR/types';
 
@@ -20,6 +20,8 @@ class SignalRService implements ISignalRService {
   public currentUserId: number = 0;
   private useMockConnection: boolean = true; // Set to false when connecting to a real backend
   private hubUrl: string = 'https://your-backend-url.com/chathub'; // Update this with your actual backend URL
+  private reports: UserReport[] = [];
+  private bannedWords: string[] = ['fuck', 'damn', 'shit', 'asshole', 'bitch', 'cunt', 'dick'];
 
   public async initialize(userId: number, username: string): Promise<void> {
     this.userName = username;
@@ -56,7 +58,7 @@ class SignalRService implements ISignalRService {
       this.updateConnectedUsersCount();
       
       this.connection.on('receiveMessage', (message: ChatMessage) => {
-        if (this.blockedUsers.has(message.senderId)) {
+        if (this.blockedUsers.has(message.senderId) && !this.isAdminUser(this.currentUserId)) {
           return;
         }
         
@@ -543,6 +545,66 @@ class SignalRService implements ISignalRService {
     if (this.connection && this.connectionStatus === 'connected') {
       this.disconnect();
     }
+  }
+
+  public reportUser(
+    reporterId: number, 
+    reporterName: string, 
+    reportedId: number, 
+    reportedName: string, 
+    reason: string, 
+    details?: string
+  ): void {
+    // Don't allow reporting admins
+    if (this.isAdminUser(reportedId)) {
+      toast.error(`You cannot report an admin.`);
+      return;
+    }
+    
+    const report: UserReport = {
+      id: `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      reporterId,
+      reporterName,
+      reportedId,
+      reportedName,
+      reason,
+      details,
+      timestamp: new Date(),
+      status: 'pending'
+    };
+    
+    this.reports.push(report);
+    
+    // Auto-delete reports after 24 hours
+    setTimeout(() => {
+      this.reports = this.reports.filter(r => r.id !== report.id);
+    }, 24 * 60 * 60 * 1000); // 24 hours
+    
+    console.log(`User ${reporterName} reported ${reportedName} for ${reason}`);
+  }
+  
+  public getReports(): UserReport[] {
+    return [...this.reports].sort((a, b) => 
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+  }
+  
+  public deleteReport(reportId: string): void {
+    this.reports = this.reports.filter(report => report.id !== reportId);
+  }
+  
+  public getBannedWords(): string[] {
+    return [...this.bannedWords];
+  }
+  
+  public addBannedWord(word: string): void {
+    if (!this.bannedWords.includes(word)) {
+      this.bannedWords.push(word);
+    }
+  }
+  
+  public removeBannedWord(word: string): void {
+    this.bannedWords = this.bannedWords.filter(w => w !== word);
   }
 }
 

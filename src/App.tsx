@@ -18,6 +18,8 @@ import Feedback from './pages/Feedback';
 import Settings from './pages/Settings';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminChatInterface from '@/components/admin/AdminChatInterface';
+import AdminModeration from '@/components/admin/AdminModeration';
 
 const queryClient = new QueryClient();
 
@@ -42,6 +44,8 @@ function App() {
             {/* Admin routes with obscure path names */}
             <Route path="/secure-admin-access-8472" element={<AdminLogin />} />
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            <Route path="/admin-chat" element={<AdminChatInterface />} />
+            <Route path="/admin-moderation" element={<AdminModeration />} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>

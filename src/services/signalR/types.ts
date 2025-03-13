@@ -22,6 +22,18 @@ export interface ChatMessage {
   isDeleted?: boolean;
 }
 
+export interface UserReport {
+  id: string;
+  reporterId: number;
+  reporterName: string;
+  reportedId: number;
+  reportedName: string;
+  reason: string;
+  details?: string;
+  timestamp: Date;
+  status: 'pending' | 'reviewed' | 'closed';
+}
+
 export type MessageCallback = (message: ChatMessage) => void;
 export type ConnectionStatusCallback = (status: ConnectionStatus) => void;
 export type ConnectedUsersCallback = (count: number) => void;
@@ -52,4 +64,12 @@ export interface ISignalRService {
   getChatHistory(userId: number): ChatMessage[];
   getAllChatHistory(): Record<number, ChatMessage[]>;
   clearAllChatHistory(): void;
+  
+  // Admin specific methods
+  reportUser(reporterId: number, reporterName: string, reportedId: number, reportedName: string, reason: string, details?: string): void;
+  getReports(): UserReport[];
+  deleteReport(reportId: string): void;
+  getBannedWords(): string[];
+  addBannedWord(word: string): void;
+  removeBannedWord(word: string): void;
 }

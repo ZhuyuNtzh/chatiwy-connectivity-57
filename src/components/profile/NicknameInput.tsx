@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
+import { signalRService } from '@/services/signalRService';
 
 interface NicknameInputProps {
   nickname: string;
@@ -19,6 +20,17 @@ const NicknameInput: React.FC<NicknameInputProps> = ({
 }) => {
   const maxLength = isVip ? 24 : 20;
   const [isValid, setIsValid] = useState(true);
+  const [bannedWords, setBannedWords] = useState<string[]>([]);
+  
+  // Load banned words
+  useEffect(() => {
+    try {
+      const words = signalRService.getBannedWords();
+      setBannedWords(words);
+    } catch (error) {
+      console.error("Error loading banned words:", error);
+    }
+  }, []);
   
   const validateNickname = (value: string): boolean => {
     // Check for "admin" in any case variation (case-insensitive)
@@ -39,6 +51,16 @@ const NicknameInput: React.FC<NicknameInputProps> = ({
       return false;
     }
     
+    // Check for banned words
+    if (bannedWords.length > 0) {
+      const lowerValue = value.toLowerCase();
+      for (const word of bannedWords) {
+        if (lowerValue.includes(word.toLowerCase())) {
+          return false;
+        }
+      }
+    }
+    
     return true;
   };
   
@@ -52,8 +74,21 @@ const NicknameInput: React.FC<NicknameInputProps> = ({
       if (isValidInput) {
         onChange(value);
       } else {
+        // Check for banned words
+        const lowerValue = value.toLowerCase();
+        const hasBannedWord = bannedWords.some(word => 
+          lowerValue.includes(word.toLowerCase())
+        );
+        
+        if (hasBannedWord) {
+          toast({
+            title: "Invalid nickname",
+            description: "Your nickname contains inappropriate content",
+            variant: "destructive"
+          });
+        }
         // Check for admin specifically to give a more specific error message
-        if (/admin/i.test(value)) {
+        else if (/admin/i.test(value)) {
           toast({
             title: "Invalid nickname",
             description: "The word 'admin' is not allowed in any form",

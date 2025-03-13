@@ -15,12 +15,12 @@ export const useSignalRConnection = (
   useEffect(() => {
     if (currentUser) {
       // Since UserProfile doesn't have an id field, we use a default value or generate one
-      // This ensures type compatibility while maintaining functionality
-      signalRService.initialize(
-        // Use a default ID or generate from username as a workaround
-        generateUserId(currentUser.username),
-        currentUser.username
-      );
+      // For admin users, use a special ID
+      const userId = currentUser.role === 'admin' 
+        ? 999 // Special admin ID
+        : generateUserId(currentUser.username);
+        
+      signalRService.initialize(userId, currentUser.username);
       
       signalRService.onConnectedUsersCountChanged(count => {
         setConnectedUsersCount(count);
@@ -28,7 +28,10 @@ export const useSignalRConnection = (
     }
     
     return () => {
-      signalRService.disconnect();
+      // Don't disconnect admin users
+      if (currentUser && currentUser.role !== 'admin') {
+        signalRService.disconnect();
+      }
     };
   }, [currentUser, setConnectedUsersCount]);
 };
