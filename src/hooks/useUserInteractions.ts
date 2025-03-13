@@ -2,8 +2,10 @@
 import { useState } from 'react';
 import { signalRService } from '@/services/signalRService';
 import { toast } from "sonner";
+import { useUser } from '@/contexts/UserContext';
 
 export const useUserInteractions = (userId: number) => {
+  const { userRole } = useUser();
   const [showOptions, setShowOptions] = useState(false);
   const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
@@ -13,6 +15,12 @@ export const useUserInteractions = (userId: number) => {
   const [isBlockedUsersDialogOpen, setIsBlockedUsersDialogOpen] = useState(false);
 
   const handleBlockUser = () => {
+    // Admin users cannot be blocked
+    if (signalRService.isAdminUser(userId)) {
+      toast.error(`You cannot block an admin.`);
+      return;
+    }
+    
     setIsBlockDialogOpen(true);
     setShowOptions(false);
   };
@@ -31,6 +39,12 @@ export const useUserInteractions = (userId: number) => {
   };
 
   const handleReportUser = () => {
+    // Admin users cannot be reported
+    if (signalRService.isAdminUser(userId)) {
+      toast.error(`You cannot report an admin.`);
+      return;
+    }
+    
     setIsReportDialogOpen(true);
     setShowOptions(false);
   };

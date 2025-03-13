@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 
 export const useInactivityTimer = (timeoutMinutes = 10) => {
-  const { userRole, setIsLoggedIn } = useUser();
+  const { userRole, setIsLoggedIn, isAdminLoggedIn } = useUser();
   const navigate = useNavigate();
   const [isWarningShown, setIsWarningShown] = useState(false);
   const [remainingTime, setRemainingTime] = useState(timeoutMinutes * 60);
@@ -14,7 +14,7 @@ export const useInactivityTimer = (timeoutMinutes = 10) => {
   
   const resetTimer = () => {
     // Admin users should never be logged out due to inactivity
-    if (userRole === 'admin') {
+    if (userRole === 'admin' || isAdminLoggedIn()) {
       return;
     }
     
@@ -38,7 +38,7 @@ export const useInactivityTimer = (timeoutMinutes = 10) => {
   
   const showWarning = () => {
     // Skip warning for admin users
-    if (userRole === 'admin') {
+    if (userRole === 'admin' || isAdminLoggedIn()) {
       return;
     }
     
@@ -65,7 +65,7 @@ export const useInactivityTimer = (timeoutMinutes = 10) => {
   
   const logout = () => {
     // Don't log out VIP or admin users automatically
-    if (userRole === 'vip' || userRole === 'admin') {
+    if (userRole === 'vip' || userRole === 'admin' || isAdminLoggedIn()) {
       resetTimer(); // Just reset the timer for these users
       return;
     }
@@ -93,14 +93,14 @@ export const useInactivityTimer = (timeoutMinutes = 10) => {
   
   const handleUserActivity = () => {
     // Admin users don't need to reset the timer
-    if (userRole !== 'admin') {
+    if (userRole !== 'admin' && !isAdminLoggedIn()) {
       resetTimer();
     }
   };
   
   useEffect(() => {
     // Skip setting up timers for admin users
-    if (userRole === 'admin') {
+    if (userRole === 'admin' || isAdminLoggedIn()) {
       return;
     }
     
@@ -128,7 +128,7 @@ export const useInactivityTimer = (timeoutMinutes = 10) => {
         clearInterval(warningTimerRef.current);
       }
     };
-  }, [userRole]);
+  }, [userRole, isAdminLoggedIn]);
   
   return {
     isWarningShown,
