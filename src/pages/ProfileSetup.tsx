@@ -71,6 +71,7 @@ const ProfileSetup = () => {
             setCurrentUser={setCurrentUser}
             setIsLoggedIn={setIsLoggedIn}
             setRulesAccepted={setRulesAccepted}
+            setNickname={setNickname}
           />
         </div>
       </main>

@@ -24,6 +24,7 @@ interface ProfileFormProps {
   setCurrentUser: (user: UserProfile) => void;
   setIsLoggedIn: (isLoggedIn: boolean) => void;
   setRulesAccepted: (accepted: boolean) => void;
+  setNickname: (nickname: string) => void;
 }
 
 const ProfileForm = ({
@@ -40,7 +41,8 @@ const ProfileForm = ({
   userRole,
   setCurrentUser,
   setIsLoggedIn,
-  setRulesAccepted
+  setRulesAccepted,
+  setNickname
 }: ProfileFormProps) => {
   const navigate = useNavigate();
   const [selectedAge, setSelectedAge] = useState(age);
@@ -77,9 +79,9 @@ const ProfileForm = ({
       <div className="space-y-3">
         <NicknameInput 
           nickname={nickname}
-          onChange={() => {}} // Read-only in this context
+          onChange={setNickname}
           isVip={userRole === 'vip'}
-          readOnly={true}
+          readOnly={false}
         />
 
         <CountryDisplay 

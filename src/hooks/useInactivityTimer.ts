@@ -11,10 +11,11 @@ export const useInactivityTimer = (timeoutMinutes = 10) => {
   const [remainingTime, setRemainingTime] = useState(timeoutMinutes * 60);
   const timerRef = useRef<number | null>(null);
   const warningTimerRef = useRef<number | null>(null);
+  const isAdminRef = useRef(userRole === 'admin' || isAdminLoggedIn());
   
   const resetTimer = () => {
     // Admin users should never be logged out due to inactivity
-    if (userRole === 'admin' || isAdminLoggedIn()) {
+    if (isAdminRef.current) {
       return;
     }
     
@@ -38,7 +39,7 @@ export const useInactivityTimer = (timeoutMinutes = 10) => {
   
   const showWarning = () => {
     // Skip warning for admin users
-    if (userRole === 'admin' || isAdminLoggedIn()) {
+    if (isAdminRef.current) {
       return;
     }
     
@@ -65,7 +66,7 @@ export const useInactivityTimer = (timeoutMinutes = 10) => {
   
   const logout = () => {
     // Don't log out admin users automatically
-    if (userRole === 'admin' || isAdminLoggedIn()) {
+    if (isAdminRef.current) {
       resetTimer(); // Just reset the timer for admin users
       return;
     }
@@ -93,14 +94,17 @@ export const useInactivityTimer = (timeoutMinutes = 10) => {
   
   const handleUserActivity = () => {
     // Admin users don't need to reset the timer
-    if (userRole !== 'admin' && !isAdminLoggedIn()) {
+    if (!isAdminRef.current) {
       resetTimer();
     }
   };
   
   useEffect(() => {
+    // Update the admin reference whenever userRole changes
+    isAdminRef.current = userRole === 'admin' || isAdminLoggedIn();
+    
     // Skip setting up timers for admin users
-    if (userRole === 'admin' || isAdminLoggedIn()) {
+    if (isAdminRef.current) {
       return;
     }
     

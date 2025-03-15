@@ -21,6 +21,7 @@ const NicknameInput: React.FC<NicknameInputProps> = ({
   const maxLength = isVip ? 24 : 20;
   const [isValid, setIsValid] = useState(true);
   const [bannedWords, setBannedWords] = useState<string[]>([]);
+  const [inputValue, setInputValue] = useState(nickname);
   
   // Load banned words
   useEffect(() => {
@@ -31,6 +32,11 @@ const NicknameInput: React.FC<NicknameInputProps> = ({
       console.error("Error loading banned words:", error);
     }
   }, []);
+
+  // Update input value when nickname prop changes
+  useEffect(() => {
+    setInputValue(nickname);
+  }, [nickname]);
   
   const validateNickname = (value: string): boolean => {
     // Check for "admin" in any case variation (case-insensitive)
@@ -66,6 +72,7 @@ const NicknameInput: React.FC<NicknameInputProps> = ({
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    setInputValue(value);
     
     if (value.length <= maxLength) {
       const isValidInput = validateNickname(value);
@@ -109,11 +116,11 @@ const NicknameInput: React.FC<NicknameInputProps> = ({
     <div className="space-y-2">
       <div className="flex justify-between items-center">
         <Label htmlFor="nickname" className="text-gray-800">Nickname</Label>
-        <span className="text-sm text-muted-foreground">{nickname.length}/{maxLength}</span>
+        <span className="text-sm text-muted-foreground">{inputValue.length}/{maxLength}</span>
       </div>
       <Input
         id="nickname"
-        value={nickname}
+        value={inputValue}
         onChange={handleChange}
         readOnly={readOnly}
         className={`${!isValid ? 'border-red-500' : ''} ${readOnly ? 'bg-gray-100 text-gray-800' : ''}`}

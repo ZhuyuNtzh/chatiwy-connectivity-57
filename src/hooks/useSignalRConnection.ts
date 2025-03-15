@@ -1,17 +1,19 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { signalRService } from '../services/signalRService';
 import { UserProfile } from '../contexts/UserContext';
-
-interface User {
-  id: number;
-  username: string;
-}
 
 export const useSignalRConnection = (
   currentUser: UserProfile | null,
   setConnectedUsersCount: (count: number) => void
 ) => {
+  const isAdminRef = useRef(currentUser?.role === 'admin');
+  
+  // Update admin ref when role changes
+  useEffect(() => {
+    isAdminRef.current = currentUser?.role === 'admin';
+  }, [currentUser?.role]);
+  
   useEffect(() => {
     if (currentUser) {
       // Since UserProfile doesn't have an id field, we use a default value or generate one
@@ -29,7 +31,7 @@ export const useSignalRConnection = (
     
     return () => {
       // Don't disconnect admin users
-      if (currentUser && currentUser.role !== 'admin') {
+      if (currentUser && !isAdminRef.current) {
         signalRService.disconnect();
       }
     };

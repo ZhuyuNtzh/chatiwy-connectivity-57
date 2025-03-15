@@ -15,23 +15,33 @@ const ModerationPanel = () => {
   useEffect(() => {
     loadReports();
     
-    // Auto refresh reports every 5 seconds for instant updates
-    const intervalId = setInterval(loadReports, 5000);
+    // Auto refresh reports every 15 seconds for instant updates
+    const intervalId = setInterval(loadReports, 15000);
     
     return () => clearInterval(intervalId);
   }, []);
 
   const loadReports = () => {
     console.log("Loading reports...");
-    const allReports = signalRService.getReports();
-    console.log("Got reports:", allReports);
-    setReports(allReports);
+    try {
+      const allReports = signalRService.getReports();
+      console.log("Got reports:", allReports);
+      setReports(allReports);
+    } catch (error) {
+      console.error("Error loading reports:", error);
+      toast.error("Failed to load reports");
+    }
   };
 
   const handleDeleteReport = (reportId: string) => {
-    signalRService.deleteReport(reportId);
-    loadReports();
-    toast.success('Report deleted successfully');
+    try {
+      signalRService.deleteReport(reportId);
+      loadReports();
+      toast.success('Report deleted successfully');
+    } catch (error) {
+      console.error("Error deleting report:", error);
+      toast.error("Failed to delete report");
+    }
   };
 
   return (

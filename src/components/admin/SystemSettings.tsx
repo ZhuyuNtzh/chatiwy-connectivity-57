@@ -36,26 +36,49 @@ const SystemSettings = () => {
   }, []);
   
   const loadBannedWords = () => {
-    const words = signalRService.getBannedWords();
-    setBannedWords(words);
+    try {
+      const words = signalRService.getBannedWords();
+      setBannedWords(words);
+    } catch (error) {
+      console.error("Error loading banned words:", error);
+      setBannedWords([]);
+    }
   };
   
   const loadSystemSettings = () => {
-    // In a real app, we would fetch from the backend
-    // For now, we'll use a mock value
-    setPhotoLimit(5);
+    try {
+      const limit = localStorage.getItem('photoLimit');
+      if (limit) {
+        setPhotoLimit(parseInt(limit));
+      } else {
+        setPhotoLimit(5);
+      }
+    } catch (error) {
+      console.error("Error loading system settings:", error);
+      setPhotoLimit(5);
+    }
   };
   
   const loadAvatars = () => {
-    // In a real app, we would fetch from the backend
-    // For now, we'll use placeholders
-    const mockAvatars: Avatar[] = [
-      { id: '1', url: '/lovable-uploads/a1551f2b-73e8-42c5-b33d-842ef4dd9fd8.png', name: 'Avatar 1' },
-      { id: '2', url: '/lovable-uploads/a427c90b-f62b-48e5-b2f6-e705879e6bba.png', name: 'Avatar 2' },
-      { id: '3', url: '/lovable-uploads/c80784b4-1560-465c-ac27-ce7bab7aa1d5.png', name: 'Avatar 3' },
-      { id: '4', url: '/lovable-uploads/e3b5491b-50db-4077-a99f-3de3837ccad6.png', name: 'Avatar 4' },
-    ];
-    setAvatars(mockAvatars);
+    try {
+      const savedAvatars = localStorage.getItem('customAvatars');
+      if (savedAvatars) {
+        setAvatars(JSON.parse(savedAvatars));
+      } else {
+        // Default avatars
+        const mockAvatars: Avatar[] = [
+          { id: '1', url: '/lovable-uploads/a1551f2b-73e8-42c5-b33d-842ef4dd9fd8.png', name: 'Avatar 1' },
+          { id: '2', url: '/lovable-uploads/a427c90b-f62b-48e5-b2f6-e705879e6bba.png', name: 'Avatar 2' },
+          { id: '3', url: '/lovable-uploads/c80784b4-1560-465c-ac27-ce7bab7aa1d5.png', name: 'Avatar 3' },
+          { id: '4', url: '/lovable-uploads/e3b5491b-50db-4077-a99f-3de3837ccad6.png', name: 'Avatar 4' },
+        ];
+        setAvatars(mockAvatars);
+        localStorage.setItem('customAvatars', JSON.stringify(mockAvatars));
+      }
+    } catch (error) {
+      console.error("Error loading avatars:", error);
+      setAvatars([]);
+    }
   };
 
   const handleAddBannedWord = () => {
@@ -82,30 +105,38 @@ const SystemSettings = () => {
   };
   
   const handleSaveBannedWords = () => {
-    // Save banned words to the service
-    bannedWords.forEach(word => {
-      signalRService.addBannedWord(word);
-    });
-    
-    // Get the current list from service to sync
-    const currentBannedWords = signalRService.getBannedWords();
-    
-    // Remove any words that are in the service but not in our state
-    currentBannedWords.forEach(word => {
-      if (!bannedWords.includes(word)) {
-        signalRService.removeBannedWord(word);
-      }
-    });
-    
-    setHasChanges(false);
-    toast.success('Banned words saved successfully');
+    try {
+      // Clear existing banned words
+      signalRService.clearBannedWords();
+      
+      // Add all current banned words
+      bannedWords.forEach(word => {
+        signalRService.addBannedWord(word);
+      });
+      
+      // Save to localStorage as backup
+      localStorage.setItem('bannedWords', JSON.stringify(bannedWords));
+      
+      setHasChanges(false);
+      toast.success('Banned words saved successfully');
+    } catch (error) {
+      console.error("Error saving banned words:", error);
+      toast.error('Failed to save banned words');
+    }
   };
   
   const handleSavePhotoLimit = () => {
-    // In a real app, we would persist to the backend
-    // For demo purposes, we just show a success message
-    toast.success(`Photo limit updated to ${photoLimit}`);
-    setHasChanges(false);
+    try {
+      // Save to localStorage
+      localStorage.setItem('photoLimit', photoLimit.toString());
+      
+      // In a real app, we would persist to the backend
+      toast.success(`Photo limit updated to ${photoLimit}`);
+      setHasChanges(false);
+    } catch (error) {
+      console.error("Error saving photo limit:", error);
+      toast.error('Failed to save photo limit');
+    }
   };
   
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -159,10 +190,18 @@ const SystemSettings = () => {
   };
   
   const handleSaveAvatars = () => {
-    // In a real app, we would upload files to the backend
-    toast.success('Avatars saved successfully');
-    setUploadedFiles([]);
-    setHasChanges(false);
+    try {
+      // Save avatars to localStorage
+      localStorage.setItem('customAvatars', JSON.stringify(avatars));
+      
+      // In a real app, we would upload files to the backend
+      toast.success('Avatars saved successfully');
+      setUploadedFiles([]);
+      setHasChanges(false);
+    } catch (error) {
+      console.error("Error saving avatars:", error);
+      toast.error('Failed to save avatars');
+    }
   };
   
   const handleRemoveAvatar = (avatarId: string) => {

@@ -30,23 +30,7 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
   
-  // Close the popover when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(event.target as Node) && isOpen) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside as any);
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside as any);
-    };
-  }, [isOpen]);
-  
+  // Load countries when component mounts
   useEffect(() => {
     const fetchCountries = async () => {
       try {
@@ -119,17 +103,6 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
     onFiltersChange(resetFilters);
   };
 
-  // Toggle popover state
-  const togglePopover = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsOpen(!isOpen);
-  };
-
-  const closePopover = () => {
-    setIsOpen(false);
-  };
-
   return (
     <div ref={popoverRef}>
       <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -138,7 +111,11 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
             variant="outline" 
             size="sm" 
             className="h-8 bg-white dark:bg-gray-800 px-2"
-            onClick={togglePopover}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsOpen(!isOpen);
+            }}
           >
             <Filter className="h-4 w-4 mr-1" />
             Filters
@@ -148,6 +125,9 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
           className="w-80 bg-white dark:bg-gray-800 z-[100]" 
           align="end"
           sideOffset={5}
+          onInteractOutside={(e) => {
+            e.preventDefault();
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="space-y-4">
@@ -176,7 +156,7 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
                   e.preventDefault();
                   e.stopPropagation();
                   clearFilters();
-                  closePopover();
+                  setIsOpen(false);
                 }}
               >
                 Clear All
