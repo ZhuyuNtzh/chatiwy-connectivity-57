@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signalRService } from '@/services/signalRService';
 import { useMessages } from './useMessages';
 import { useMediaHandling } from './useMediaHandling';
