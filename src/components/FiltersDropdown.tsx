@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Filter } from 'lucide-react';
+import { Filter, CheckCircle } from 'lucide-react';
 import axios from 'axios';
 import GenderFilter from './filters/GenderFilter';
 import AgeRangeFilter from './filters/AgeRangeFilter';
@@ -25,10 +25,23 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
     countries: [],
   });
   
+  const [tempFilters, setTempFilters] = useState<Filters>({
+    gender: ["Male", "Female"],
+    ageRange: [18, 80] as [number, number],
+    countries: [],
+  });
+  
   const [countries, setCountries] = useState<{name: string, flag: string}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
+  
+  // Initialize tempFilters when isOpen changes
+  useEffect(() => {
+    if (isOpen) {
+      setTempFilters({...filters});
+    }
+  }, [isOpen, filters]);
   
   // Load countries when component mounts
   useEffect(() => {
@@ -53,42 +66,34 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
   }, []);
   
   const handleGenderChange = (gender: string) => {
-    const updatedGenders = filters.gender.includes(gender)
-      ? filters.gender.filter(g => g !== gender)
-      : [...filters.gender, gender];
+    const updatedGenders = tempFilters.gender.includes(gender)
+      ? tempFilters.gender.filter(g => g !== gender)
+      : [...tempFilters.gender, gender];
     
     if (updatedGenders.length === 0) return;
     
-    const newFilters = { ...filters, gender: updatedGenders };
-    setFilters(newFilters);
-    onFiltersChange(newFilters);
+    setTempFilters({ ...tempFilters, gender: updatedGenders });
   };
   
   const handleAgeChange = (value: number[]) => {
-    const newFilters = { 
-      ...filters, 
+    setTempFilters({ 
+      ...tempFilters, 
       ageRange: [value[0], value[1]] as [number, number]
-    };
-    setFilters(newFilters);
-    onFiltersChange(newFilters);
+    });
   };
   
   const handleCountryChange = (country: string) => {
-    if (filters.countries.includes(country)) {
-      const newFilters = {
-        ...filters,
-        countries: filters.countries.filter(c => c !== country)
-      };
-      setFilters(newFilters);
-      onFiltersChange(newFilters);
+    if (tempFilters.countries.includes(country)) {
+      setTempFilters({
+        ...tempFilters,
+        countries: tempFilters.countries.filter(c => c !== country)
+      });
     } else {
-      if (filters.countries.length < 5) {
-        const newFilters = {
-          ...filters,
-          countries: [...filters.countries, country]
-        };
-        setFilters(newFilters);
-        onFiltersChange(newFilters);
+      if (tempFilters.countries.length < 5) {
+        setTempFilters({
+          ...tempFilters,
+          countries: [...tempFilters.countries, country]
+        });
       }
     }
   };
@@ -99,8 +104,13 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
       ageRange: [18, 80] as [number, number],
       countries: [],
     };
-    setFilters(resetFilters);
-    onFiltersChange(resetFilters);
+    setTempFilters(resetFilters);
+  };
+  
+  const applyFilters = () => {
+    setFilters(tempFilters);
+    onFiltersChange(tempFilters);
+    setIsOpen(false);
   };
 
   return (
@@ -132,23 +142,23 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
         >
           <div className="space-y-4">
             <GenderFilter 
-              selectedGenders={filters.gender}
+              selectedGenders={tempFilters.gender}
               onGenderChange={handleGenderChange}
             />
             
             <AgeRangeFilter 
-              ageRange={filters.ageRange}
+              ageRange={tempFilters.ageRange}
               onAgeChange={handleAgeChange}
             />
             
             <CountryFilter 
-              selectedCountries={filters.countries}
+              selectedCountries={tempFilters.countries}
               countries={countries}
               onCountryChange={handleCountryChange}
               isLoading={isLoading}
             />
             
-            <div className="pt-2 text-right">
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-between">
               <Button 
                 variant="ghost" 
                 size="sm"
@@ -156,10 +166,22 @@ const FiltersDropdown = ({ onFiltersChange }: FiltersDropdownProps) => {
                   e.preventDefault();
                   e.stopPropagation();
                   clearFilters();
-                  setIsOpen(false);
                 }}
               >
                 Clear All
+              </Button>
+              
+              <Button 
+                variant="default" 
+                size="sm"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  applyFilters();
+                }}
+              >
+                <CheckCircle className="h-4 w-4 mr-1" />
+                Apply Filters
               </Button>
             </div>
           </div>

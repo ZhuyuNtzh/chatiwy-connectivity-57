@@ -106,13 +106,8 @@ const SystemSettings = () => {
   
   const handleSaveBannedWords = () => {
     try {
-      // Clear existing banned words
-      signalRService.clearBannedWords();
-      
-      // Add all current banned words
-      bannedWords.forEach(word => {
-        signalRService.addBannedWord(word);
-      });
+      // Use the new setBannedWords method instead of clearBannedWords
+      signalRService.setBannedWords(bannedWords);
       
       // Save to localStorage as backup
       localStorage.setItem('bannedWords', JSON.stringify(bannedWords));

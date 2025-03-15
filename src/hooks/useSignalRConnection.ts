@@ -30,7 +30,7 @@ export const useSignalRConnection = (
     }
     
     return () => {
-      // Don't disconnect admin users
+      // Never disconnect admin users, even when component unmounts
       if (currentUser && !isAdminRef.current) {
         signalRService.disconnect();
       }

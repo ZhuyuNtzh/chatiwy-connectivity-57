@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { generateUsername } from '@/utils/helpers';
 import Header from '../components/Header';
 import RulesModal from '../components/RulesModal';
 import ProfileForm from '@/components/profile/ProfileForm';
@@ -21,7 +20,8 @@ const ProfileSetup = () => {
   const { userRole, setCurrentUser, setIsLoggedIn, setRulesAccepted, rulesAccepted } = useUser();
   const { isDarkMode } = useTheme();
   
-  const [nickname, setNickname] = useState(generateUsername());
+  // Don't generate a random nickname, leave it empty to force user input
+  const [nickname, setNickname] = useState('');
   const [age, setAge] = useState('25');
   const [gender, setGender] = useState('');
   const [location, setLocation] = useState('');
