@@ -43,9 +43,13 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
     // If no selectedUserId is provided, show all messages
     if (!selectedUserId) return true;
     
+    // Make sure currentUser exists and has an id
+    const currentUserId = currentUser?.id;
+    if (!currentUserId) return false;
+    
     // Only show messages that are part of the current conversation
-    return (msg.senderId === selectedUserId && msg.recipientId === currentUser?.id) || 
-           (msg.senderId === currentUser?.id && msg.recipientId === selectedUserId);
+    return (msg.senderId === selectedUserId && msg.recipientId === currentUserId) || 
+           (msg.senderId === currentUserId && msg.recipientId === selectedUserId);
   });
   
   useEffect(() => {

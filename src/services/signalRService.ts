@@ -7,6 +7,25 @@ import { chatStorage } from './signalR/chatStorage';
 import { userReporting } from './signalR/userReporting';
 import { contentModeration } from './signalR/contentModeration';
 
+// Mock users data for generating realistic responses
+const mockUserNames: Record<number, string> = {
+  1: "Alice",
+  2: "Bob",
+  3: "Clara",
+  4: "David",
+  5: "Elena",
+  6: "Feng",
+  7: "Gabriela",
+  8: "Hiroshi",
+  9: "Isabella",
+  10: "Jamal",
+  11: "TravelBot",
+  12: "FitnessGuru",
+  13: "BookWorm",
+  14: "TechGeek",
+  15: "ArtLover"
+};
+
 // This is using the mock connection for now, but can be replaced with a real connection
 class SignalRService implements ISignalRService {
   private connection: any = null;
@@ -106,11 +125,11 @@ class SignalRService implements ISignalRService {
     });
     
     // Add to chat history
-    chatStorage.addMessageToHistory(recipientId, newMessage);
+    chatStorage.addMessageToHistory(this.userId || 0, newMessage);
     
     // Simulate a response - pass the actual username to create a proper response
     setTimeout(() => {
-      this.simulateReceivedMessage(recipientId, actualUsername);
+      this.simulateReceivedMessage(recipientId);
     }, 1000 + Math.random() * 2000);
     
     return Promise.resolve();
@@ -241,28 +260,13 @@ class SignalRService implements ISignalRService {
   }
   
   // Helper method to simulate received messages
-  private simulateReceivedMessage(recipientUserId: number, actualUsername?: string): void {
+  private simulateReceivedMessage(recipientUserId: number): void {
     // Skip for blocked users
     if (userBlocking.isUserBlocked(recipientUserId)) {
       return;
     }
     
-    // FIXED: Use correct username for simulated messages from mock users
-    // Get the mock username from recipientUserId (this would usually come from the server)
-    const mockUserNames: Record<number, string> = {
-      1: "Alice",
-      2: "Bob",
-      3: "Clara",
-      4: "David",
-      5: "Elena",
-      6: "Feng",
-      7: "Gabriela",
-      8: "Hiroshi",
-      9: "Isabella",
-      10: "Jamal"
-    };
-    
-    // Get the actual sender username
+    // Get the mock username from recipientUserId
     const senderName = mockUserNames[recipientUserId] || `User${recipientUserId}`;
     
     const newMessage = messageHandler.createSimulatedResponse({
@@ -274,10 +278,10 @@ class SignalRService implements ISignalRService {
       actualUsername: senderName
     });
     
-    // Add to chat history
-    chatStorage.addMessageToHistory(recipientUserId, newMessage);
+    // Add to chat history - use the current user's ID as the key
+    chatStorage.addMessageToHistory(this.userId || 0, newMessage);
     
-    // Notify message listeners - they will filter based on their own context
+    // Notify message listeners
     this.messageCallbacks.forEach(callback => callback(newMessage));
   }
 }

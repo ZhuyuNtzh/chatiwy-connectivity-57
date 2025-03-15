@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '@/services/signalRService';
 import type { ChatMessage } from '@/services/signalR/types';
@@ -105,6 +106,7 @@ export const useChat = (userId: number, userRole: string) => {
   const previousUserIdRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // Clear messages when switching users
     if (previousUserIdRef.current !== null && previousUserIdRef.current !== userId) {
       console.log(`Switching from user ${previousUserIdRef.current} to ${userId}, clearing messages`);
       setMessages([]);
@@ -113,6 +115,7 @@ export const useChat = (userId: number, userRole: string) => {
     previousUserIdRef.current = userId;
 
     const handleNewMessage = (msg: ChatMessage) => {
+      // Only show messages that belong to the current conversation
       const isFromSelectedUser = msg.senderId === userId && msg.recipientId === signalRService.currentUserId;
       const isToSelectedUser = msg.senderId === signalRService.currentUserId && msg.recipientId === userId;
       
@@ -182,9 +185,16 @@ export const useChat = (userId: number, userRole: string) => {
     const existingMessages = signalRService.getChatHistory(userId);
     if (existingMessages && existingMessages.length > 0) {
       console.log(`Found ${existingMessages.length} messages for user ${userId}`);
-      setMessages(existingMessages);
       
-      const mediaItems = existingMessages.filter(msg => 
+      // Filter messages to only include ones relevant to this conversation
+      const filteredMessages = existingMessages.filter(msg => 
+        (msg.senderId === userId && msg.recipientId === signalRService.currentUserId) ||
+        (msg.senderId === signalRService.currentUserId && msg.recipientId === userId)
+      );
+      
+      setMessages(filteredMessages);
+      
+      const mediaItems = filteredMessages.filter(msg => 
         msg.isImage || msg.isVoiceMessage || (msg.content && isLinkMessage(msg.content))
       ).map(msg => ({
         type: msg.isImage ? 'image' as const : msg.isVoiceMessage ? 'voice' as const : 'link' as const,

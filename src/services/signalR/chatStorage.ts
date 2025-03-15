@@ -17,10 +17,9 @@ export const chatStorage = {
   },
 
   addMessageToHistory(userId: number, message: ChatMessage) {
-    // Ensure we're storing messages in the correct conversation history
-    // The conversation ID should be based on the participants, not just the recipient
-    // For a given message, we need to store it in the history of the person we're talking with
-    const conversationId = message.senderId === userId ? message.recipientId : message.senderId;
+    // For a given message, get the correct conversation ID
+    // The conversation ID should be based on who we're talking with
+    const conversationId = message.senderId !== userId ? message.senderId : message.recipientId;
     
     // Initialize array if this is the first message with this user
     if (!chatHistory[conversationId]) {
@@ -69,7 +68,7 @@ export const chatStorage = {
     localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
   },
   
-  // New method to clear a specific conversation history
+  // Method to clear a specific conversation history
   clearChatHistory(userId: number) {
     if (chatHistory[userId]) {
       delete chatHistory[userId];
