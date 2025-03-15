@@ -58,6 +58,7 @@ const ChatInterface = () => {
     setShowInbox,
     inboxMessages,
     filteredUsers,
+    unreadCount,
     handleLogoutClick,
     handleConfirmLogout,
     handleCancelLogout,
@@ -67,7 +68,8 @@ const ChatInterface = () => {
     handleCloseChat,
     handleShowHistory,
     handleShowInbox,
-    handleContinueChat
+    handleContinueChat,
+    handleInboxOpened
   } = useChatInterface(mockUsers);
 
   return (
@@ -79,6 +81,7 @@ const ChatInterface = () => {
         onLogout={handleLogoutClick}
         onHistory={handleShowHistory}
         onInbox={handleShowInbox}
+        unreadCount={unreadCount}
       />
       
       <div className="fixed top-16 bottom-0 left-0 right-0 px-4 md:px-6 max-w-7xl mx-auto">
@@ -135,6 +138,7 @@ const ChatInterface = () => {
         onOpenChange={setShowInbox}
         inboxMessages={inboxMessages}
         onOpenChat={handleContinueChat}
+        onDialogOpened={handleInboxOpened}
       />
     </div>
   );

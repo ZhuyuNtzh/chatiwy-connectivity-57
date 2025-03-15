@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signalRService } from '@/services/signalRService';
 import type { ChatMessage } from '@/services/signalR/types';
 import { toast } from "sonner";
@@ -8,8 +8,26 @@ import { useUser } from '@/contexts/UserContext';
 export const useMessages = (userId: number, userRole: string) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [message, setMessage] = useState('');
+  const [unreadCount, setUnreadCount] = useState<number>(0);
   const { currentUser } = useUser();
   const maxChars = userRole === 'vip' ? 200 : 140;
+
+  // Listen for new messages and update unread count
+  useEffect(() => {
+    const handleNewMessage = (newMessage: ChatMessage) => {
+      // Only count messages that are from other users (not from current user)
+      if (newMessage.senderId !== signalRService.currentUserId && 
+          newMessage.recipientId === signalRService.currentUserId) {
+        setUnreadCount(prev => prev + 1);
+      }
+    };
+
+    signalRService.onMessageReceived(handleNewMessage);
+    
+    return () => {
+      signalRService.offMessageReceived(handleNewMessage);
+    };
+  }, []);
 
   const handleSendMessage = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -56,12 +74,18 @@ export const useMessages = (userId: number, userRole: string) => {
     }
   };
 
+  const resetUnreadCount = () => {
+    setUnreadCount(0);
+  };
+
   return {
     messages,
     setMessages,
     message,
     setMessage,
     maxChars,
+    unreadCount,
+    resetUnreadCount,
     handleSendMessage,
     handleKeyDown,
     handleAddEmoji,

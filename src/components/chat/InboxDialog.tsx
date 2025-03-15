@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar } from '@/components/ui/avatar';
@@ -10,14 +10,23 @@ interface InboxDialogProps {
   onOpenChange: (open: boolean) => void;
   inboxMessages: Record<number, ChatMessage[]>;
   onOpenChat?: (userId: number) => void;
+  onDialogOpened?: () => void;
 }
 
 const InboxDialog: React.FC<InboxDialogProps> = ({
   isOpen,
   onOpenChange,
   inboxMessages,
-  onOpenChat
+  onOpenChat,
+  onDialogOpened
 }) => {
+  // When the dialog opens, notify parent to reset counter
+  useEffect(() => {
+    if (isOpen && onDialogOpened) {
+      onDialogOpened();
+    }
+  }, [isOpen, onDialogOpened]);
+
   // Convert Record to array for easier rendering and ensure each conversation is distinct
   const messagesArray = Object.entries(inboxMessages)
     .filter(([_, messages]) => messages && messages.length > 0) // Filter out empty conversations

@@ -1,6 +1,7 @@
 
 import { Button } from '@/components/ui/button';
 import { User, LogOut, Moon, Sun, History, Inbox } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface HeaderProps {
   username: string;
@@ -9,6 +10,7 @@ interface HeaderProps {
   onLogout: () => void;
   onHistory?: () => void;
   onInbox?: () => void;
+  unreadCount?: number;
 }
 
 const Header = ({ 
@@ -17,7 +19,8 @@ const Header = ({
   toggleDarkMode, 
   onLogout,
   onHistory,
-  onInbox
+  onInbox,
+  unreadCount = 0
 }: HeaderProps) => {
   return (
     <header className={`fixed top-0 left-0 right-0 z-10 py-3 px-4 ${isDarkMode ? 'bg-gray-900' : 'bg-white'} border-b border-gray-200 dark:border-gray-700`}>
@@ -42,15 +45,26 @@ const Header = ({
           )}
           
           {onInbox && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="flex items-center gap-1"
-              onClick={onInbox}
-            >
-              <Inbox className="h-4 w-4" />
-              <span className="hidden sm:inline">Inbox</span>
-            </Button>
+            <div className="relative">
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="flex items-center gap-1"
+                onClick={onInbox}
+              >
+                <Inbox className="h-4 w-4" />
+                <span className="hidden sm:inline">Inbox</span>
+              </Button>
+              
+              {unreadCount > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs rounded-full"
+                >
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Badge>
+              )}
+            </div>
           )}
           
           <div className="flex items-center ml-2 md:ml-4">

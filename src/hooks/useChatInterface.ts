@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, UserProfile } from '../contexts/UserContext';
 import { useAuthActions } from './useAuthActions';
@@ -10,6 +10,7 @@ import { useInactivityTimer } from './useInactivityTimer';
 import { useCountryFlags } from './useCountryFlags';
 import { useSignalRConnection } from './useSignalRConnection';
 import { signalRService } from '../services/signalRService';
+import { useMessages } from './useMessages';
 
 interface User {
   id: number;
@@ -23,7 +24,11 @@ interface User {
 
 export const useChatInterface = (mockUsers: User[]) => {
   const navigate = useNavigate();
-  const { currentUser, setIsLoggedIn } = useUser();
+  const { currentUser, setIsLoggedIn, userRole } = useUser();
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  
+  // Use the messages hook to track unread count
+  const { unreadCount, resetUnreadCount } = useMessages(selectedUserId || 0, userRole || 'standard');
   
   // Initialize all the smaller hooks
   const { handleLogout, confirmLogout, cancelLogout } = useAuthActions();
@@ -82,6 +87,7 @@ export const useChatInterface = (mockUsers: User[]) => {
   
   // Extended user click handler that gets chat history
   const handleUserClick = (user: User) => {
+    setSelectedUserId(user.id);
     baseHandleUserClick(user);
     // Get chat history for this user
     const userHistory = signalRService.getChatHistory(user.id) || [];
@@ -104,6 +110,7 @@ export const useChatInterface = (mockUsers: User[]) => {
   const handleShowInbox = () => {
     const allHistory = baseHandleShowInbox();
     setShowInbox(true);
+    resetUnreadCount(); // Reset the unread counter when inbox is opened
     return allHistory;
   };
   
@@ -133,6 +140,11 @@ export const useChatInterface = (mockUsers: User[]) => {
     setIsLogoutDialogOpen(false);
   };
 
+  // Handler for when inbox dialog is opened
+  const handleInboxOpened = () => {
+    resetUnreadCount();
+  };
+
   return {
     searchTerm,
     setSearchTerm,
@@ -152,6 +164,7 @@ export const useChatInterface = (mockUsers: User[]) => {
     setShowInbox,
     inboxMessages,
     filteredUsers,
+    unreadCount,
     handleLogoutClick,
     handleConfirmLogout,
     handleCancelLogout,
@@ -161,6 +174,7 @@ export const useChatInterface = (mockUsers: User[]) => {
     handleCloseChat,
     handleShowHistory,
     handleShowInbox,
-    handleContinueChat
+    handleContinueChat,
+    handleInboxOpened
   };
 };
