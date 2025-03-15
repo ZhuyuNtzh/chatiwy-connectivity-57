@@ -16,8 +16,10 @@ export const useMessages = (userId: number, userRole: string) => {
   useEffect(() => {
     const handleNewMessage = (newMessage: ChatMessage) => {
       // Only count messages that are from other users (not from current user)
+      // AND only if they're not from the currently selected conversation
       if (newMessage.senderId !== signalRService.currentUserId && 
-          newMessage.recipientId === signalRService.currentUserId) {
+          newMessage.recipientId === signalRService.currentUserId &&
+          newMessage.senderId !== userId) {
         setUnreadCount(prev => prev + 1);
       }
     };
@@ -27,7 +29,25 @@ export const useMessages = (userId: number, userRole: string) => {
     return () => {
       signalRService.offMessageReceived(handleNewMessage);
     };
-  }, []);
+  }, [userId]);
+
+  // Reset unread count when changing the selected user (if they had unread messages)
+  useEffect(() => {
+    if (userId) {
+      // Get chat history for this user
+      const userHistory = signalRService.getChatHistory(userId);
+      
+      // Check if there are any unread messages from this user
+      const hasUnreadFromThisUser = userHistory.some(msg => 
+        msg.senderId === userId && 
+        msg.recipientId === signalRService.currentUserId);
+      
+      // If we are now viewing messages from a user who sent us messages, reduce count
+      if (hasUnreadFromThisUser) {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    }
+  }, [userId]);
 
   const handleSendMessage = (e?: React.FormEvent) => {
     if (e) e.preventDefault();

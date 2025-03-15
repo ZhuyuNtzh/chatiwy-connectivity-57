@@ -85,10 +85,12 @@ export const useChatInterface = (mockUsers: User[]) => {
     }
   }, [currentUser, navigate, setIsLoggedIn]);
   
-  // Extended user click handler that gets chat history
+  // Extended user click handler that gets chat history and resets notifications
   const handleUserClick = (user: User) => {
+    const previousUserId = selectedUserId;
     setSelectedUserId(user.id);
     baseHandleUserClick(user);
+    
     // Get chat history for this user
     const userHistory = signalRService.getChatHistory(user.id) || [];
     if (userHistory.length > 0) {
@@ -96,6 +98,17 @@ export const useChatInterface = (mockUsers: User[]) => {
         ...prev,
         [user.id]: userHistory
       }));
+    }
+    
+    // If we're changing conversations and the new user has sent messages, reduce the unread count
+    const hasUnreadMessages = userHistory.some(msg => 
+      msg.senderId === user.id && 
+      msg.recipientId === signalRService.currentUserId
+    );
+    
+    if (hasUnreadMessages && previousUserId !== user.id) {
+      // Let useMessages effect handle the counter reduction
+      console.log(`Opening conversation with user ${user.id} who has sent messages`);
     }
   };
   
@@ -108,9 +121,10 @@ export const useChatInterface = (mockUsers: User[]) => {
   
   // Enhanced inbox handler
   const handleShowInbox = () => {
-    const allHistory = baseHandleShowInbox();
+    // Get fresh chat history when opening inbox
+    const allHistory = signalRService.getAllChatHistory();
+    setInboxMessages(allHistory);
     setShowInbox(true);
-    resetUnreadCount(); // Reset the unread counter when inbox is opened
     return allHistory;
   };
   
