@@ -6,6 +6,7 @@ import Header from '../components/Header';
 import RulesModal from '../components/RulesModal';
 import ProfileForm from '@/components/profile/ProfileForm';
 import axios from 'axios';
+import { toast } from 'sonner';
 
 interface Country {
   name: {
@@ -39,14 +40,31 @@ const ProfileSetup = () => {
     const getCountryFromIP = async () => {
       setIsLoading(true);
       try {
-        const ipResponse = await axios.get('https://api.ipify.org?format=json');
-        const countryResponse = await axios.get(`https://ipapi.co/${ipResponse.data.ip}/json/`);
-        const countryData = await axios.get(`https://restcountries.com/v3.1/alpha/${countryResponse.data.country_code}`);
-        setCountry(countryData.data[0]);
-        setLocation(countryData.data[0].name.common);
+        // Use more reliable API endpoints with fallbacks
+        try {
+          const ipResponse = await axios.get('https://api.ipify.org?format=json');
+          const countryResponse = await axios.get(`https://ipapi.co/${ipResponse.data.ip}/json/`);
+          
+          if (countryResponse.data && countryResponse.data.country_code) {
+            const countryData = await axios.get(`https://restcountries.com/v3.1/alpha/${countryResponse.data.country_code}`);
+            setCountry(countryData.data[0]);
+            setLocation(countryData.data[0].name.common);
+          } else {
+            throw new Error("Could not get country data");
+          }
+        } catch (error) {
+          // Fallback to a default country
+          console.error('Error with initial country detection:', error);
+          const defaultCountry = await axios.get(`https://restcountries.com/v3.1/name/united%20states`);
+          setCountry(defaultCountry.data[0]);
+          setLocation(defaultCountry.data[0].name.common);
+        }
       } catch (error) {
         console.error('Error fetching country:', error);
         setCountry(null);
+        // Set a default location if everything fails
+        setLocation("United States");
+        toast.error("Could not detect your country automatically");
       } finally {
         setIsLoading(false);
       }

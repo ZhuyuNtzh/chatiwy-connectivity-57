@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Eye, EyeOff, Maximize2, MessageSquare, Check, CheckCheck, Smile, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,14 +26,14 @@ const MessageItem: React.FC<MessageItemProps> = ({
   onReply,
   onUnsendMessage
 }) => {
-  const { userRole } = useUser();
+  const { userRole, currentUser } = useUser();
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [reaction, setReaction] = useState<string | null>(null);
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
-  const isFromCurrentUser = message.sender === 'You';
+  const isFromCurrentUser = message.sender === currentUser?.username || message.sender === 'You';
   const isVip = userRole === 'vip';
   
   const handleReaction = (emoji: string) => {
@@ -175,7 +176,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
             {renderMessageStatus()}
           </div>
           
-          {/* Action buttons positioned correctly */}
+          {/* Action buttons */}
           <div className={`absolute bottom-0 ${isFromCurrentUser ? 'left-0 -translate-x-full -ml-2' : 'right-0 translate-x-full mr-2'} opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1`}>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-1 flex gap-1">
               <Popover open={showReactionPicker} onOpenChange={setShowReactionPicker}>
