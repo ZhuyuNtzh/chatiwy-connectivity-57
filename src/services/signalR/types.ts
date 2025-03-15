@@ -1,3 +1,4 @@
+
 export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
 
 export interface ChatMessage {
@@ -69,4 +70,5 @@ export interface ISignalRService {
   getBannedWords(): string[];
   addBannedWord(word: string): void;
   removeBannedWord(word: string): void;
+  setBannedWords(words: string[]): void; // Add this method to the interface
 }

@@ -1,4 +1,3 @@
-
 import { MockHubConnection } from './signalR/mockConnection';
 import { ISignalRService, ChatMessage, ConnectionStatus, UserReport } from './signalR/types';
 import { messageHandler } from './signalR/messageHandler';
@@ -206,6 +205,10 @@ class SignalRService implements ISignalRService {
   
   public removeBannedWord(word: string): void {
     contentModeration.removeBannedWord(word);
+  }
+  
+  public setBannedWords(words: string[]): void {
+    contentModeration.setBannedWords(words);
   }
   
   // Reporting functionality
