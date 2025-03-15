@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { useUser } from '@/contexts/UserContext';
 
 export const useMessages = (userId: number, userRole: string) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [message, setMessage] = useState('');
   const { currentUser } = useUser();
   const maxChars = userRole === 'vip' ? 200 : 140;
@@ -23,20 +22,8 @@ export const useMessages = (userId: number, userRole: string) => {
     
     // Create a message with the correct username from currentUser
     const username = currentUser?.username || 'You';
-    const newMessage: ChatMessage = {
-      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      content: message.trim(),
-      sender: username,
-      actualUsername: username, // This is the correct username to display
-      senderId: signalRService.currentUserId,
-      recipientId: userId,
-      timestamp: new Date(),
-    };
     
-    // Add message to local state first for immediate UI update
-    setMessages(prev => [...prev, newMessage]);
-    
-    // Then send to service - pass the actual username so it can be stored with the message
+    // Send via signalRService
     signalRService.sendMessage(userId, message.trim(), username);
     
     // Clear input field
@@ -57,8 +44,6 @@ export const useMessages = (userId: number, userRole: string) => {
   };
 
   return {
-    messages,
-    setMessages,
     message,
     setMessage,
     maxChars,

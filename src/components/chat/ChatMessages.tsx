@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import type { ChatMessage } from '@/services/signalR/types';
 import MessageItem from './MessageItem';
@@ -38,7 +39,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   const { userRole, currentUser } = useUser();
   const isVip = userRole === 'vip';
   
-  // Get current user ID safely from signalRService instead of currentUser
+  // Get current user ID safely from signalRService
   const currentUserId = signalRService.currentUserId;
   
   // Filter messages to ensure we only show those for the current conversation
@@ -50,6 +51,12 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
     return (msg.senderId === selectedUserId && msg.recipientId === currentUserId) || 
            (msg.senderId === currentUserId && msg.recipientId === selectedUserId);
   });
+  
+  // Log to debug message filtering
+  console.log('All messages:', messages);
+  console.log('Filtered messages:', currentUserMessages);
+  console.log('CurrentUserId:', currentUserId);
+  console.log('SelectedUserId:', selectedUserId);
   
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;

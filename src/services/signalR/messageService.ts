@@ -74,6 +74,14 @@ export const messageService = {
     // Add to chat history
     chatStorage.addMessageToHistory(currentUserId, newMessage);
     
+    // Notify message listeners - important for real-time updates
+    this.messageCallbacks.forEach(callback => callback(newMessage));
+    
+    // Simulate a response after a short delay
+    setTimeout(() => {
+      this.simulateReceivedMessage(currentUserId, recipientId);
+    }, 1000 + Math.random() * 2000);
+    
     return Promise.resolve();
   },
   
@@ -95,6 +103,9 @@ export const messageService = {
     // Add to chat history
     chatStorage.addMessageToHistory(currentUserId, newMessage);
     
+    // Notify message listeners
+    this.messageCallbacks.forEach(callback => callback(newMessage));
+    
     return Promise.resolve();
   },
   
@@ -113,6 +124,9 @@ export const messageService = {
     
     // Add to chat history
     chatStorage.addMessageToHistory(currentUserId, newMessage);
+    
+    // Notify message listeners
+    this.messageCallbacks.forEach(callback => callback(newMessage));
     
     return Promise.resolve();
   },
@@ -155,4 +169,4 @@ export const messageService = {
     // Notify message listeners
     this.messageCallbacks.forEach(callback => callback(newMessage));
   }
-}
+};

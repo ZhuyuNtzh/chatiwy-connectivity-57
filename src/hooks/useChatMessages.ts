@@ -26,7 +26,13 @@ export const useChatMessages = (userId: number, userRole: string, isTranslationE
       
       if (isFromSelectedUser || isToSelectedUser) {
         console.log(`Message belongs to conversation with user ${userId}:`, msg);
-        setMessages(prev => [...prev, msg]);
+        setMessages(prev => {
+          // Check if message already exists to prevent duplicates
+          if (prev.some(existingMsg => existingMsg.id === msg.id)) {
+            return prev;
+          }
+          return [...prev, msg];
+        });
       } else {
         console.log(`Message not for conversation with user ${userId}:`, msg);
       }
