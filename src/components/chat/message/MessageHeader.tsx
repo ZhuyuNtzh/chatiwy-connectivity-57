@@ -15,6 +15,7 @@ const MessageHeader: React.FC<MessageHeaderProps> = ({
   senderRole = 'standard'
 }) => {
   // Always prioritize actualUsername if available, fall back to sender
+  // This ensures we always show the real username, not a placeholder
   const displayName = actualUsername || sender;
   
   return (

@@ -102,19 +102,23 @@ export const useChat = (userId: number, userRole: string) => {
 
   const [isTyping, setIsTyping] = useState(false);
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const previousUserIdRef = useRef<number | null>(null);
 
-  // Handle real-time messaging with SignalR
   useEffect(() => {
+    if (previousUserIdRef.current !== null && previousUserIdRef.current !== userId) {
+      console.log(`Switching from user ${previousUserIdRef.current} to ${userId}, clearing messages`);
+      setMessages([]);
+    }
+    
+    previousUserIdRef.current = userId;
+
     const handleNewMessage = (msg: ChatMessage) => {
-      // FIXED: Only process messages specific to this conversation
-      // Check if this message belongs to the current chat conversation
       const isFromSelectedUser = msg.senderId === userId && msg.recipientId === signalRService.currentUserId;
       const isToSelectedUser = msg.senderId === signalRService.currentUserId && msg.recipientId === userId;
       
       if (isFromSelectedUser || isToSelectedUser) {
         console.log(`Message belongs to conversation with user ${userId}:`, msg);
         
-        // Apply real-time translation if enabled (for VIP users)
         if (isTranslationEnabled && userRole === 'vip' && msg.senderId === userId && selectedLanguage !== 'en') {
           translateMessage(msg).then(translatedMsg => {
             setMessages(prev => [...prev, translatedMsg]);
@@ -123,7 +127,6 @@ export const useChat = (userId: number, userRole: string) => {
           setMessages(prev => [...prev, msg]);
         }
         
-        // Update media gallery if it's media
         if (msg.isImage || msg.isVoiceMessage || (msg.content && isLinkMessage(msg.content))) {
           setMediaGalleryItems(prev => [
             ...prev, 
@@ -135,11 +138,9 @@ export const useChat = (userId: number, userRole: string) => {
           ]);
         }
         
-        // Only auto-scroll if user was already at the bottom
         if (isAtBottomRef.current) {
           setAutoScrollToBottom(true);
           
-          // Reset auto-scroll after a short delay
           setTimeout(() => {
             setAutoScrollToBottom(false);
           }, 300);
@@ -149,24 +150,20 @@ export const useChat = (userId: number, userRole: string) => {
       }
     };
     
-    // Simulate user typing indication (for VIP)
     const handleUserTyping = (typingUserId: number) => {
       if (typingUserId === userId && userRole === 'vip') {
         setIsTyping(true);
         
-        // Clear existing timer
         if (typingTimerRef.current) {
           clearTimeout(typingTimerRef.current);
         }
         
-        // Set a timer to turn off typing indicator after 3 seconds
         typingTimerRef.current = setTimeout(() => {
           setIsTyping(false);
         }, 3000);
       }
     };
     
-    // Handle message deletion
     const handleMessageDeleted = (messageId: string) => {
       setMessages(prev => 
         prev.map(msg => 
@@ -181,12 +178,12 @@ export const useChat = (userId: number, userRole: string) => {
     signalRService.onUserTyping(handleUserTyping);
     signalRService.onMessageDeleted(handleMessageDeleted);
     
-    // Load existing messages specifically for this user
+    console.log(`Loading chat history for user ${userId}`);
     const existingMessages = signalRService.getChatHistory(userId);
     if (existingMessages && existingMessages.length > 0) {
+      console.log(`Found ${existingMessages.length} messages for user ${userId}`);
       setMessages(existingMessages);
       
-      // Load media for the gallery
       const mediaItems = existingMessages.filter(msg => 
         msg.isImage || msg.isVoiceMessage || (msg.content && isLinkMessage(msg.content))
       ).map(msg => ({
@@ -196,15 +193,17 @@ export const useChat = (userId: number, userRole: string) => {
       }));
       
       setMediaGalleryItems(mediaItems);
+    } else {
+      console.log(`No existing messages found for user ${userId}`);
+      setMessages([]);
+      setMediaGalleryItems([]);
     }
     
-    // Check if this user is already blocked
     if (signalRService.isUserBlocked(userId)) {
       setBlockedUsers(prev => [...prev, userId]);
     }
     
     return () => {
-      // Cleanup
       signalRService.offMessageReceived(handleNewMessage);
       signalRService.offUserTyping(handleUserTyping);
       signalRService.offMessageDeleted(handleMessageDeleted);
@@ -213,9 +212,8 @@ export const useChat = (userId: number, userRole: string) => {
         clearTimeout(typingTimerRef.current);
       }
     };
-  }, [userId, userRole, isTranslationEnabled, selectedLanguage, setBlockedUsers, setMessages]);
+  }, [userId, userRole, isTranslationEnabled, selectedLanguage, setBlockedUsers, setMessages, setMediaGalleryItems]);
 
-  // Helper UI functions
   const toggleImageBlur = (messageId: string) => {
     setMessages(prev => prev.map(msg => 
       msg.id === messageId ? { ...msg, isBlurred: !msg.isBlurred } : msg
@@ -233,12 +231,10 @@ export const useChat = (userId: number, userRole: string) => {
     setShowOptions(false);
   };
   
-  // Wrapper for confirmDeleteConversation that provides the right dependencies
   const handleConfirmDeleteConversation = () => {
     confirmDeleteConversation(setMessages, setMediaGalleryItems);
   };
 
-  // Wrapper for replyToMessage that provides the right dependencies
   const handleReplyToMessage = (messageId: string, messageText: string) => {
     baseReplyToMessage(
       messageId, 
@@ -251,13 +247,11 @@ export const useChat = (userId: number, userRole: string) => {
     );
   };
 
-  // Wrapper for unsendMessage that provides the right dependencies
   const handleUnsendMessage = (messageId: string) => {
     baseUnsendMessage(messageId, userId, setMessages);
   };
 
   return {
-    // State
     message,
     setMessage,
     messages,
@@ -293,8 +287,6 @@ export const useChat = (userId: number, userRole: string) => {
     audioPreview,
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
-    
-    // Functions
     handleSendMessage,
     handleKeyDown,
     handleAddEmoji,

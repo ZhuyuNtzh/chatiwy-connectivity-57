@@ -35,8 +35,18 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const [newMessageCount, setNewMessageCount] = useState(0);
   const previousMessagesLengthRef = useRef(messages.length);
-  const { userRole } = useUser();
+  const { userRole, currentUser } = useUser();
   const isVip = userRole === 'vip';
+  
+  // Filter messages to ensure we only show those for the current conversation
+  const currentUserMessages = messages.filter(msg => {
+    // If no selectedUserId is provided, show all messages
+    if (!selectedUserId) return true;
+    
+    // Only show messages that are part of the current conversation
+    return (msg.senderId === selectedUserId && msg.recipientId === currentUser?.id) || 
+           (msg.senderId === currentUser?.id && msg.recipientId === selectedUserId);
+  });
   
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
@@ -62,11 +72,11 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   }, [updateScrollPosition]);
   
   useEffect(() => {
-    if (userScrolledUp && !autoScrollToBottom && messages.length > previousMessagesLengthRef.current) {
-      setNewMessageCount(prev => prev + (messages.length - previousMessagesLengthRef.current));
+    if (userScrolledUp && !autoScrollToBottom && currentUserMessages.length > previousMessagesLengthRef.current) {
+      setNewMessageCount(prev => prev + (currentUserMessages.length - previousMessagesLengthRef.current));
     }
-    previousMessagesLengthRef.current = messages.length;
-  }, [messages.length, userScrolledUp, autoScrollToBottom]);
+    previousMessagesLengthRef.current = currentUserMessages.length;
+  }, [currentUserMessages.length, userScrolledUp, autoScrollToBottom]);
   
   useEffect(() => {
     if (autoScrollToBottom) {
@@ -78,7 +88,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
     if ((!userScrolledUp || autoScrollToBottom) && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, userScrolledUp, autoScrollToBottom]);
+  }, [currentUserMessages, userScrolledUp, autoScrollToBottom]);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -92,7 +102,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
       <ScrollContainer 
         scrollRef={scrollContainerRef}
       >
-        {messages.map((msg) => (
+        {currentUserMessages.map((msg) => (
           <MessageItem 
             key={msg.id}
             message={msg}

@@ -17,25 +17,30 @@ export const chatStorage = {
   },
 
   addMessageToHistory(userId: number, message: ChatMessage) {
+    // Ensure we're storing messages in the correct conversation history
+    // The conversation ID should be based on the participants, not just the recipient
+    // For a given message, we need to store it in the history of the person we're talking with
+    const conversationId = message.senderId === userId ? message.recipientId : message.senderId;
+    
     // Initialize array if this is the first message with this user
-    if (!chatHistory[userId]) {
-      chatHistory[userId] = [];
+    if (!chatHistory[conversationId]) {
+      chatHistory[conversationId] = [];
     }
     
     // Check if we already have this message (prevent duplicates)
-    const isDuplicate = chatHistory[userId].some(msg => msg.id === message.id);
+    const isDuplicate = chatHistory[conversationId].some(msg => msg.id === message.id);
     
     if (!isDuplicate) {
-      // Add message to the specific user's chat history
-      chatHistory[userId].push(message);
+      // Add message to the specific conversation history
+      chatHistory[conversationId].push(message);
       
       // Save to localStorage
       localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
       
       // Debug info
-      console.log(`Added message to history for user ${userId}`, message);
+      console.log(`Added message to history for conversation ${conversationId}`, message);
     } else {
-      console.log(`Prevented duplicate message for user ${userId}`, message);
+      console.log(`Prevented duplicate message for conversation ${conversationId}`, message);
     }
   },
 
@@ -62,5 +67,13 @@ export const chatStorage = {
   clearAllChatHistory() {
     chatHistory = {};
     localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+  },
+  
+  // New method to clear a specific conversation history
+  clearChatHistory(userId: number) {
+    if (chatHistory[userId]) {
+      delete chatHistory[userId];
+      localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+    }
   }
 };
