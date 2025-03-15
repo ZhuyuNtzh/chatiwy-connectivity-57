@@ -75,3 +75,7 @@ export class MockHubConnection {
     };
   }
 }
+
+// Create a single instance as the default export
+const mockConnection = new MockHubConnection();
+export default mockConnection;
