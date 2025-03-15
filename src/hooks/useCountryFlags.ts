@@ -19,30 +19,14 @@ export const useCountryFlags = () => {
         setCountryFlags(flagsMap);
       } catch (error) {
         console.error('Error fetching country flags:', error);
-        
-        // Set some default flags as fallback
-        const fallbackFlags: Record<string, string> = {
-          "United States": "https://flagcdn.com/us.svg",
-          "France": "https://flagcdn.com/fr.svg",
-          "United Kingdom": "https://flagcdn.com/gb.svg",
-          "Germany": "https://flagcdn.com/de.svg",
-          "Japan": "https://flagcdn.com/jp.svg",
-          "Canada": "https://flagcdn.com/ca.svg",
-          "Australia": "https://flagcdn.com/au.svg",
-          "Brazil": "https://flagcdn.com/br.svg",
-          "China": "https://flagcdn.com/cn.svg",
-          "India": "https://flagcdn.com/in.svg",
-        };
-        
-        setCountryFlags(fallbackFlags);
+        setCountryFlags(getFallbackFlags());
       }
     };
 
     fetchCountryFlags();
     
-    // Set a more realistic connected user count 
-    // In a real app, this would come from the server
-    setConnectedUsersCount(Math.floor(Math.random() * 10) + 8); // Random number between 8-17
+    // Set a more realistic connected user count
+    setConnectedUsersCount(Math.floor(Math.random() * 5) + 8); // Random number between 8-12
   }, []);
   
   return {
@@ -51,3 +35,19 @@ export const useCountryFlags = () => {
     setConnectedUsersCount
   };
 };
+
+// Helper function to get fallback flags
+function getFallbackFlags(): Record<string, string> {
+  return {
+    "United States": "https://flagcdn.com/us.svg",
+    "France": "https://flagcdn.com/fr.svg",
+    "United Kingdom": "https://flagcdn.com/gb.svg",
+    "Germany": "https://flagcdn.com/de.svg",
+    "Japan": "https://flagcdn.com/jp.svg",
+    "Canada": "https://flagcdn.com/ca.svg",
+    "Australia": "https://flagcdn.com/au.svg",
+    "Brazil": "https://flagcdn.com/br.svg",
+    "China": "https://flagcdn.com/cn.svg",
+    "India": "https://flagcdn.com/in.svg",
+  };
+}

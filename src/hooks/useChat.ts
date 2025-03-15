@@ -5,6 +5,11 @@ import type { ChatMessage } from '@/services/signalR/types';
 import { useMessages } from './useMessages';
 import { useMediaHandling } from './useMediaHandling';
 import { useUserInteractions } from './useUserInteractions';
+import { useMessageTranslation } from './useMessageTranslation';
+import { useMediaGallery } from './useMediaGallery';
+import { useConversationManagement } from './useConversationManagement';
+import { useVipMessageFeatures } from './useVipMessageFeatures';
+import { useScrollManagement } from './useScrollManagement';
 import { toast } from "sonner";
 
 export const useChat = (userId: number, userRole: string) => {
@@ -57,21 +62,48 @@ export const useChat = (userId: number, userRole: string) => {
     handleSubmitReport
   } = useUserInteractions(userId);
 
+  const {
+    isTranslationEnabled,
+    selectedLanguage,
+    setSelectedLanguage,
+    translateMessage,
+    toggleTranslation
+  } = useMessageTranslation(userRole);
+
+  const {
+    isMediaGalleryOpen,
+    setIsMediaGalleryOpen,
+    mediaGalleryItems,
+    setMediaGalleryItems,
+    showMediaGallery,
+    isLinkMessage,
+    extractLink
+  } = useMediaGallery();
+
+  const {
+    isDeleteDialogOpen,
+    setIsDeleteDialogOpen,
+    deleteConversation,
+    confirmDeleteConversation,
+    cancelDeleteConversation
+  } = useConversationManagement();
+
+  const {
+    replyToMessage: baseReplyToMessage,
+    unsendMessage: baseUnsendMessage
+  } = useVipMessageFeatures(userRole);
+
+  const {
+    autoScrollToBottom,
+    setAutoScrollToBottom,
+    isAtBottomRef,
+    updateScrollPosition
+  } = useScrollManagement();
+
   const [isTyping, setIsTyping] = useState(false);
-  const [isTranslationEnabled, setIsTranslationEnabled] = useState(false);
-  const [isMediaGalleryOpen, setIsMediaGalleryOpen] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('en');
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [mediaGalleryItems, setMediaGalleryItems] = useState<{
-    type: 'image' | 'voice' | 'link';
-    url: string;
-    timestamp: Date;
-  }[]>([]);
-  
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [autoScrollToBottom, setAutoScrollToBottom] = useState(false);
-  const isAtBottomRef = useRef(true);
-  
+
+  // Handle real-time messaging with SignalR
   useEffect(() => {
     const handleNewMessage = (msg: ChatMessage) => {
       // Only process messages specific to this conversation
@@ -178,25 +210,6 @@ export const useChat = (userId: number, userRole: string) => {
     };
   }, [userId, userRole, isTranslationEnabled, selectedLanguage, setBlockedUsers, setMessages]);
   
-  // Helper function to simulate message translation
-  const translateMessage = async (msg: ChatMessage): Promise<ChatMessage> => {
-    try {
-      // In a real app, you would call a translation API here
-      // For demo, we'll simulate a translation
-      const translatedContent = msg.content ? `[Translated: ${msg.content}]` : msg.content;
-      
-      return {
-        ...msg,
-        content: translatedContent,
-        translated: true
-      } as ChatMessage;
-    } catch (error) {
-      console.error('Translation error:', error);
-      toast.error('Failed to translate message');
-      return msg;
-    }
-  };
-  
   const toggleImageBlur = (messageId: string) => {
     setMessages(prev => prev.map(msg => 
       msg.id === messageId ? { ...msg, isBlurred: !msg.isBlurred } : msg
@@ -214,120 +227,27 @@ export const useChat = (userId: number, userRole: string) => {
     setShowOptions(false);
   };
   
-  const updateScrollPosition = (isAtBottom: boolean) => {
-    isAtBottomRef.current = isAtBottom;
+  // Wrapper for confirmDeleteConversation that provides the right dependencies
+  const handleConfirmDeleteConversation = () => {
+    confirmDeleteConversation(setMessages, setMediaGalleryItems);
   };
-  
-  const toggleTranslation = () => {
-    if (userRole !== 'vip') {
-      toast.error('Translation is a VIP feature');
-      return;
-    }
-    setIsTranslationEnabled(prev => !prev);
-    toast.success(isTranslationEnabled ? 'Translation disabled' : 'Translation enabled');
-  };
-  
-  const showMediaGallery = () => {
-    setIsMediaGalleryOpen(true);
-    setShowOptions(false);
-  };
-  
-  const deleteConversation = () => {
-    setIsDeleteDialogOpen(true);
-    setShowOptions(false);
-  };
-  
-  const confirmDeleteConversation = () => {
-    setMessages([]);
-    setMediaGalleryItems([]);
-    toast.success('Conversation deleted');
-    setIsDeleteDialogOpen(false);
-  };
-  
-  const cancelDeleteConversation = () => {
-    setIsDeleteDialogOpen(false);
-  };
-  
-  const replyToMessage = (messageId: string, messageText: string) => {
-    if (userRole !== 'vip') {
-      toast.error('Replying to messages is a VIP feature');
-      return;
-    }
-    
-    // Find the message we're replying to
-    const replyMessage = messages.find(msg => msg.id === messageId);
-    if (!replyMessage) return;
-    
-    // Create a truncated version of the original message for the reply reference
-    const replyText = messageText.length > 50 
-      ? messageText.substring(0, 50) + '...' 
-      : messageText;
-    
-    // Send a new message with a reference to the original
-    const newMessage: ChatMessage = {
-      id: `reply_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      content: message.trim(),
-      sender: 'You',
-      senderId: signalRService.currentUserId,
-      recipientId: userId,
-      timestamp: new Date(),
-      replyToId: messageId,
-      replyText: replyText
-    };
-    
-    // Add the message to our local messages
-    setMessages(prev => [...prev, newMessage]);
-    
-    // Clear the input field
-    setMessage('');
-    
-    // Auto-scroll to the new message
-    setAutoScrollToBottom(true);
-    setTimeout(() => setAutoScrollToBottom(false), 300);
-  };
-  
-  const unsendMessage = (messageId: string) => {
-    if (userRole !== 'vip') {
-      toast.error('Unsending messages is a VIP feature');
-      return;
-    }
-    
-    // Find the message we're unsending
-    const message = messages.find(msg => msg.id === messageId);
-    if (!message) return;
-    
-    // Only allow unsending your own messages
-    if (message.sender !== 'You') {
-      toast.error('You can only unsend your own messages');
-      return;
-    }
-    
-    // Send the unsend request to the server
-    signalRService.deleteMessage(messageId, userId);
-    
-    // Update the local state
-    setMessages(prev => 
-      prev.map(msg => 
-        msg.id === messageId 
-          ? { ...msg, isDeleted: true } 
-          : msg
-      )
+
+  // Wrapper for replyToMessage that provides the right dependencies
+  const handleReplyToMessage = (messageId: string, messageText: string) => {
+    baseReplyToMessage(
+      messageId, 
+      messageText, 
+      message, 
+      setMessage, 
+      setMessages, 
+      userId, 
+      setAutoScrollToBottom
     );
-    
-    toast.success('Message unsent');
   };
-  
-  // Helper function to check if a message contains a link
-  const isLinkMessage = (content: string) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    return urlRegex.test(content);
-  };
-  
-  // Helper function to extract link from message
-  const extractLink = (content: string) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const matches = content.match(urlRegex);
-    return matches ? matches[0] : '';
+
+  // Wrapper for unsendMessage that provides the right dependencies
+  const handleUnsendMessage = (messageId: string) => {
+    baseUnsendMessage(messageId, userId, setMessages);
   };
 
   return {
@@ -355,7 +275,6 @@ export const useChat = (userId: number, userRole: string) => {
     fileInputRef,
     maxChars,
     autoScrollToBottom,
-    updateScrollPosition,
     isTyping,
     isTranslationEnabled,
     selectedLanguage,
@@ -387,9 +306,10 @@ export const useChat = (userId: number, userRole: string) => {
     toggleTranslation,
     showMediaGallery,
     deleteConversation,
-    confirmDeleteConversation,
+    confirmDeleteConversation: handleConfirmDeleteConversation,
     cancelDeleteConversation,
-    replyToMessage,
-    unsendMessage
+    replyToMessage: handleReplyToMessage,
+    unsendMessage: handleUnsendMessage,
+    updateScrollPosition
   };
 };
