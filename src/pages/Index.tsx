@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -81,12 +82,10 @@ const Index = () => {
   };
 
   const handleStartChat = () => {
-    if (!username.trim()) {
-      setUsername(generateRandomUsername());
-      return;
-    }
-
-    if (!validateNickname(username)) {
+    // If no username is provided, generate a random one
+    const finalUsername = username.trim() || generateRandomUsername();
+    
+    if (!validateNickname(finalUsername)) {
       toast({
         title: "Invalid nickname",
         description: "Nickname must be alphanumeric with no more than 3 consecutive numbers",
@@ -95,8 +94,9 @@ const Index = () => {
       return;
     }
 
+    // Set the username in the current user so it's available in ProfileSetup
     setCurrentUser({
-      username: username.trim(),
+      username: finalUsername,
       role: 'standard'
     });
     setIsLoggedIn(true);

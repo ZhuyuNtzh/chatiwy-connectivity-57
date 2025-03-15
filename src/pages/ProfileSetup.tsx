@@ -17,11 +17,11 @@ interface Country {
 }
 
 const ProfileSetup = () => {
-  const { userRole, setCurrentUser, setIsLoggedIn, setRulesAccepted, rulesAccepted } = useUser();
+  const { userRole, setCurrentUser, setIsLoggedIn, setRulesAccepted, rulesAccepted, currentUser } = useUser();
   const { isDarkMode } = useTheme();
   
-  // Don't generate a random nickname, leave it empty to force user input
-  const [nickname, setNickname] = useState('');
+  // Use the nickname from currentUser if available
+  const [nickname, setNickname] = useState(currentUser?.username || '');
   const [age, setAge] = useState('25');
   const [gender, setGender] = useState('');
   const [location, setLocation] = useState('');
@@ -31,6 +31,11 @@ const ProfileSetup = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
+    // Update nickname if currentUser changes
+    if (currentUser?.username && !nickname) {
+      setNickname(currentUser.username);
+    }
+    
     const getCountryFromIP = async () => {
       setIsLoading(true);
       try {
@@ -48,7 +53,7 @@ const ProfileSetup = () => {
     };
 
     getCountryFromIP();
-  }, [userRole]);
+  }, [userRole, currentUser, nickname]);
 
   return (
     <div className={`min-h-screen flex flex-col ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-white'}`}>
