@@ -27,6 +27,7 @@ export const useMessages = (userId: number, userRole: string) => {
       id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       content: message.trim(),
       sender: username,
+      actualUsername: username, // Add actual username
       senderId: signalRService.currentUserId,
       recipientId: userId,
       timestamp: new Date(),
@@ -36,7 +37,7 @@ export const useMessages = (userId: number, userRole: string) => {
     setMessages(prev => [...prev, newMessage]);
     
     // Then send to service
-    signalRService.sendMessage(userId, message.trim());
+    signalRService.sendMessage(userId, message.trim(), username);
     
     // Clear input field
     setMessage('');

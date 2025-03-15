@@ -13,6 +13,7 @@ import { useScrollManagement } from './useScrollManagement';
 import { toast } from "sonner";
 
 export const useChat = (userId: number, userRole: string) => {
+  // Use custom hooks to organize logic
   const {
     messages,
     setMessages,
@@ -107,9 +108,6 @@ export const useChat = (userId: number, userRole: string) => {
   useEffect(() => {
     const handleNewMessage = (msg: ChatMessage) => {
       // Only process messages specific to this conversation
-      // Message is either:
-      // 1. From this user (senderId === userId) to current user
-      // 2. From current user to this user (recipientId === userId)
       if (msg.senderId === userId || msg.recipientId === userId) {
         // Apply real-time translation if enabled (for VIP users)
         if (isTranslationEnabled && userRole === 'vip' && msg.senderId === userId && selectedLanguage !== 'en') {
@@ -139,7 +137,7 @@ export const useChat = (userId: number, userRole: string) => {
           // Reset auto-scroll after a short delay
           setTimeout(() => {
             setAutoScrollToBottom(false);
-          }, 300); // Increase the delay to ensure scrolling completes
+          }, 300);
         }
       }
     };
@@ -209,7 +207,8 @@ export const useChat = (userId: number, userRole: string) => {
       }
     };
   }, [userId, userRole, isTranslationEnabled, selectedLanguage, setBlockedUsers, setMessages]);
-  
+
+  // Helper UI functions
   const toggleImageBlur = (messageId: string) => {
     setMessages(prev => prev.map(msg => 
       msg.id === messageId ? { ...msg, isBlurred: !msg.isBlurred } : msg
@@ -251,6 +250,7 @@ export const useChat = (userId: number, userRole: string) => {
   };
 
   return {
+    // State
     message,
     setMessage,
     messages,
@@ -286,7 +286,8 @@ export const useChat = (userId: number, userRole: string) => {
     audioPreview,
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
-    // functions
+    
+    // Functions
     handleSendMessage,
     handleKeyDown,
     handleAddEmoji,

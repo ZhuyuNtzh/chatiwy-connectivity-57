@@ -33,6 +33,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
   const [replyText, setReplyText] = useState('');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
+  // Check if message is from current user
   const isFromCurrentUser = message.sender === currentUser?.username || message.sender === 'You';
   const isVip = userRole === 'vip';
   
@@ -104,6 +105,15 @@ const MessageItem: React.FC<MessageItemProps> = ({
     );
   };
   
+  // Format sender name to remove any "User" prefix followed by a number
+  const formatSenderName = (senderName: string) => {
+    // If it matches pattern like "User123", use a more user-friendly display
+    if (/^User\d+$/.test(senderName) && message.actualUsername) {
+      return message.actualUsername;
+    }
+    return senderName;
+  };
+  
   return (
     <div className="relative group mb-4">
       {/* Reply reference */}
@@ -131,7 +141,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
           {/* Sender name for messages not from current user */}
           {!isFromCurrentUser && (
             <div className="font-semibold text-sm mb-1 text-gray-700 dark:text-gray-300">
-              {message.sender}
+              {formatSenderName(message.sender)}
             </div>
           )}
           

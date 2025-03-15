@@ -1,4 +1,3 @@
-
 import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import { ISignalRService, ChatMessage, ConnectionStatus, UserReport } from './signalR/types';
 import { MockHubConnection } from './signalR/mockConnection';
@@ -121,7 +120,7 @@ class SignalRService implements ISignalRService {
   }
   
   // Message sending
-  public async sendMessage(recipientId: number, content: string): Promise<void> {
+  public async sendMessage(recipientId: number, content: string, actualUsername?: string): Promise<void> {
     if (this.isUserBlocked(recipientId)) {
       console.log(`Cannot send message to blocked user ${recipientId}`);
       return Promise.resolve();
@@ -131,6 +130,7 @@ class SignalRService implements ISignalRService {
       id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       content,
       sender: this.username || 'You',
+      actualUsername: actualUsername || this.username,
       senderId: this.userId || 0,
       recipientId,
       timestamp: new Date(),
@@ -148,7 +148,7 @@ class SignalRService implements ISignalRService {
     
     // Simulate a response
     setTimeout(() => {
-      this.simulateReceivedMessage(recipientId);
+      this.simulateReceivedMessage(recipientId, actualUsername);
     }, 1000 + Math.random() * 2000);
     
     return Promise.resolve();
@@ -343,7 +343,7 @@ class SignalRService implements ISignalRService {
   }
   
   // Helper method to simulate received messages
-  private simulateReceivedMessage(senderId: number): void {
+  private simulateReceivedMessage(senderId: number, actualUsername?: string): void {
     // Skip for blocked users
     if (this.isUserBlocked(senderId)) {
       return;
@@ -365,11 +365,13 @@ class SignalRService implements ISignalRService {
     
     const randomResponse = responses[Math.floor(Math.random() * responses.length)];
     const senderName = `User${senderId}`;
+    const recipientUsername = actualUsername || this.username || 'You';
     
     const newMessage: ChatMessage = {
       id: `reply_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       content: randomResponse,
       sender: senderName,
+      actualUsername: recipientUsername,
       senderId: senderId,
       recipientId: this.userId || 0,
       timestamp: new Date(),

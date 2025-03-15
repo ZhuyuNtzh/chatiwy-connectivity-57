@@ -30,14 +30,14 @@ export const useSignalRConnection = (
     
     // Set up connected users count updates
     signalRService.onConnectedUsersCountChanged(count => {
-      // Ensure count is within a reasonable range for demo
-      const adjustedCount = count > 0 ? count : Math.floor(Math.random() * 10) + 8;
+      // Ensure count is within a reasonable range for demo (8-15)
+      const adjustedCount = count > 0 ? Math.min(count, 15) : Math.floor(Math.random() * 8) + 8;
       setConnectedUsersCount(adjustedCount);
     });
     
     // Simulate connected users count update
     setTimeout(() => {
-      const randomCount = Math.floor(Math.random() * 10) + 8; // Between 8-17
+      const randomCount = Math.floor(Math.random() * 8) + 8; // Between 8-15
       setConnectedUsersCount(randomCount);
     }, 2000);
     

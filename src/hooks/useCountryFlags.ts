@@ -25,8 +25,8 @@ export const useCountryFlags = () => {
 
     fetchCountryFlags();
     
-    // Set a more realistic connected user count
-    setConnectedUsersCount(Math.floor(Math.random() * 5) + 8); // Random number between 8-12
+    // Set a more realistic connected user count (8-15)
+    setConnectedUsersCount(Math.floor(Math.random() * 8) + 8);
   }, []);
   
   return {

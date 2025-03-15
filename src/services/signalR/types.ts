@@ -1,15 +1,14 @@
-
-// Update SignalR service and ChatMessage types
-
 export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
 
 export interface ChatMessage {
   id: string;
   content?: string;
   sender: string;
+  actualUsername?: string;
   senderId: number;
-  recipientId?: number;
+  recipientId: number;
   timestamp: Date;
+  status?: 'sent' | 'delivered' | 'read';
   isImage?: boolean;
   imageUrl?: string;
   isBlurred?: boolean;
@@ -17,8 +16,6 @@ export interface ChatMessage {
   audioUrl?: string;
   replyToId?: string;
   replyText?: string;
-  translated?: boolean;
-  status?: 'sent' | 'delivered' | 'read';
   isDeleted?: boolean;
 }
 
@@ -50,7 +47,7 @@ export interface ISignalRService {
   offUserTyping(callback: TypingCallback): void;
   onConnectionStatusChanged(callback: ConnectionStatusCallback): void;
   onConnectedUsersCountChanged(callback: ConnectedUsersCallback): void;
-  sendMessage(recipientId: number, content: string): Promise<void>;
+  sendMessage(recipientId: number, content: string, actualUsername?: string): Promise<void>;
   sendImage(recipientId: number, imageUrl: string, isBlurred?: boolean): Promise<void>;
   sendVoiceMessage(recipientId: number, audioUrl: string): Promise<void>;
   deleteMessage(messageId: string, recipientId: number): Promise<void>;

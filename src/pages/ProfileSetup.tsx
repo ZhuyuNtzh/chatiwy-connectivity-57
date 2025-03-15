@@ -40,31 +40,70 @@ const ProfileSetup = () => {
     const getCountryFromIP = async () => {
       setIsLoading(true);
       try {
-        // Use more reliable API endpoints with fallbacks
+        // Use more reliable IP geolocation services with multiple fallbacks
         try {
+          // First attempt: use ipify to get IP and then ipapi to get location
           const ipResponse = await axios.get('https://api.ipify.org?format=json');
-          const countryResponse = await axios.get(`https://ipapi.co/${ipResponse.data.ip}/json/`);
+          const ip = ipResponse.data.ip;
+          console.log('Detected IP:', ip);
           
-          if (countryResponse.data && countryResponse.data.country_code) {
-            const countryData = await axios.get(`https://restcountries.com/v3.1/alpha/${countryResponse.data.country_code}`);
-            setCountry(countryData.data[0]);
-            setLocation(countryData.data[0].name.common);
+          // Use ipapi.co for geolocation (more accurate)
+          const geoResponse = await axios.get(`https://ipapi.co/${ip}/json/`);
+          console.log('Geolocation data:', geoResponse.data);
+          
+          if (geoResponse.data && geoResponse.data.country_name) {
+            // Get country details from restcountries API
+            const countryResponse = await axios.get(`https://restcountries.com/v3.1/name/${geoResponse.data.country_name}`);
+            if (countryResponse.data && countryResponse.data.length > 0) {
+              setCountry(countryResponse.data[0]);
+              setLocation(countryResponse.data[0].name.common);
+              console.log('Country set to:', countryResponse.data[0].name.common);
+            } else {
+              throw new Error("Country not found in restcountries API");
+            }
           } else {
-            throw new Error("Could not get country data");
+            throw new Error("Could not get country data from ipapi");
           }
         } catch (error) {
-          // Fallback to a default country
-          console.error('Error with initial country detection:', error);
+          console.error('First geolocation attempt failed:', error);
+          
+          // Second attempt: try with ip-api.com
+          try {
+            const geoResponse2 = await axios.get('http://ip-api.com/json/');
+            console.log('Backup geolocation data:', geoResponse2.data);
+            
+            if (geoResponse2.data && geoResponse2.data.country) {
+              const countryResponse = await axios.get(`https://restcountries.com/v3.1/name/${geoResponse2.data.country}`);
+              if (countryResponse.data && countryResponse.data.length > 0) {
+                setCountry(countryResponse.data[0]);
+                setLocation(countryResponse.data[0].name.common);
+                console.log('Country set to (backup):', countryResponse.data[0].name.common);
+              } else {
+                throw new Error("Country not found in restcountries API");
+              }
+            } else {
+              throw new Error("Could not get country data from ip-api");
+            }
+          } catch (error) {
+            console.error('Second geolocation attempt failed:', error);
+            throw error; // Let the final fallback handle it
+          }
+        }
+      } catch (error) {
+        console.error('All geolocation attempts failed:', error);
+        
+        // Final fallback: Set a reasonable default country
+        try {
           const defaultCountry = await axios.get(`https://restcountries.com/v3.1/name/united%20states`);
           setCountry(defaultCountry.data[0]);
           setLocation(defaultCountry.data[0].name.common);
+          toast.error("Could not detect your country automatically. Using default.");
+        } catch (finalError) {
+          console.error('Final fallback failed:', finalError);
+          setCountry(null);
+          setLocation("United States");
+          toast.error("Country detection failed completely");
         }
-      } catch (error) {
-        console.error('Error fetching country:', error);
-        setCountry(null);
-        // Set a default location if everything fails
-        setLocation("United States");
-        toast.error("Could not detect your country automatically");
       } finally {
         setIsLoading(false);
       }
