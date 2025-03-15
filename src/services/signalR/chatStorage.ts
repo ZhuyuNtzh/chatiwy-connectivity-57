@@ -18,8 +18,10 @@ export const chatStorage = {
 
   addMessageToHistory(userId: number, message: ChatMessage) {
     // For a given message, get the correct conversation ID
-    // The conversation ID should be based on who we're talking with
-    const conversationId = message.senderId !== userId ? message.senderId : message.recipientId;
+    // The conversation ID should always be the other user's ID, NOT the current user's ID
+    // For the current user sending a message: use recipientId (who they're sending to)
+    // For incoming messages to current user: use senderId (who sent it)
+    const conversationId = message.senderId === userId ? message.recipientId : message.senderId;
     
     // Initialize array if this is the first message with this user
     if (!chatHistory[conversationId]) {

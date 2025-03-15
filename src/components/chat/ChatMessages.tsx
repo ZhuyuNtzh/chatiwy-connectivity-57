@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import type { ChatMessage } from '@/services/signalR/types';
 import MessageItem from './MessageItem';
@@ -6,6 +5,7 @@ import ScrollContainer from './message/ScrollContainer';
 import TypingIndicator from './message/TypingIndicator';
 import NewMessageNotification from './message/NewMessageNotification';
 import { useUser } from '@/contexts/UserContext';
+import { signalRService } from '@/services/signalRService';
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -38,14 +38,13 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   const { userRole, currentUser } = useUser();
   const isVip = userRole === 'vip';
   
+  // Get current user ID safely from signalRService instead of currentUser
+  const currentUserId = signalRService.currentUserId;
+  
   // Filter messages to ensure we only show those for the current conversation
   const currentUserMessages = messages.filter(msg => {
     // If no selectedUserId is provided, show all messages
     if (!selectedUserId) return true;
-    
-    // Make sure currentUser exists and has an id
-    const currentUserId = currentUser?.id;
-    if (!currentUserId) return false;
     
     // Only show messages that are part of the current conversation
     return (msg.senderId === selectedUserId && msg.recipientId === currentUserId) || 
