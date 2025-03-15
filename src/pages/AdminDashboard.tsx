@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useUser, BannedUser } from '@/contexts/UserContext';
@@ -37,6 +38,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import UserManagement from '@/components/admin/UserManagement';
+import SystemSettings from '@/components/admin/SystemSettings'; // Add this import
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -405,19 +407,8 @@ const AdminDashboard = () => {
       </Dialog>
 
       <Dialog open={showSystemSettings} onOpenChange={setShowSystemSettings}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              System Settings
-            </DialogTitle>
-            <DialogDescription>
-              This feature is under development
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-6">
-            <p>The system settings module is currently being developed. Check back soon!</p>
-          </div>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden p-0">
+          <SystemSettings />
         </DialogContent>
       </Dialog>
       
