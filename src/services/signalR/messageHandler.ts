@@ -7,6 +7,8 @@ interface MessageData {
   actualUsername?: string | null;
   senderId: number;
   recipientId: number;
+  replyToId?: string;
+  replyText?: string;
 }
 
 interface ImageMessageData {
@@ -40,7 +42,9 @@ export const messageHandler = {
       senderId: data.senderId,
       recipientId: data.recipientId,
       timestamp: new Date(),
-      status: 'sent'
+      status: 'sent',
+      replyToId: data.replyToId,
+      replyText: data.replyText
     };
   },
 
@@ -48,6 +52,7 @@ export const messageHandler = {
     return {
       id: `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       sender: data.sender,
+      actualUsername: data.sender,
       senderId: data.senderId,
       recipientId: data.recipientId,
       timestamp: new Date(),
@@ -62,6 +67,7 @@ export const messageHandler = {
     return {
       id: `voice_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       sender: data.sender,
+      actualUsername: data.sender,
       senderId: data.senderId,
       recipientId: data.recipientId,
       timestamp: new Date(),
@@ -88,16 +94,17 @@ export const messageHandler = {
     
     const randomResponse = responses[Math.floor(Math.random() * responses.length)];
     
-    // Critical fix: Use the actual username from data if available
-    // If not available, generate a more realistic username without the "User" prefix
-    const senderName = data.actualUsername || `Friend${data.senderId % 100}`;
+    // Generate a more descriptive name for the other user
+    const otherUserName = `Bob`;
     
     return {
       id: `reply_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       content: randomResponse,
-      sender: senderName,
-      // Preserve the actual username for display
-      actualUsername: senderName,
+      // This is the key fix: Make sure the sender is different from the recipient
+      sender: otherUserName,
+      // Store the real display name in actualUsername
+      actualUsername: otherUserName,
+      // These IDs must be correctly set to ensure messages display on the correct side
       senderId: data.senderId,
       recipientId: data.recipientId,
       timestamp: new Date(),

@@ -18,6 +18,7 @@ export interface ChatMessage {
   replyToId?: string;
   replyText?: string;
   isDeleted?: boolean;
+  isBeingRepliedTo?: boolean;
 }
 
 export interface UserReport {
@@ -48,7 +49,13 @@ export interface ISignalRService {
   offUserTyping(callback: TypingCallback): void;
   onConnectionStatusChanged(callback: ConnectionStatusCallback): void;
   onConnectedUsersCountChanged(callback: ConnectedUsersCallback): void;
-  sendMessage(recipientId: number, content: string, actualUsername?: string): Promise<void>;
+  sendMessage(
+    recipientId: number, 
+    content: string, 
+    actualUsername?: string,
+    replyToId?: string,
+    replyText?: string
+  ): Promise<void>;
   sendImage(recipientId: number, imageUrl: string, isBlurred?: boolean): Promise<void>;
   sendVoiceMessage(recipientId: number, audioUrl: string): Promise<void>;
   deleteMessage(messageId: string, recipientId: number): Promise<void>;
@@ -70,5 +77,5 @@ export interface ISignalRService {
   getBannedWords(): string[];
   addBannedWord(word: string): void;
   removeBannedWord(word: string): void;
-  setBannedWords(words: string[]): void; // Add this method to the interface
+  setBannedWords(words: string[]): void;
 }

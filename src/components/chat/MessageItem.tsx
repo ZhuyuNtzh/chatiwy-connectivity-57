@@ -9,6 +9,7 @@ import MessageFooter from './message/MessageFooter';
 import MessageReplySection from './message/MessageReplySection';
 import ReactionDisplay from './message/ReactionDisplay';
 import DeleteConfirmationDialog from './DeleteConfirmationDialog';
+import { signalRService } from '@/services/signalRService';
 
 interface MessageItemProps {
   message: ChatMessage;
@@ -34,8 +35,8 @@ const MessageItem: React.FC<MessageItemProps> = ({
   const [replyText, setReplyText] = useState('');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
-  // Check if message is from current user
-  const isFromCurrentUser = message.sender === currentUser?.username || message.sender === 'You';
+  // Check if message is from current user by comparing sender ID with current user ID
+  const isFromCurrentUser = message.senderId === signalRService.currentUserId;
   const isVip = userRole === 'vip';
   
   const handleReaction = (emoji: string) => {
@@ -113,7 +114,10 @@ const MessageItem: React.FC<MessageItemProps> = ({
         >
           {/* Sender name for messages not from current user */}
           {!isFromCurrentUser && (
-            <MessageHeader sender={message.actualUsername || message.sender} />
+            <MessageHeader 
+              sender={message.actualUsername || message.sender} 
+              senderRole={message.senderId === 999 ? 'admin' : 'standard'}
+            />
           )}
           
           <MessageContent 
@@ -125,6 +129,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
           <MessageFooter 
             timestamp={message.timestamp}
             showMessageStatus={showMessageStatus && isFromCurrentUser}
+            status={message.status}
           />
           
           {/* Action buttons */}

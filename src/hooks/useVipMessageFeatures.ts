@@ -1,102 +1,120 @@
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { signalRService } from '@/services/signalRService';
+import { toast } from 'sonner';
 import type { ChatMessage } from '@/services/signalR/types';
-import { toast } from "sonner";
 
+/**
+ * Hook that provides VIP message features like replying and unsending messages
+ */
 export const useVipMessageFeatures = (userRole: string) => {
-  const [replyingTo, setReplyingTo] = useState<{id: string, text: string} | null>(null);
-  
-  // Handle replying to messages
-  const replyToMessage = useCallback((
-    messageId: string, 
-    messageText: string, 
+  const [replyingToMessageId, setReplyingToMessageId] = useState<string | null>(null);
+  const [replyingToMessageText, setReplyingToMessageText] = useState<string>('');
+
+  /**
+   * Handle replying to a message
+   */
+  const replyToMessage = (
+    messageId: string,
+    messageText: string,
     currentMessage: string,
-    setMessage: (value: string) => void,
-    setMessages: (updater: (messages: ChatMessage[]) => ChatMessage[]) => void,
+    setMessage: (message: string) => void,
+    setMessages: (messages: ChatMessage[]) => void,
     recipientId: number,
-    setAutoScrollToBottom: (value: boolean) => void
+    setAutoScrollToBottom: (autoScroll: boolean) => void
   ) => {
-    // VIP-only feature check
+    // Only VIP users can reply to messages
     if (userRole !== 'vip') {
-      toast.error("This feature is only available for VIP members");
+      toast.error('Only VIP users can reply to messages');
       return;
     }
-    
-    // Set reply context
-    setReplyingTo({ id: messageId, text: messageText });
-    
-    // Focus input field for the user to type
-    setMessage(currentMessage); // Keep existing content
-    
-    // Update messages array to show the reply-to state
-    setMessages(messages => messages.map(msg => 
+
+    // Set the reply info
+    setReplyingToMessageId(messageId);
+    setReplyingToMessageText(messageText);
+
+    // Focus the input field
+    setMessage(`${currentMessage}`);
+
+    // Modify message in the UI to show it's being replied to
+    setMessages(prev => prev.map(msg => 
       msg.id === messageId 
-        ? { ...msg, isReplyingTo: true } 
+        ? { ...msg, isBeingRepliedTo: true } 
         : msg
     ));
-    
-    // Scroll to input field
-    setAutoScrollToBottom(true);
-  }, [userRole]);
-  
-  // Handle unsending (deleting) messages
-  const unsendMessage = useCallback((
+
+    // Handle sending the reply
+    const handleSendReply = (content: string) => {
+      if (!replyingToMessageId) return;
+
+      const truncatedReplyText = messageText.length > 50 
+        ? `${messageText.substring(0, 50)}...` 
+        : messageText;
+
+      // Send the message with reply metadata
+      signalRService.sendMessage(
+        recipientId,
+        content,
+        undefined, // Use default username
+        replyingToMessageId,
+        truncatedReplyText
+      );
+
+      // Reset reply state
+      setReplyingToMessageId(null);
+      setReplyingToMessageText('');
+
+      // Auto-scroll to see the new message
+      setAutoScrollToBottom(true);
+      setTimeout(() => setAutoScrollToBottom(false), 300);
+
+      return true;
+    };
+
+    return handleSendReply;
+  };
+
+  /**
+   * Handle unsending (deleting) a message
+   */
+  const unsendMessage = (
     messageId: string,
     recipientId: number,
-    setMessages: (updater: (messages: ChatMessage[]) => ChatMessage[]) => void
+    setMessages: (messages: ChatMessage[]) => void
   ) => {
-    // VIP-only feature check
+    // Only VIP users can unsend messages
     if (userRole !== 'vip') {
-      toast.error("This feature is only available for VIP members");
+      toast.error('Only VIP users can unsend messages');
       return;
     }
-    
-    // Call SignalR service to delete the message
-    signalRService.deleteMessage(messageId, recipientId);
-    
-    // Update UI immediately
-    setMessages(messages => messages.map(msg => 
+
+    // Update UI immediately to show message is deleted
+    setMessages(prev => prev.map(msg => 
       msg.id === messageId 
-        ? { ...msg, isDeleted: true, content: "This message was unsent" } 
+        ? { ...msg, isDeleted: true } 
         : msg
     ));
-    
-    toast.success("Message unsent successfully");
-  }, [userRole]);
-  
-  // Send a message with reply context
-  const sendReplyMessage = useCallback((
-    content: string,
-    recipientId: number,
-    setReplyingTo: (value: {id: string, text: string} | null) => void,
-    setMessages: (updater: (messages: ChatMessage[]) => ChatMessage[]) => void
-  ) => {
-    if (!replyingTo) return null;
-    
-    // Create message with reply metadata
-    const message = {
-      content,
-      replyToId: replyingTo.id,
-      replyText: replyingTo.text.substring(0, 50) + (replyingTo.text.length > 50 ? '...' : '')
-    };
-    
-    // Clear reply state
-    setReplyingTo(null);
-    
-    // Reset reply UI
-    setMessages(messages => messages.map(msg => 
-      msg.isReplyingTo ? { ...msg, isReplyingTo: false } : msg
-    ));
-    
-    return message;
-  }, [replyingTo]);
-  
+
+    // Delete the message from the service
+    signalRService.deleteMessage(messageId, recipientId)
+      .then(() => {
+        toast.success('Message unsent successfully');
+      })
+      .catch(() => {
+        // Revert UI if there was an error
+        setMessages(prev => prev.map(msg => 
+          msg.id === messageId 
+            ? { ...msg, isDeleted: false } 
+            : msg
+        ));
+        toast.error('Failed to unsend message');
+      });
+  };
+
   return {
-    replyingTo,
-    setReplyingTo,
     replyToMessage,
     unsendMessage,
-    sendReplyMessage
+    replyingToMessageId,
+    replyingToMessageText,
   };
 };

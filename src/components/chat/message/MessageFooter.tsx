@@ -1,35 +1,29 @@
 
 import React from 'react';
+import { format } from 'date-fns';
 import { Check, CheckCheck } from 'lucide-react';
 
 interface MessageFooterProps {
   timestamp: Date;
   showMessageStatus?: boolean;
+  status?: 'sent' | 'delivered' | 'read';
 }
 
-const MessageFooter: React.FC<MessageFooterProps> = ({ 
-  timestamp, 
-  showMessageStatus = false 
+const MessageFooter: React.FC<MessageFooterProps> = ({
+  timestamp,
+  showMessageStatus = false,
+  status = 'sent'
 }) => {
-  const renderMessageStatus = () => {
-    if (!showMessageStatus) return null;
-    
-    // Simulate random statuses for demo
-    const status = Math.random() > 0.7 ? 'read' : Math.random() > 0.4 ? 'delivered' : 'sent';
-    
-    return (
-      <span className="ml-1">
-        {status === 'sent' && <Check className="h-3 w-3 text-gray-400" />}
-        {status === 'delivered' && <CheckCheck className="h-3 w-3 text-gray-400" />}
-        {status === 'read' && <CheckCheck className="h-3 w-3 text-blue-500" />}
-      </span>
-    );
+  const statusIcon = () => {
+    if (status === 'read') return <CheckCheck className="h-3 w-3" />;
+    if (status === 'delivered') return <Check className="h-3 w-3" />;
+    return <Check className="h-3 w-3 opacity-50" />;
   };
 
   return (
-    <div className="text-xs opacity-70 mt-1 text-right flex justify-end items-center">
-      {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-      {renderMessageStatus()}
+    <div className="flex items-center text-xs mt-1 space-x-1 opacity-60 justify-end">
+      <span>{format(new Date(timestamp), 'HH:mm')}</span>
+      {showMessageStatus && <span>{statusIcon()}</span>}
     </div>
   );
 };

@@ -2,12 +2,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import type { ChatMessage } from '@/services/signalR/types';
 import MessageItem from './MessageItem';
-import { Button } from '@/components/ui/button';
-import { ArrowDown } from 'lucide-react';
-import { useUser } from '@/contexts/UserContext';
-import NewMessageNotification from './message/NewMessageNotification';
 import ScrollContainer from './message/ScrollContainer';
 import TypingIndicator from './message/TypingIndicator';
+import NewMessageNotification from './message/NewMessageNotification';
+import { useUser } from '@/contexts/UserContext';
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -91,9 +89,8 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
 
   return (
     <div className="flex-1 overflow-hidden relative h-[calc(100vh-13rem)]">
-      <div 
-        ref={scrollContainerRef} 
-        className="h-full overflow-y-auto p-4 space-y-4"
+      <ScrollContainer 
+        scrollRef={scrollContainerRef}
       >
         {messages.map((msg) => (
           <MessageItem 
@@ -109,7 +106,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
         
         {isVip && isTyping && <TypingIndicator />}
         <div ref={messagesEndRef} />
-      </div>
+      </ScrollContainer>
       
       {userScrolledUp && newMessageCount > 0 && (
         <NewMessageNotification 

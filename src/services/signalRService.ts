@@ -83,7 +83,13 @@ class SignalRService implements ISignalRService {
   }
   
   // Message sending
-  public async sendMessage(recipientId: number, content: string, actualUsername?: string): Promise<void> {
+  public async sendMessage(
+    recipientId: number, 
+    content: string, 
+    actualUsername?: string,
+    replyToId?: string,
+    replyText?: string
+  ): Promise<void> {
     if (userBlocking.isUserBlocked(recipientId)) {
       console.log(`Cannot send message to blocked user ${recipientId}`);
       return Promise.resolve();
@@ -94,7 +100,9 @@ class SignalRService implements ISignalRService {
       sender: this.username || 'You',
       actualUsername: actualUsername || this.username,
       senderId: this.userId || 0,
-      recipientId
+      recipientId,
+      replyToId,
+      replyText
     });
     
     // Add to chat history
@@ -242,7 +250,7 @@ class SignalRService implements ISignalRService {
     const newMessage = messageHandler.createSimulatedResponse({
       senderId,
       recipientId: this.userId || 0,
-      actualUsername: actualUsername
+      actualUsername
     });
     
     // Add to chat history
