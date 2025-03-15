@@ -9,6 +9,7 @@ import { signalRService } from '@/services/signalRService';
 import { UserReport } from '@/services/signalR/types';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { UserTypeDisplay } from '@/components/UserTypeDisplay';
 
 const ModerationPanel = () => {
   const [activeTab, setActiveTab] = useState('reports');

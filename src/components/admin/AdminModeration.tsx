@@ -3,21 +3,21 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Flag } from 'lucide-react';
 import ModerationPanel from './ModerationPanel';
+import { useUser } from '@/contexts/UserContext';
 
 const AdminModeration = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('reports');
+  const { userRole } = useUser();
 
   useEffect(() => {
     // Admin persistence check
-    const isAdmin = sessionStorage.getItem('isAdmin') === 'true';
+    const isAdmin = sessionStorage.getItem('isAdmin') === 'true' || userRole === 'admin';
     if (!isAdmin) {
       navigate('/secure-admin-access-8472');
     }
-  }, [navigate]);
+  }, [navigate, userRole]);
 
   const handleBackToAdmin = () => {
     navigate('/admin-dashboard');
@@ -35,7 +35,8 @@ const AdminModeration = () => {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+            <Flag className="h-5 w-5 mr-2 text-red-500" />
             Chat Moderation
           </h1>
         </div>

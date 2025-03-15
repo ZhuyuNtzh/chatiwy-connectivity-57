@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useUser, BannedUser } from '@/contexts/UserContext';
@@ -47,7 +46,6 @@ import ChatWindow from '@/components/ChatWindow';
 import { useTheme } from '@/contexts/ThemeContext';
 import { toast } from 'sonner';
 
-// Mock user data for the admin dashboard
 const mockUsers = [
   { id: 1, username: "Alice", role: "standard", isOnline: true, location: "Canada", gender: "Female", age: 28, email: "alice@example.com", isBot: false, isBanned: false },
   { id: 2, username: "Bob", role: "standard", isOnline: true, location: "USA", gender: "Male", age: 32, email: "bob@example.com", isBot: false, isBanned: false },
@@ -64,7 +62,6 @@ const mockUsers = [
   { id: 13, username: "BookWorm", role: "standard", isOnline: true, location: "Global", gender: "Other", age: 1, email: "books@bots.com", isBot: true, isBanned: false },
 ];
 
-// Create some initial banned users
 const initialBannedUsers: BannedUser[] = [
   { 
     username: "Spammer123", 
@@ -86,7 +83,6 @@ const initialBannedUsers: BannedUser[] = [
   }
 ];
 
-// Country flags for the chat interface
 const mockCountryFlags: Record<string, string> = {
   "USA": "https://flagcdn.com/w20/us.png",
   "UK": "https://flagcdn.com/w20/gb.png",
@@ -111,7 +107,6 @@ const AdminDashboard = () => {
   const { isDarkMode } = useTheme();
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [showUserManagement, setShowUserManagement] = useState(false);
-  const [showChatModeration, setShowChatModeration] = useState(false);
   const [showSystemSettings, setShowSystemSettings] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -124,14 +119,12 @@ const AdminDashboard = () => {
   });
   const [fileInputRef, setFileInputRef] = useState<HTMLInputElement | null>(null);
   
-  // Initialize banned users if empty
   useEffect(() => {
     if (bannedUsers.length === 0) {
       setBannedUsers(initialBannedUsers);
     }
   }, [bannedUsers.length, setBannedUsers]);
   
-  // Check if the user is an admin
   useEffect(() => {
     if (!currentUser || userRole !== 'admin') {
       navigate('/');
@@ -165,8 +158,6 @@ const AdminDashboard = () => {
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // In a real app, you would upload this to a server
-      // For this demo, we'll use a data URL
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
@@ -178,6 +169,10 @@ const AdminDashboard = () => {
       };
       reader.readAsDataURL(file);
     }
+  };
+  
+  const handleChatModerationClick = () => {
+    navigate('/admin-moderation');
   };
   
   return (
@@ -284,7 +279,7 @@ const AdminDashboard = () => {
           
           <Card 
             className="border-2 border-green-500/20 hover:border-green-500/50 transition-all cursor-pointer" 
-            onClick={() => setShowChatModeration(true)}
+            onClick={handleChatModerationClick}
           >
             <CardHeader className="pb-2">
               <CardTitle className="text-xl flex items-center gap-2">
@@ -390,7 +385,6 @@ const AdminDashboard = () => {
         </div>
       </main>
 
-      {/* User Management Dialog */}
       <Dialog open={showUserManagement} onOpenChange={setShowUserManagement}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-auto">
           <DialogHeader>
@@ -410,25 +404,6 @@ const AdminDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Chat Moderation Dialog - Placeholder for future implementation */}
-      <Dialog open={showChatModeration} onOpenChange={setShowChatModeration}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Chat Moderation
-            </DialogTitle>
-            <DialogDescription>
-              This feature is under development
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-6">
-            <p>The chat moderation system is currently being developed. Check back soon!</p>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* System Settings Dialog - Placeholder for future implementation */}
       <Dialog open={showSystemSettings} onOpenChange={setShowSystemSettings}>
         <DialogContent>
           <DialogHeader>
@@ -446,7 +421,6 @@ const AdminDashboard = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Admin Profile Settings Dialog */}
       <Dialog open={showAdminSettings} onOpenChange={setShowAdminSettings}>
         <DialogContent>
           <DialogHeader>
@@ -523,7 +497,6 @@ const AdminDashboard = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Sidebar and Chat Interface */}
       <Sidebar isOpen={showSidebar} onClose={() => setShowSidebar(false)} />
       
       {selectedUser && (
