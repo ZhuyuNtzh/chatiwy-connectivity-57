@@ -2,6 +2,7 @@ import React from 'react';
 import { User as UserIcon, Crown, Shield } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import UserTypeDisplay from '@/components/UserTypeDisplay';
+import { UserRole } from '@/contexts/UserContext';
 
 interface UserListProps {
   users: Array<{
@@ -14,7 +15,7 @@ interface UserListProps {
     isOnline: boolean;
     isVip?: boolean;
     isAdmin?: boolean;
-    role?: 'admin' | 'vip' | 'standard' | 'moderator';
+    role?: UserRole;
   }>;
   selectedUserId: number | null;
   countryFlags: Record<string, string>;
@@ -53,7 +54,7 @@ const UserList: React.FC<UserListProps> = ({
     if (user.role) return user;
     
     // Otherwise, determine role from isAdmin/isVip
-    let role = 'standard';
+    let role: UserRole = 'standard';
     if (user.isAdmin) role = 'admin';
     else if (user.isVip) role = 'vip';
     

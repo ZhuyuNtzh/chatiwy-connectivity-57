@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,7 @@ import { signalRService } from '@/services/signalRService';
 import { UserReport } from '@/services/signalR/types';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { UserTypeDisplay } from '@/components/UserTypeDisplay';
+import UserTypeDisplay from '@/components/UserTypeDisplay';
 
 const ModerationPanel = () => {
   const [activeTab, setActiveTab] = useState('reports');
@@ -17,12 +16,10 @@ const ModerationPanel = () => {
   const [bannedWords, setBannedWords] = useState<string[]>([]);
   const [newBannedWord, setNewBannedWord] = useState('');
 
-  // Load reports and banned words on mount
   useEffect(() => {
     loadReports();
     loadBannedWords();
     
-    // Auto refresh reports every minute
     const intervalId = setInterval(loadReports, 60000);
     
     return () => clearInterval(intervalId);
@@ -50,7 +47,6 @@ const ModerationPanel = () => {
       return;
     }
     
-    // Check if word already exists
     if (bannedWords.includes(newBannedWord.toLowerCase())) {
       toast.error('This word is already banned');
       return;
