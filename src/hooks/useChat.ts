@@ -1,6 +1,7 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '@/services/signalRService';
+import type { ChatMessage } from '@/services/signalR/types';
 import { useMessages } from './useMessages';
 import { useMediaHandling } from './useMediaHandling';
 import { useUserInteractions } from './useUserInteractions';
@@ -9,12 +10,13 @@ import { useMediaGallery } from './useMediaGallery';
 import { useConversationManagement } from './useConversationManagement';
 import { useVipMessageFeatures } from './useVipMessageFeatures';
 import { useScrollManagement } from './useScrollManagement';
-import { useChatMessages } from './useChatMessages';
-import { useChatTyping } from './useChatTyping';
+import { toast } from "sonner";
 
 export const useChat = (userId: number, userRole: string) => {
-  // Basic message input state
+  // Use custom hooks to organize logic
   const {
+    messages,
+    setMessages,
     message,
     setMessage,
     maxChars,
@@ -23,23 +25,6 @@ export const useChat = (userId: number, userRole: string) => {
     handleAddEmoji
   } = useMessages(userId, userRole);
 
-  // Translation features
-  const {
-    isTranslationEnabled,
-    selectedLanguage,
-    setSelectedLanguage,
-    translateMessage,
-    toggleTranslation
-  } = useMessageTranslation(userRole);
-
-  // Message loading and management
-  const {
-    messages,
-    setMessages,
-    toggleImageBlur
-  } = useChatMessages(userId, userRole, isTranslationEnabled, selectedLanguage);
-
-  // Media handling
   const {
     isImageDialogOpen,
     setIsImageDialogOpen,
@@ -56,7 +41,6 @@ export const useChat = (userId: number, userRole: string) => {
     sendVoiceMessage
   } = useMediaHandling(userId);
 
-  // User interaction features
   const {
     showOptions,
     setShowOptions,
@@ -79,7 +63,14 @@ export const useChat = (userId: number, userRole: string) => {
     handleSubmitReport
   } = useUserInteractions(userId);
 
-  // Media gallery
+  const {
+    isTranslationEnabled,
+    selectedLanguage,
+    setSelectedLanguage,
+    translateMessage,
+    toggleTranslation
+  } = useMessageTranslation(userRole);
+
   const {
     isMediaGalleryOpen,
     setIsMediaGalleryOpen,
@@ -90,7 +81,6 @@ export const useChat = (userId: number, userRole: string) => {
     extractLink
   } = useMediaGallery();
 
-  // Conversation management
   const {
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
@@ -99,13 +89,11 @@ export const useChat = (userId: number, userRole: string) => {
     cancelDeleteConversation
   } = useConversationManagement();
 
-  // VIP message features
   const {
     replyToMessage: baseReplyToMessage,
     unsendMessage: baseUnsendMessage
   } = useVipMessageFeatures(userRole);
 
-  // Scroll management
   const {
     autoScrollToBottom,
     setAutoScrollToBottom,
@@ -113,17 +101,98 @@ export const useChat = (userId: number, userRole: string) => {
     updateScrollPosition
   } = useScrollManagement();
 
-  // Typing indicator
-  const { isTyping } = useChatTyping(userId, userRole);
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const previousUserIdRef = useRef<number | null>(null);
 
-  // Process received messages for media gallery
   useEffect(() => {
-    // Extract media items from filtered messages
-    const extractMediaItems = () => {
-      const filteredMessages = messages.filter(msg => 
+    // Clear messages when switching users
+    if (previousUserIdRef.current !== null && previousUserIdRef.current !== userId) {
+      console.log(`Switching from user ${previousUserIdRef.current} to ${userId}, clearing messages`);
+      setMessages([]);
+    }
+    
+    previousUserIdRef.current = userId;
+
+    const handleNewMessage = (msg: ChatMessage) => {
+      // Only show messages that belong to the current conversation
+      const isFromSelectedUser = msg.senderId === userId && msg.recipientId === signalRService.currentUserId;
+      const isToSelectedUser = msg.senderId === signalRService.currentUserId && msg.recipientId === userId;
+      
+      if (isFromSelectedUser || isToSelectedUser) {
+        console.log(`Message belongs to conversation with user ${userId}:`, msg);
+        
+        if (isTranslationEnabled && userRole === 'vip' && msg.senderId === userId && selectedLanguage !== 'en') {
+          translateMessage(msg).then(translatedMsg => {
+            setMessages(prev => [...prev, translatedMsg]);
+          });
+        } else {
+          setMessages(prev => [...prev, msg]);
+        }
+        
+        if (msg.isImage || msg.isVoiceMessage || (msg.content && isLinkMessage(msg.content))) {
+          setMediaGalleryItems(prev => [
+            ...prev, 
+            {
+              type: msg.isImage ? 'image' : msg.isVoiceMessage ? 'voice' : 'link',
+              url: msg.isImage ? (msg.imageUrl || '') : msg.isVoiceMessage ? (msg.audioUrl || '') : extractLink(msg.content || ''),
+              timestamp: new Date(msg.timestamp)
+            }
+          ]);
+        }
+        
+        if (isAtBottomRef.current) {
+          setAutoScrollToBottom(true);
+          
+          setTimeout(() => {
+            setAutoScrollToBottom(false);
+          }, 300);
+        }
+      } else {
+        console.log(`Message not for conversation with user ${userId}:`, msg);
+      }
+    };
+    
+    const handleUserTyping = (typingUserId: number) => {
+      if (typingUserId === userId && userRole === 'vip') {
+        setIsTyping(true);
+        
+        if (typingTimerRef.current) {
+          clearTimeout(typingTimerRef.current);
+        }
+        
+        typingTimerRef.current = setTimeout(() => {
+          setIsTyping(false);
+        }, 3000);
+      }
+    };
+    
+    const handleMessageDeleted = (messageId: string) => {
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === messageId 
+            ? { ...msg, isDeleted: true } 
+            : msg
+        )
+      );
+    };
+    
+    signalRService.onMessageReceived(handleNewMessage);
+    signalRService.onUserTyping(handleUserTyping);
+    signalRService.onMessageDeleted(handleMessageDeleted);
+    
+    console.log(`Loading chat history for user ${userId}`);
+    const existingMessages = signalRService.getChatHistory(userId);
+    if (existingMessages && existingMessages.length > 0) {
+      console.log(`Found ${existingMessages.length} messages for user ${userId}`);
+      
+      // Filter messages to only include ones relevant to this conversation
+      const filteredMessages = existingMessages.filter(msg => 
         (msg.senderId === userId && msg.recipientId === signalRService.currentUserId) ||
         (msg.senderId === signalRService.currentUserId && msg.recipientId === userId)
       );
+      
+      setMessages(filteredMessages);
       
       const mediaItems = filteredMessages.filter(msg => 
         msg.isImage || msg.isVoiceMessage || (msg.content && isLinkMessage(msg.content))
@@ -134,11 +203,33 @@ export const useChat = (userId: number, userRole: string) => {
       }));
       
       setMediaGalleryItems(mediaItems);
-    };
+    } else {
+      console.log(`No existing messages found for user ${userId}`);
+      setMessages([]);
+      setMediaGalleryItems([]);
+    }
     
-    extractMediaItems();
-  }, [messages, userId, isLinkMessage, extractLink, setMediaGalleryItems]);
+    if (signalRService.isUserBlocked(userId)) {
+      setBlockedUsers(prev => [...prev, userId]);
+    }
+    
+    return () => {
+      signalRService.offMessageReceived(handleNewMessage);
+      signalRService.offUserTyping(handleUserTyping);
+      signalRService.offMessageDeleted(handleMessageDeleted);
+      
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+      }
+    };
+  }, [userId, userRole, isTranslationEnabled, selectedLanguage, setBlockedUsers, setMessages, setMediaGalleryItems]);
 
+  const toggleImageBlur = (messageId: string) => {
+    setMessages(prev => prev.map(msg => 
+      msg.id === messageId ? { ...msg, isBlurred: !msg.isBlurred } : msg
+    ));
+  };
+  
   const openImagePreview = (imageUrl: string) => {
     setPreviewImage(imageUrl);
   };
