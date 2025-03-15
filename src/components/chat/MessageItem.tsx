@@ -1,10 +1,13 @@
 
 import React, { useState } from 'react';
-import { Eye, EyeOff, Maximize2, MessageSquare, Check, CheckCheck, Smile, X, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { ChatMessage } from '@/services/signalR/types';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useUser } from '@/contexts/UserContext';
+import MessageContent from './message/MessageContent';
+import MessageActions from './message/MessageActions';
+import MessageHeader from './message/MessageHeader';
+import MessageFooter from './message/MessageFooter';
+import MessageReplySection from './message/MessageReplySection';
+import ReactionDisplay from './message/ReactionDisplay';
 import DeleteConfirmationDialog from './DeleteConfirmationDialog';
 
 interface MessageItemProps {
@@ -15,8 +18,6 @@ interface MessageItemProps {
   onReply?: (messageId: string, messageText: string) => void;
   onUnsendMessage?: (messageId: string) => void;
 }
-
-const commonReactions = ['👍', '❤️', '😂', '😮', '😢', '👏', '🔥', '🎉'];
 
 const MessageItem: React.FC<MessageItemProps> = ({ 
   message, 
@@ -90,47 +91,19 @@ const MessageItem: React.FC<MessageItemProps> = ({
     );
   }
   
-  const renderMessageStatus = () => {
-    if (!showMessageStatus || !isFromCurrentUser) return null;
-    
-    // Simulate random statuses for demo
-    const status = Math.random() > 0.7 ? 'read' : Math.random() > 0.4 ? 'delivered' : 'sent';
-    
-    return (
-      <span className="ml-1">
-        {status === 'sent' && <Check className="h-3 w-3 text-gray-400" />}
-        {status === 'delivered' && <CheckCheck className="h-3 w-3 text-gray-400" />}
-        {status === 'read' && <CheckCheck className="h-3 w-3 text-blue-500" />}
-      </span>
-    );
-  };
-  
-  // Format sender name to remove any "User" prefix followed by a number
-  const formatSenderName = (senderName: string) => {
-    // If it matches pattern like "User123", use a more user-friendly display
-    if (/^User\d+$/.test(senderName) && message.actualUsername) {
-      return message.actualUsername;
-    }
-    return senderName;
-  };
-  
   return (
     <div className="relative group mb-4">
       {/* Reply reference */}
       {message.replyToId && (
-        <div className={`mb-1 p-1 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg max-w-[80%] ${isFromCurrentUser ? 'ml-auto mr-6' : 'ml-6'}`}>
-          <div className="flex items-center">
-            <MessageSquare className="h-3 w-3 mr-1 text-gray-500 dark:text-gray-400" />
-            <span className="text-gray-500 dark:text-gray-400">Replying to</span>
-          </div>
-          <div className="mt-0.5 line-clamp-1">{message.replyText || "Previous message"}</div>
-        </div>
+        <MessageReplySection 
+          replyToId={message.replyToId} 
+          replyText={message.replyText} 
+          isFromCurrentUser={isFromCurrentUser}
+        />
       )}
       
       {/* Message */}
-      <div 
-        className={`flex ${isFromCurrentUser ? 'justify-end' : 'justify-start'}`}
-      >
+      <div className={`flex ${isFromCurrentUser ? 'justify-end' : 'justify-start'}`}>
         <div 
           className={`max-w-[80%] rounded-lg p-3 ${
             isFromCurrentUser 
@@ -140,103 +113,39 @@ const MessageItem: React.FC<MessageItemProps> = ({
         >
           {/* Sender name for messages not from current user */}
           {!isFromCurrentUser && (
-            <div className="font-semibold text-sm mb-1 text-gray-700 dark:text-gray-300">
-              {formatSenderName(message.sender)}
-            </div>
+            <MessageHeader sender={message.actualUsername || message.sender} />
           )}
           
-          {message.isImage ? (
-            <div className="relative">
-              <img 
-                src={message.imageUrl} 
-                alt="Shared image" 
-                className={`max-w-full rounded cursor-pointer ${message.isBlurred ? 'blur-xl' : ''}`}
-                onClick={() => !message.isBlurred && openImagePreview(message.imageUrl || '')}
-              />
-              <div className="absolute bottom-2 right-2 flex gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => toggleImageBlur(message.id)}
-                >
-                  {message.isBlurred ? <Eye className="h-4 w-4 mr-1" /> : <EyeOff className="h-4 w-4 mr-1" />}
-                  {message.isBlurred ? 'Reveal' : 'Blur'}
-                </Button>
-                {!message.isBlurred && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => openImagePreview(message.imageUrl || '')}
-                  >
-                    <Maximize2 className="h-4 w-4 mr-1" />
-                    View
-                  </Button>
-                )}
-              </div>
-            </div>
-          ) : message.isVoiceMessage ? (
-            <div className="audio-player">
-              <audio controls src={message.audioUrl} className="w-full max-w-[200px]" />
-            </div>
-          ) : (
-            <p className="text-sm">{message.content}</p>
-          )}
-          <div className="text-xs opacity-70 mt-1 text-right flex justify-end items-center">
-            {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            {renderMessageStatus()}
-          </div>
+          <MessageContent 
+            message={message} 
+            toggleImageBlur={toggleImageBlur} 
+            openImagePreview={openImagePreview} 
+          />
+          
+          <MessageFooter 
+            timestamp={message.timestamp}
+            showMessageStatus={showMessageStatus && isFromCurrentUser}
+          />
           
           {/* Action buttons */}
-          <div className={`absolute bottom-0 ${isFromCurrentUser ? 'left-0 -translate-x-full -ml-2' : 'right-0 translate-x-full mr-2'} opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1`}>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-1 flex gap-1">
-              <Popover open={showReactionPicker} onOpenChange={setShowReactionPicker}>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                    <Smile className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-2 dark:bg-gray-800" align="center">
-                  <div className="flex gap-1 flex-wrap max-w-[180px]">
-                    {commonReactions.map((emoji, i) => (
-                      <Button 
-                        key={i} 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 w-8 p-0"
-                        onClick={() => handleReaction(emoji)}
-                      >
-                        {emoji}
-                      </Button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-              
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={handleStartReply}>
-                <MessageSquare className="h-4 w-4" />
-              </Button>
-              
-              {/* Unsend message button (only for VIP users and own messages) */}
-              {isVip && isFromCurrentUser && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 rounded-full text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  onClick={() => setIsDeleteDialogOpen(true)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
+          <MessageActions 
+            isFromCurrentUser={isFromCurrentUser}
+            showReactionPicker={showReactionPicker}
+            setShowReactionPicker={setShowReactionPicker}
+            handleReaction={handleReaction}
+            handleStartReply={handleStartReply}
+            isVip={isVip}
+            setIsDeleteDialogOpen={setIsDeleteDialogOpen}
+          />
         </div>
       </div>
       
-      {/* Reaction shown if selected */}
+      {/* Reaction display */}
       {reaction && (
-        <div className={`absolute ${isFromCurrentUser ? '-bottom-2 right-2' : '-bottom-2 left-2'}`}>
-          <span className="text-lg bg-white dark:bg-gray-800 rounded-full px-1 py-0.5 shadow-sm">{reaction}</span>
-        </div>
+        <ReactionDisplay 
+          reaction={reaction} 
+          isFromCurrentUser={isFromCurrentUser} 
+        />
       )}
       
       {/* Reply input */}
@@ -251,12 +160,19 @@ const MessageItem: React.FC<MessageItemProps> = ({
               placeholder="Type your reply..."
               className="flex-1 px-3 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary dark:bg-gray-700"
             />
-            <Button size="sm" variant="ghost" onClick={handleCancelReply}>
-              <X className="h-4 w-4" />
-            </Button>
-            <Button size="sm" onClick={handleSendReply} disabled={!replyText.trim()}>
-              <Check className="h-4 w-4" />
-            </Button>
+            <button 
+              onClick={handleCancelReply}
+              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleSendReply}
+              disabled={!replyText.trim()}
+              className="p-1 px-2 bg-primary text-white rounded disabled:opacity-50"
+            >
+              Reply
+            </button>
           </div>
         </div>
       )}

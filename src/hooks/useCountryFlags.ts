@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 
 export const useCountryFlags = () => {
   const [countryFlags, setCountryFlags] = useState<Record<string, string>>({});
@@ -20,6 +21,39 @@ export const useCountryFlags = () => {
       } catch (error) {
         console.error('Error fetching country flags:', error);
         setCountryFlags(getFallbackFlags());
+      }
+    };
+
+    const detectUserCountry = async () => {
+      // Try multiple geolocation services with fallbacks
+      try {
+        // First attempt with ipinfo.io
+        const response = await axios.get('https://ipinfo.io/json');
+        console.log('Detected country with ipinfo.io:', response.data.country);
+        return response.data.country; // Returns country code
+      } catch (error) {
+        console.error('First geolocation attempt failed:', error);
+        
+        // Second attempt with ip-api
+        try {
+          const response = await axios.get('https://api.ipify.org?format=json');
+          const ip = response.data.ip;
+          const geoResponse = await axios.get(`https://ipapi.co/${ip}/json/`);
+          console.log('Detected country with ipapi.co:', geoResponse.data.country_name);
+          return geoResponse.data.country_name;
+        } catch (error) {
+          console.error('Second geolocation attempt failed:', error);
+          
+          // Third attempt with another service
+          try {
+            const response = await axios.get('https://geolocation-db.com/json/');
+            console.log('Detected country with geolocation-db:', response.data.country_name);
+            return response.data.country_name;
+          } catch (error) {
+            console.error('All geolocation attempts failed:', error);
+            return null;
+          }
+        }
       }
     };
 

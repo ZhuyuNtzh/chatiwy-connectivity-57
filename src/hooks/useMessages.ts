@@ -27,7 +27,7 @@ export const useMessages = (userId: number, userRole: string) => {
       id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       content: message.trim(),
       sender: username,
-      actualUsername: username, // Add actual username
+      actualUsername: username, // This is the correct username to display
       senderId: signalRService.currentUserId,
       recipientId: userId,
       timestamp: new Date(),
@@ -36,7 +36,7 @@ export const useMessages = (userId: number, userRole: string) => {
     // Add message to local state first for immediate UI update
     setMessages(prev => [...prev, newMessage]);
     
-    // Then send to service
+    // Then send to service - pass the actual username so it can be stored with the message
     signalRService.sendMessage(userId, message.trim(), username);
     
     // Clear input field
