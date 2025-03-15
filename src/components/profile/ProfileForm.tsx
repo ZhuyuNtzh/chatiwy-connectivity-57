@@ -81,7 +81,7 @@ const ProfileForm = ({
           nickname={nickname}
           onChange={setNickname}
           isVip={userRole === 'vip'}
-          readOnly={false}
+          readOnly={true} // Make nickname read-only in profile setup
         />
 
         <CountryDisplay 
@@ -90,6 +90,7 @@ const ProfileForm = ({
           setLocation={setLocation}
           isLoading={isLoading}
           userRole={userRole}
+          isEditable={userRole === 'vip'} // Only allow VIP users to edit country
         />
         
         <div className="grid grid-cols-2 gap-2">
