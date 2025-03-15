@@ -9,8 +9,9 @@ import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessages from '@/components/chat/ChatMessages';
 import ChatActions from '@/components/chat/ChatActions';
 import UserModals from '@/components/chat/UserModals';
-import MediaGalleryDialog from '@/components/chat/MediaGalleryDialog';
-import DeleteConfirmationDialog from '@/components/chat/DeleteConfirmationDialog';
+import VipFeatures from '@/components/chat/VipFeatures';
+import ChatWindowContainer from '@/components/chat/ChatWindowContainer';
+import ChatInputHandlers from '@/components/chat/ChatInputHandlers';
 
 interface ChatWindowProps {
   user: {
@@ -90,7 +91,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
   } = useChat(user.id, userRole);
   
   return (
-    <div className="flex flex-col bg-white dark:bg-gray-800 h-full w-full border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
+    <ChatWindowContainer>
       <div className="sticky top-0 z-[60] bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <ChatHeader 
           user={user}
@@ -137,12 +138,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         sendVoiceMessage={userRole === 'vip' ? sendVoiceMessage : undefined}
       />
       
-      <input 
-        type="file" 
-        ref={fileInputRef}
-        accept="image/*"
-        className="hidden"
-        onChange={handleImageChange}
+      <ChatInputHandlers
+        fileInputRef={fileInputRef}
+        handleImageChange={handleImageChange}
       />
       
       <UserModals 
@@ -169,26 +167,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         setPreviewImage={setPreviewImage}
       />
       
-      {/* Media Gallery Dialog for VIP users */}
+      {/* VIP Feature Components */}
       {userRole === 'vip' && (
-        <MediaGalleryDialog
-          isOpen={isMediaGalleryOpen}
-          onOpenChange={setIsMediaGalleryOpen}
-          mediaItems={mediaGalleryItems}
+        <VipFeatures
+          isMediaGalleryOpen={isMediaGalleryOpen}
+          setIsMediaGalleryOpen={setIsMediaGalleryOpen}
+          mediaGalleryItems={mediaGalleryItems}
           user={user}
+          isDeleteDialogOpen={isDeleteDialogOpen}
+          setIsDeleteDialogOpen={setIsDeleteDialogOpen}
+          onConfirmDelete={confirmDeleteConversation}
+          onCancelDelete={cancelDeleteConversation}
         />
       )}
-      
-      {/* Delete Confirmation Dialog */}
-      {userRole === 'vip' && (
-        <DeleteConfirmationDialog
-          isOpen={isDeleteDialogOpen}
-          onOpenChange={setIsDeleteDialogOpen}
-          onConfirm={confirmDeleteConversation}
-          onCancel={cancelDeleteConversation}
-        />
-      )}
-    </div>
+    </ChatWindowContainer>
   );
 };
 
