@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Flag, Trash2 } from 'lucide-react';
 import { signalRService } from '@/services/signalRService';
 import { UserReport } from '@/services/signalR/types';
@@ -16,14 +15,16 @@ const ModerationPanel = () => {
   useEffect(() => {
     loadReports();
     
-    // Auto refresh reports every 15 seconds for instant updates
-    const intervalId = setInterval(loadReports, 15000);
+    // Auto refresh reports every 5 seconds for instant updates
+    const intervalId = setInterval(loadReports, 5000);
     
     return () => clearInterval(intervalId);
   }, []);
 
   const loadReports = () => {
+    console.log("Loading reports...");
     const allReports = signalRService.getReports();
+    console.log("Got reports:", allReports);
     setReports(allReports);
   };
 
@@ -45,6 +46,14 @@ const ModerationPanel = () => {
           All user reports are displayed here and are automatically deleted after 24 hours.
         </p>
       </div>
+
+      <Button 
+        variant="outline" 
+        className="mb-4 self-end"
+        onClick={loadReports}
+      >
+        Refresh Reports
+      </Button>
 
       <ScrollArea className="h-[calc(100vh-300px)]">
         {reports.length === 0 ? (

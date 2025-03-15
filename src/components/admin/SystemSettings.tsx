@@ -26,6 +26,8 @@ const SystemSettings = () => {
   const [avatars, setAvatars] = useState<Avatar[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [hasChanges, setHasChanges] = useState(false);
   
   useEffect(() => {
     loadBannedWords();
@@ -67,44 +69,62 @@ const SystemSettings = () => {
       return;
     }
     
-    signalRService.addBannedWord(newBannedWord.toLowerCase());
-    loadBannedWords();
+    setBannedWords(prev => [...prev, newBannedWord.toLowerCase()]);
     setNewBannedWord('');
+    setHasChanges(true);
     toast.success('Word added to banned list');
   };
 
   const handleRemoveBannedWord = (word: string) => {
-    signalRService.removeBannedWord(word);
-    loadBannedWords();
+    setBannedWords(prev => prev.filter(w => w !== word));
+    setHasChanges(true);
     toast.success('Word removed from banned list');
   };
   
   const handleSaveBannedWords = () => {
-    // In a real app, we would persist to the backend
+    // Save banned words to the service
+    bannedWords.forEach(word => {
+      signalRService.addBannedWord(word);
+    });
+    
+    // Get the current list from service to sync
+    const currentBannedWords = signalRService.getBannedWords();
+    
+    // Remove any words that are in the service but not in our state
+    currentBannedWords.forEach(word => {
+      if (!bannedWords.includes(word)) {
+        signalRService.removeBannedWord(word);
+      }
+    });
+    
+    setHasChanges(false);
     toast.success('Banned words saved successfully');
   };
   
   const handleSavePhotoLimit = () => {
     // In a real app, we would persist to the backend
+    // For demo purposes, we just show a success message
     toast.success(`Photo limit updated to ${photoLimit}`);
+    setHasChanges(false);
   };
   
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     
-    // In a real app, we would upload to the backend
-    // For now, we'll show a success message
-    toast.success(`${files.length} avatar(s) uploaded successfully`);
+    const newFiles = Array.from(files);
+    setUploadedFiles(prev => [...prev, ...newFiles]);
     
-    // Simulate adding new avatars
-    const newAvatars = Array.from(files).map((file, index) => ({
+    // Create object URLs for immediate display
+    const newAvatars = newFiles.map((file, index) => ({
       id: `new-${Date.now()}-${index}`,
       url: URL.createObjectURL(file),
       name: file.name,
     }));
     
     setAvatars(prev => [...prev, ...newAvatars]);
+    setHasChanges(true);
+    toast.success(`${files.length} avatar(s) uploaded`);
   };
   
   const handleDragOver = (e: React.DragEvent) => {
@@ -123,17 +143,32 @@ const SystemSettings = () => {
     const files = e.dataTransfer.files;
     if (!files || files.length === 0) return;
     
-    // In a real app, we would upload to the backend
-    toast.success(`${files.length} avatar(s) uploaded successfully`);
+    const newFiles = Array.from(files);
+    setUploadedFiles(prev => [...prev, ...newFiles]);
     
-    // Simulate adding new avatars
-    const newAvatars = Array.from(files).map((file, index) => ({
+    // Create object URLs for immediate display
+    const newAvatars = newFiles.map((file, index) => ({
       id: `new-${Date.now()}-${index}`,
       url: URL.createObjectURL(file),
       name: file.name,
     }));
     
     setAvatars(prev => [...prev, ...newAvatars]);
+    setHasChanges(true);
+    toast.success(`${files.length} avatar(s) uploaded`);
+  };
+  
+  const handleSaveAvatars = () => {
+    // In a real app, we would upload files to the backend
+    toast.success('Avatars saved successfully');
+    setUploadedFiles([]);
+    setHasChanges(false);
+  };
+  
+  const handleRemoveAvatar = (avatarId: string) => {
+    setAvatars(prev => prev.filter(avatar => avatar.id !== avatarId));
+    setHasChanges(true);
+    toast.success('Avatar removed');
   };
   
   const filteredAvatars = avatars.filter(avatar => 
@@ -173,9 +208,13 @@ const SystemSettings = () => {
               value={newBannedWord}
               onChange={(e) => setNewBannedWord(e.target.value)}
               className="mr-2"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleAddBannedWord();
+                }
+              }}
             />
             <Button onClick={handleAddBannedWord}>
-              <Save className="h-4 w-4 mr-2" />
               Add
             </Button>
           </div>
@@ -208,7 +247,11 @@ const SystemSettings = () => {
           </ScrollArea>
           
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <Button onClick={handleSaveBannedWords} className="w-full">
+            <Button 
+              onClick={handleSaveBannedWords} 
+              className="w-full"
+              disabled={!hasChanges}
+            >
               <Save className="h-4 w-4 mr-2" />
               Save Changes
             </Button>
@@ -235,10 +278,16 @@ const SystemSettings = () => {
                   max={20}
                   step={1}
                   value={[photoLimit]}
-                  onValueChange={(value) => setPhotoLimit(value[0])}
+                  onValueChange={(value) => {
+                    setPhotoLimit(value[0]);
+                    setHasChanges(true);
+                  }}
                 />
               </div>
-              <Button onClick={handleSavePhotoLimit}>
+              <Button 
+                onClick={handleSavePhotoLimit} 
+                disabled={!hasChanges}
+              >
                 <Save className="h-4 w-4 mr-2" />
                 Save Changes
               </Button>
@@ -298,7 +347,7 @@ const SystemSettings = () => {
                 />
               </div>
               
-              <ScrollArea className="flex-1">
+              <ScrollArea className="flex-1 mb-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                   {filteredAvatars.map((avatar) => (
                     <div key={avatar.id} className="relative group">
@@ -308,7 +357,11 @@ const SystemSettings = () => {
                         className="w-full h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
                       />
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                        <Button variant="destructive" size="sm">
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => handleRemoveAvatar(avatar.id)}
+                        >
                           <X className="h-4 w-4 mr-1" />
                           Remove
                         </Button>
@@ -323,6 +376,17 @@ const SystemSettings = () => {
                   )}
                 </div>
               </ScrollArea>
+              
+              <div className="mt-auto pt-4 border-t border-gray-200 dark:border-gray-700">
+                <Button 
+                  onClick={handleSaveAvatars} 
+                  className="w-full"
+                  disabled={!hasChanges}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Avatars
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

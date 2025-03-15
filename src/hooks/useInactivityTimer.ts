@@ -64,9 +64,9 @@ export const useInactivityTimer = (timeoutMinutes = 10) => {
   };
   
   const logout = () => {
-    // Don't log out VIP or admin users automatically
-    if (userRole === 'vip' || userRole === 'admin' || isAdminLoggedIn()) {
-      resetTimer(); // Just reset the timer for these users
+    // Don't log out admin users automatically
+    if (userRole === 'admin' || isAdminLoggedIn()) {
+      resetTimer(); // Just reset the timer for admin users
       return;
     }
     
