@@ -1,23 +1,27 @@
 
 import React from 'react';
+import { UserRole } from '@/contexts/UserContext';
+import UserTypeDisplay from '@/components/UserTypeDisplay';
 
 interface MessageHeaderProps {
   sender: string;
+  actualUsername?: string;
+  senderRole?: UserRole;
 }
 
-const MessageHeader: React.FC<MessageHeaderProps> = ({ sender }) => {
-  // Format sender name to remove any "User" prefix followed by a number
-  const formatSenderName = (senderName: string) => {
-    // If it matches pattern like "User123", extract just the name part
-    if (/^User\d+$/.test(senderName)) {
-      return senderName;
-    }
-    return senderName;
-  };
-
+const MessageHeader: React.FC<MessageHeaderProps> = ({ 
+  sender, 
+  actualUsername,
+  senderRole = 'standard'
+}) => {
+  // Use the actual username if available, otherwise use the sender name
+  // This fixes the issue where messages show names like "User10"
+  const displayName = actualUsername || sender;
+  
   return (
-    <div className="font-semibold text-sm mb-1 text-gray-700 dark:text-gray-300">
-      {formatSenderName(sender)}
+    <div className="flex items-center gap-1.5 text-xs font-medium opacity-90 mb-1">
+      <span>{displayName}</span>
+      {senderRole && <UserTypeDisplay role={senderRole} showLabel={false} size="sm" />}
     </div>
   );
 };

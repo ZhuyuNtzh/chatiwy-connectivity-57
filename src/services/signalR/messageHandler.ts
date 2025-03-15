@@ -87,16 +87,16 @@ export const messageHandler = {
     ];
     
     const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-    // This is the key change - we want to show the actual username of the sender here
-    // So we're using data.senderId as the username now
-    const senderName = `User${data.senderId}`;
+    
+    // Critical fix: Use the actual username from data if available
+    // If not available, generate a more realistic username without the "User" prefix
+    const senderName = data.actualUsername || `Friend${data.senderId % 100}`;
     
     return {
       id: `reply_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       content: randomResponse,
       sender: senderName,
-      // Use actual username of the recipient as the actual username for the message
-      // This is what the recipient will see as the sender name
+      // Preserve the actual username for display
       actualUsername: senderName,
       senderId: data.senderId,
       recipientId: data.recipientId,

@@ -1,9 +1,13 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import type { ChatMessage } from '@/services/signalR/types';
 import MessageItem from './MessageItem';
 import { Button } from '@/components/ui/button';
 import { ArrowDown } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
+import NewMessageNotification from './message/NewMessageNotification';
+import ScrollContainer from './message/ScrollContainer';
+import TypingIndicator from './message/TypingIndicator';
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -103,32 +107,15 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
           />
         ))}
         
-        {isVip && isTyping && (
-          <div className="flex justify-start mb-4">
-            <div className="max-w-[80%] rounded-lg p-3 bg-gray-100 dark:bg-gray-700">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"></div>
-                <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-              </div>
-              <div className="text-xs opacity-70 mt-1 text-gray-500 dark:text-gray-400">typing...</div>
-            </div>
-          </div>
-        )}
+        {isVip && isTyping && <TypingIndicator />}
         <div ref={messagesEndRef} />
       </div>
       
       {userScrolledUp && newMessageCount > 0 && (
-        <div className="absolute bottom-4 right-4">
-          <Button 
-            onClick={scrollToBottom}
-            size="sm"
-            className="rounded-full p-2 flex items-center gap-2"
-          >
-            <ArrowDown className="h-4 w-4" />
-            {newMessageCount > 1 ? `${newMessageCount} new messages` : '1 new message'}
-          </Button>
-        </div>
+        <NewMessageNotification 
+          count={newMessageCount} 
+          onScrollToBottom={scrollToBottom} 
+        />
       )}
     </div>
   );

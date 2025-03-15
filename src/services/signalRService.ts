@@ -1,3 +1,4 @@
+
 import { MockHubConnection } from './signalR/mockConnection';
 import { ISignalRService, ChatMessage, ConnectionStatus, UserReport } from './signalR/types';
 import { messageHandler } from './signalR/messageHandler';
@@ -99,7 +100,7 @@ class SignalRService implements ISignalRService {
     // Add to chat history
     chatStorage.addMessageToHistory(recipientId, newMessage);
     
-    // Simulate a response
+    // Simulate a response - pass the actual username to create a proper response
     setTimeout(() => {
       this.simulateReceivedMessage(recipientId, actualUsername);
     }, 1000 + Math.random() * 2000);
@@ -241,7 +242,7 @@ class SignalRService implements ISignalRService {
     const newMessage = messageHandler.createSimulatedResponse({
       senderId,
       recipientId: this.userId || 0,
-      actualUsername: actualUsername || this.username
+      actualUsername: actualUsername
     });
     
     // Add to chat history

@@ -107,8 +107,13 @@ export const useChat = (userId: number, userRole: string) => {
   // Handle real-time messaging with SignalR
   useEffect(() => {
     const handleNewMessage = (msg: ChatMessage) => {
-      // Only process messages specific to this conversation
-      if (msg.senderId === userId || msg.recipientId === userId) {
+      // Critical fix: Only process messages specific to this conversation
+      // A message belongs to this conversation if:
+      // 1. It's from the user we're chatting with (msg.senderId === userId) - receiving a message
+      // 2. OR It's to the user we're chatting with (msg.recipientId === userId) - sending a message
+      if ((msg.senderId === userId && msg.recipientId === signalRService.currentUserId) || 
+          (msg.recipientId === userId && msg.senderId === signalRService.currentUserId)) {
+        
         // Apply real-time translation if enabled (for VIP users)
         if (isTranslationEnabled && userRole === 'vip' && msg.senderId === userId && selectedLanguage !== 'en') {
           translateMessage(msg).then(translatedMsg => {
