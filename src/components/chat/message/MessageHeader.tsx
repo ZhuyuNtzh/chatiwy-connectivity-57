@@ -14,8 +14,7 @@ const MessageHeader: React.FC<MessageHeaderProps> = ({
   actualUsername,
   senderRole = 'standard'
 }) => {
-  // Use the actual username if available, otherwise use the sender name
-  // This fixes the issue where messages show names like "User10"
+  // Always prioritize actualUsername if available, fall back to sender
   const displayName = actualUsername || sender;
   
   return (

@@ -1,16 +1,12 @@
 
 import { useState } from 'react';
 import { signalRService } from '@/services/signalRService';
-import { toast } from 'sonner';
 import type { ChatMessage } from '@/services/signalR/types';
+import { toast } from "sonner";
 
-/**
- * Hook that provides VIP message features like replying and unsending messages
- */
 export const useVipMessageFeatures = (userRole: string) => {
-  const [replyingToMessageId, setReplyingToMessageId] = useState<string | null>(null);
-  const [replyingToMessageText, setReplyingToMessageText] = useState<string>('');
-
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  
   /**
    * Handle replying to a message
    */
@@ -18,103 +14,105 @@ export const useVipMessageFeatures = (userRole: string) => {
     messageId: string,
     messageText: string,
     currentMessage: string,
-    setMessage: (message: string) => void,
-    setMessages: (messages: ChatMessage[]) => void,
-    recipientId: number,
-    setAutoScrollToBottom: (autoScroll: boolean) => void
+    setCurrentMessage: (message: string) => void,
+    setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
+    userId: number,
+    setAutoScrollToBottom: (value: boolean) => void
   ) => {
     // Only VIP users can reply to messages
     if (userRole !== 'vip') {
       toast.error('Only VIP users can reply to messages');
       return;
     }
-
-    // Set the reply info
-    setReplyingToMessageId(messageId);
-    setReplyingToMessageText(messageText);
-
-    // Focus the input field
-    setMessage(`${currentMessage}`);
-
-    // Modify message in the UI to show it's being replied to
-    setMessages(prev => prev.map(msg => 
-      msg.id === messageId 
-        ? { ...msg, isBeingRepliedTo: true } 
-        : msg
-    ));
-
-    // Handle sending the reply
-    const handleSendReply = (content: string) => {
-      if (!replyingToMessageId) return;
-
-      const truncatedReplyText = messageText.length > 50 
-        ? `${messageText.substring(0, 50)}...` 
-        : messageText;
-
-      // Send the message with reply metadata
-      signalRService.sendMessage(
-        recipientId,
-        content,
-        undefined, // Use default username
-        replyingToMessageId,
-        truncatedReplyText
+    
+    setReplyingTo(messageId);
+    
+    // Focus on the input field
+    const inputField = document.querySelector('input[name="message"]') as HTMLInputElement;
+    if (inputField) {
+      inputField.focus();
+    }
+    
+    // Update all messages to mark the one being replied to
+    // Fix TypeScript error by explicitly typing prev as ChatMessage[]
+    setMessages((prev: ChatMessage[]) => {
+      return prev.map(msg => 
+        msg.id === messageId 
+          ? { ...msg, isBeingRepliedTo: true }
+          : { ...msg, isBeingRepliedTo: false }
       );
-
-      // Reset reply state
-      setReplyingToMessageId(null);
-      setReplyingToMessageText('');
-
-      // Auto-scroll to see the new message
+    });
+    
+    // Update the reply message in the UI
+    const prefix = currentMessage.trim() ? `${currentMessage} ` : '';
+    setCurrentMessage(prefix);
+    
+    // Scroll to the bottom after a short delay
+    setTimeout(() => {
       setAutoScrollToBottom(true);
-      setTimeout(() => setAutoScrollToBottom(false), 300);
-
-      return true;
-    };
-
-    return handleSendReply;
+    }, 100);
+    
+    // Add a toast notification
+    toast.info('Replying to message', { duration: 2000 });
   };
-
+  
   /**
    * Handle unsending (deleting) a message
    */
   const unsendMessage = (
     messageId: string,
     recipientId: number,
-    setMessages: (messages: ChatMessage[]) => void
+    setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>
   ) => {
     // Only VIP users can unsend messages
     if (userRole !== 'vip') {
       toast.error('Only VIP users can unsend messages');
       return;
     }
-
-    // Update UI immediately to show message is deleted
-    setMessages(prev => prev.map(msg => 
-      msg.id === messageId 
-        ? { ...msg, isDeleted: true } 
-        : msg
-    ));
-
-    // Delete the message from the service
+    
+    // Call the SignalR service to delete the message
     signalRService.deleteMessage(messageId, recipientId)
       .then(() => {
-        toast.success('Message unsent successfully');
+        // Update the message in the UI to show it's deleted
+        // Fix TypeScript error by explicitly typing prev as ChatMessage[]
+        setMessages((prev: ChatMessage[]) => {
+          return prev.map(msg => 
+            msg.id === messageId 
+              ? { ...msg, isDeleted: true, content: 'This message has been deleted' }
+              : msg
+          );
+        });
+        
+        // Add a toast notification
+        toast.success('Message unsent successfully', { duration: 2000 });
       })
-      .catch(() => {
-        // Revert UI if there was an error
-        setMessages(prev => prev.map(msg => 
-          msg.id === messageId 
-            ? { ...msg, isDeleted: false } 
-            : msg
-        ));
+      .catch(error => {
+        console.error('Error unsending message:', error);
         toast.error('Failed to unsend message');
       });
   };
-
+  
+  /**
+   * Handle clearing the reply state
+   */
+  const clearReply = (
+    setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>
+  ) => {
+    // Clear the reply state
+    setReplyingTo(null);
+    
+    // Update all messages to clear isBeingRepliedTo flag
+    // Fix TypeScript error by explicitly typing prev as ChatMessage[]
+    setMessages((prev: ChatMessage[]) => {
+      return prev.map(msg => ({ ...msg, isBeingRepliedTo: false }));
+    });
+  };
+  
   return {
+    replyingTo,
+    setReplyingTo,
     replyToMessage,
     unsendMessage,
-    replyingToMessageId,
-    replyingToMessageText,
+    clearReply
   };
 };

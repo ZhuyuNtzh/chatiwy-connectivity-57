@@ -241,22 +241,43 @@ class SignalRService implements ISignalRService {
   }
   
   // Helper method to simulate received messages
-  private simulateReceivedMessage(senderId: number, actualUsername?: string): void {
+  private simulateReceivedMessage(recipientUserId: number, actualUsername?: string): void {
     // Skip for blocked users
-    if (userBlocking.isUserBlocked(senderId)) {
+    if (userBlocking.isUserBlocked(recipientUserId)) {
       return;
     }
     
+    // FIXED: Use correct username for simulated messages from mock users
+    // Get the mock username from recipientUserId (this would usually come from the server)
+    const mockUserNames: Record<number, string> = {
+      1: "Alice",
+      2: "Bob",
+      3: "Clara",
+      4: "David",
+      5: "Elena",
+      6: "Feng",
+      7: "Gabriela",
+      8: "Hiroshi",
+      9: "Isabella",
+      10: "Jamal"
+    };
+    
+    // Get the actual sender username
+    const senderName = mockUserNames[recipientUserId] || `User${recipientUserId}`;
+    
     const newMessage = messageHandler.createSimulatedResponse({
-      senderId,
+      // This is the ID of the user we're chatting with (they are sending the response)
+      senderId: recipientUserId,
+      // This is our user ID (we are receiving the message)
       recipientId: this.userId || 0,
-      actualUsername
+      // Use the actual username we determined
+      actualUsername: senderName
     });
     
     // Add to chat history
-    chatStorage.addMessageToHistory(senderId, newMessage);
+    chatStorage.addMessageToHistory(recipientUserId, newMessage);
     
-    // Notify message listeners
+    // Notify message listeners - they will filter based on their own context
     this.messageCallbacks.forEach(callback => callback(newMessage));
   }
 }

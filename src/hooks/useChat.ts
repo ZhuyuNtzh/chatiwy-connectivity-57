@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '@/services/signalRService';
 import type { ChatMessage } from '@/services/signalR/types';
@@ -107,12 +106,13 @@ export const useChat = (userId: number, userRole: string) => {
   // Handle real-time messaging with SignalR
   useEffect(() => {
     const handleNewMessage = (msg: ChatMessage) => {
-      // Critical fix: Only process messages specific to this conversation
-      // A message belongs to this conversation if:
-      // 1. It's from the user we're chatting with (msg.senderId === userId) - receiving a message
-      // 2. OR It's to the user we're chatting with (msg.recipientId === userId) - sending a message
-      if ((msg.senderId === userId && msg.recipientId === signalRService.currentUserId) || 
-          (msg.recipientId === userId && msg.senderId === signalRService.currentUserId)) {
+      // FIXED: Only process messages specific to this conversation
+      // Check if this message belongs to the current chat conversation
+      const isFromSelectedUser = msg.senderId === userId && msg.recipientId === signalRService.currentUserId;
+      const isToSelectedUser = msg.senderId === signalRService.currentUserId && msg.recipientId === userId;
+      
+      if (isFromSelectedUser || isToSelectedUser) {
+        console.log(`Message belongs to conversation with user ${userId}:`, msg);
         
         // Apply real-time translation if enabled (for VIP users)
         if (isTranslationEnabled && userRole === 'vip' && msg.senderId === userId && selectedLanguage !== 'en') {
@@ -144,6 +144,8 @@ export const useChat = (userId: number, userRole: string) => {
             setAutoScrollToBottom(false);
           }, 300);
         }
+      } else {
+        console.log(`Message not for conversation with user ${userId}:`, msg);
       }
     };
     

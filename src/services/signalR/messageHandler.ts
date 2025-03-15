@@ -94,18 +94,21 @@ export const messageHandler = {
     
     const randomResponse = responses[Math.floor(Math.random() * responses.length)];
     
-    // Generate a more descriptive name for the other user
-    const otherUserName = `Bob`;
+    // CRITICAL FIX: This is where we need to fix the sender name
+    // First, ensure the IDs are correctly swapped for response messages
+    // The responder's ID should be data.senderId (who we're talking to)
+    // The recipient's ID should be data.recipientId (the current user)
     
     return {
       id: `reply_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       content: randomResponse,
-      // This is the key fix: Make sure the sender is different from the recipient
-      sender: otherUserName,
-      // Store the real display name in actualUsername
-      actualUsername: otherUserName,
-      // These IDs must be correctly set to ensure messages display on the correct side
+      // This ensures the sender name is the actual username
+      sender: data.actualUsername || `User${data.senderId}`,
+      // Use the actual username for display
+      actualUsername: data.actualUsername || `User${data.senderId}`,
+      // Fix: Make sure the sender ID is the user we're talking to
       senderId: data.senderId,
+      // Fix: Make sure recipient ID is the current user
       recipientId: data.recipientId,
       timestamp: new Date(),
       status: 'delivered'
