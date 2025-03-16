@@ -1,17 +1,15 @@
 
-import React, { useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import React, { useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { X, Mail } from 'lucide-react';
 import type { ChatMessage } from '@/services/signalR/types';
-import { signalRService } from '@/services/signalRService';
 
 interface InboxDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   inboxMessages: Record<number, ChatMessage[]>;
-  onOpenChat?: (userId: number) => void;
+  onOpenChat: (userId: number) => void;
   onDialogOpened?: () => void;
   unreadBySender?: Record<number, boolean>;
 }
@@ -24,110 +22,155 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
   onDialogOpened,
   unreadBySender = {}
 }) => {
-  // When the dialog opens, notify parent to mark inbox as viewed
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  
+  // Call onDialogOpened when the dialog opens
   useEffect(() => {
     if (isOpen && onDialogOpened) {
       onDialogOpened();
     }
   }, [isOpen, onDialogOpened]);
-
-  // Filter the inboxMessages to only show conversations where we received messages
-  const currentUserId = signalRService.currentUserId;
   
-  // Convert Record to array for easier rendering and ensure each conversation only shows relevant messages
-  const messagesArray = Object.entries(inboxMessages)
-    .map(([userId, messages]) => {
-      // Filter messages that were actually sent to the current user
-      const receivedMessages = messages.filter(msg => 
-        msg.recipientId === currentUserId && 
-        msg.senderId.toString() === userId
-      );
-      
-      // Skip if there are no messages from this sender
-      if (receivedMessages.length === 0) return null;
-      
-      // Find the sender name from the messages
-      const sender = receivedMessages[0].sender;
-      const senderId = parseInt(userId);
-      const isUnread = unreadBySender[senderId] === true;
-      
-      return {
-        userId: senderId,
-        messages: receivedMessages,
-        lastMessage: receivedMessages[receivedMessages.length - 1],
-        sender,
-        isUnread
-      };
-    })
-    .filter(Boolean); // Remove null entries
-
-  const hasMessages = messagesArray.length > 0;
-
+  // Handle outside clicks
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (isOpen && backdropRef.current && !sidebarRef.current?.contains(e.target as Node)) {
+        e.preventDefault();
+        e.stopPropagation();
+        onOpenChange(false);
+      }
+    };
+    
+    // Handle escape key
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (isOpen && e.key === 'Escape') {
+        onOpenChange(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscapeKey);
+    
+    // If the dialog is open, prevent body scrolling
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscapeKey);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, onOpenChange]);
+  
+  if (!isOpen) return null;
+  
+  const hasMessages = Object.keys(inboxMessages).length > 0;
+  
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Inbox</DialogTitle>
-          <DialogDescription>
-            Your conversations
-          </DialogDescription>
-        </DialogHeader>
+    <div className="fixed inset-0 z-[100] overflow-hidden">
+      {/* Backdrop */}
+      <div 
+        ref={backdropRef}
+        className="absolute inset-0 bg-black/50 transition-opacity duration-300"
+        onClick={() => onOpenChange(false)}
+      />
+      
+      {/* Sidebar */}
+      <div 
+        ref={sidebarRef}
+        className="absolute top-0 right-0 bottom-0 w-full max-w-md bg-white dark:bg-gray-800 shadow-xl transform transition-transform duration-300 ease-in-out z-[101] flex flex-col"
+        style={{ transform: isOpen ? 'translateX(0)' : 'translateX(100%)' }}
+      >
+        <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
+          <h2 className="text-xl font-semibold">Inbox</h2>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => onOpenChange(false)}
+            className="h-8 w-8"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
         
-        <ScrollArea className="mt-6 h-96">
+        <ScrollArea className="flex-1 p-4">
           {hasMessages ? (
-            <div className="space-y-4">
-              {messagesArray.map((item) => {
-                if (!item) return null;
-                const { userId, lastMessage, sender, isUnread } = item;
+            <div className="space-y-6">
+              {Object.entries(inboxMessages).map(([senderId, messages]) => {
+                const userIdNum = parseInt(senderId);
+                // Only show conversations where others have sent messages to the current user
+                const incomingMessages = messages.filter(msg => msg.recipientId === userIdNum);
+                
+                if (incomingMessages.length === 0) return null;
+                
+                const lastMessage = incomingMessages[incomingMessages.length - 1];
+                const isUnread = unreadBySender[userIdNum] || false;
                 
                 return (
                   <div 
-                    key={userId} 
-                    className={`flex items-start p-3 ${isUnread ? 'bg-gray-50 dark:bg-gray-800' : ''} hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md cursor-pointer relative`}
-                    onClick={() => onOpenChat && onOpenChat(userId)}
+                    key={senderId} 
+                    className={`p-3 rounded-lg border ${isUnread ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : 'border-gray-200 dark:border-gray-700'}`}
                   >
-                    <Avatar className="h-10 w-10 mr-3">
-                      <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
-                        {sender.substring(0, 1).toUpperCase()}
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center">
+                        {isUnread && (
+                          <div className="h-2 w-2 bg-blue-500 rounded-full mr-2"></div>
+                        )}
+                        <h3 className={`font-medium ${isUnread ? 'text-blue-600 dark:text-blue-400' : ''}`}>
+                          {lastMessage.sender}
+                        </h3>
                       </div>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-center mb-1">
-                        <div className="flex items-center">
-                          <p className={`${isUnread ? 'font-semibold' : 'font-medium'} truncate`}>{sender}</p>
-                          {isUnread && (
-                            <span className="ml-2">
-                              <Badge 
-                                variant="destructive" 
-                                className="h-2.5 w-2.5 p-0 rounded-full"
-                              />
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(lastMessage.timestamp).toLocaleTimeString([], { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </span>
-                      </div>
-                      <p className={`text-sm ${isUnread ? 'text-foreground font-medium' : 'text-muted-foreground'} truncate`}>
-                        {lastMessage.isImage ? '🖼️ Image' : lastMessage.content}
-                      </p>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(lastMessage.timestamp).toLocaleString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
                     </div>
+                    
+                    <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-3">
+                      {lastMessage.isImage ? (
+                        <span className="flex items-center text-gray-500 italic">
+                          <Mail className="h-3 w-3 mr-1" /> Image attachment
+                        </span>
+                      ) : (
+                        lastMessage.content
+                      )}
+                    </p>
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full"
+                      onClick={() => {
+                        onOpenChat(userIdNum);
+                        onOpenChange(false);
+                      }}
+                    >
+                      Open Chat
+                    </Button>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-64">
-              <p className="text-muted-foreground">No new messages</p>
-              <p className="text-sm text-muted-foreground mt-2">Messages from new users will appear here</p>
+            <div className="h-64 flex flex-col items-center justify-center">
+              <Mail className="h-10 w-10 text-gray-300 dark:text-gray-600 mb-2" />
+              <p className="text-gray-500 dark:text-gray-400">Your inbox is empty</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                Messages from other users will appear here
+              </p>
             </div>
           )}
         </ScrollArea>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 };
 
