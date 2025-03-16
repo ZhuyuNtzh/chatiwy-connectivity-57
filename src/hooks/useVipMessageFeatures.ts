@@ -27,6 +27,9 @@ export const useVipMessageFeatures = (userRole: string) => {
     
     setReplyingTo(messageId);
     
+    // Store the reply text for this specific message ID
+    localStorage.setItem(`replyText_${messageId}`, messageText);
+    
     // Focus on the input field
     const inputField = document.querySelector('input[name="message"]') as HTMLInputElement;
     if (inputField) {
@@ -41,9 +44,6 @@ export const useVipMessageFeatures = (userRole: string) => {
           : { ...msg, isBeingRepliedTo: false }
       );
     });
-    
-    // Store the messageText in localStorage so we can reference it when sending
-    localStorage.setItem(`replyText_${messageId}`, messageText);
     
     // Update the reply message in the UI
     const prefix = currentMessage.trim() ? `${currentMessage} ` : '';

@@ -17,10 +17,12 @@ interface User {
 export const useChatHistory = () => {
   const [chatHistory, setChatHistory] = useState<Record<number, ChatMessage[]>>({});
   const [inboxMessages, setInboxMessages] = useState<Record<number, ChatMessage[]>>({});
-  const { userRole } = useUser();
+  const { userRole, currentUser } = useUser();
   
   // Clear chat history based on user role
   useEffect(() => {
+    if (!currentUser) return;
+    
     // Clear interval times
     const clearIntervalTime = userRole === 'vip' 
       ? 8 * 60 * 60 * 1000  // 8 hours for VIP users
@@ -36,7 +38,14 @@ export const useChatHistory = () => {
     }, clearIntervalTime);
     
     return () => clearInterval(intervalId);
-  }, [userRole]);
+  }, [userRole, currentUser]);
+  
+  // Clear chat history when user changes
+  useEffect(() => {
+    // Reset state when user changes
+    setChatHistory({});
+    setInboxMessages({});
+  }, [currentUser?.id]);
   
   const handleShowHistory = () => {
     // Get fresh chat history when requesting it

@@ -41,6 +41,11 @@ class SignalRService implements ISignalRService {
   }
 
   public async initialize(userId: number, username: string): Promise<void> {
+    // Clear any previous user data if there was a session
+    if (this.userId && this.userId !== userId) {
+      this.clearUserSession(this.userId);
+    }
+    
     this.userId = userId;
     this.username = username;
     
@@ -59,12 +64,21 @@ class SignalRService implements ISignalRService {
   
   public async disconnect(): Promise<void> {
     if (this.connection) {
+      if (this.userId) {
+        // Clear user session data on disconnect
+        this.clearUserSession(this.userId);
+      }
+      
       this.connection = null;
       this.userId = null;
       this.username = null;
       console.log('SignalR disconnected');
     }
     return Promise.resolve();
+  }
+  
+  private clearUserSession(userId: number): void {
+    chatStorage.clearUserSession(userId);
   }
   
   public onConnectedUsersCountChanged(callback: (count: number) => void): void {
@@ -109,6 +123,8 @@ class SignalRService implements ISignalRService {
     replyToId?: string,
     replyText?: string
   ): Promise<void> {
+    if (!this.userId) return Promise.resolve();
+    
     if (userBlocking.isUserBlocked(recipientId)) {
       console.log(`Cannot send message to blocked user ${recipientId}`);
       return Promise.resolve();
@@ -118,15 +134,15 @@ class SignalRService implements ISignalRService {
       content,
       sender: this.username || 'You',
       actualUsername: actualUsername || this.username,
-      senderId: this.userId || 0,
+      senderId: this.userId,
       recipientId,
       replyToId,
       replyText,
       isRead: true // Our own messages are always read
     });
     
-    // Add to chat history
-    chatStorage.addMessageToHistory(this.userId || 0, newMessage);
+    // Add to chat history with the current user ID
+    chatStorage.addMessageToHistory(this.userId, this.userId, newMessage);
     
     // Simulate a response - pass the actual username to create a proper response
     setTimeout(() => {
@@ -137,47 +153,53 @@ class SignalRService implements ISignalRService {
   }
   
   public async sendImage(recipientId: number, imageUrl: string, isBlurred: boolean = false): Promise<void> {
+    if (!this.userId) return Promise.resolve();
+    
     if (userBlocking.isUserBlocked(recipientId)) {
       return Promise.resolve();
     }
     
     const newMessage = messageHandler.createImageMessage({
       sender: this.username || 'You',
-      senderId: this.userId || 0,
+      senderId: this.userId,
       recipientId,
       imageUrl,
       isBlurred,
       isRead: true // Our own messages are always read
     });
     
-    // Add to chat history
-    chatStorage.addMessageToHistory(this.userId || 0, newMessage);
+    // Add to chat history with the current user ID
+    chatStorage.addMessageToHistory(this.userId, this.userId, newMessage);
     
     return Promise.resolve();
   }
   
   public async sendVoiceMessage(recipientId: number, audioUrl: string): Promise<void> {
+    if (!this.userId) return Promise.resolve();
+    
     if (userBlocking.isUserBlocked(recipientId)) {
       return Promise.resolve();
     }
     
     const newMessage = messageHandler.createVoiceMessage({
       sender: this.username || 'You',
-      senderId: this.userId || 0,
+      senderId: this.userId,
       recipientId,
       audioUrl,
       isRead: true // Our own messages are always read
     });
     
-    // Add to chat history
-    chatStorage.addMessageToHistory(this.userId || 0, newMessage);
+    // Add to chat history with the current user ID
+    chatStorage.addMessageToHistory(this.userId, this.userId, newMessage);
     
     return Promise.resolve();
   }
   
   public async deleteMessage(messageId: string, recipientId: number): Promise<void> {
+    if (!this.userId) return Promise.resolve();
+    
     // Update chat history
-    chatStorage.markMessageAsDeleted(recipientId, messageId);
+    chatStorage.markMessageAsDeleted(this.userId, recipientId, messageId);
     
     // Notify listeners
     this.deleteCallbacks.forEach(callback => callback(messageId));
@@ -192,8 +214,10 @@ class SignalRService implements ISignalRService {
   
   // Message read status
   public markMessagesAsRead(senderId: number): void {
+    if (!this.userId) return;
+    
     // Update message read status in chat storage
-    chatStorage.markMessagesAsRead(senderId, this.userId || 0);
+    chatStorage.markMessagesAsRead(this.userId, senderId, this.userId);
   }
   
   // User blocking
@@ -220,15 +244,18 @@ class SignalRService implements ISignalRService {
   
   // Chat history management
   public getChatHistory(userId: number): ChatMessage[] {
-    return chatStorage.getChatHistory(userId);
+    if (!this.userId) return [];
+    return chatStorage.getChatHistory(this.userId, userId);
   }
   
   public getAllChatHistory(): Record<number, ChatMessage[]> {
-    return chatStorage.getAllChatHistory();
+    if (!this.userId) return {};
+    return chatStorage.getAllChatHistory(this.userId);
   }
   
   public clearAllChatHistory(): void {
-    chatStorage.clearAllChatHistory();
+    if (!this.userId) return;
+    chatStorage.clearAllChatHistory(this.userId);
   }
   
   // Banned words management
@@ -270,6 +297,8 @@ class SignalRService implements ISignalRService {
   
   // Helper method to simulate received messages
   private simulateReceivedMessage(recipientUserId: number): void {
+    if (!this.userId) return;
+    
     // Skip for blocked users
     if (userBlocking.isUserBlocked(recipientUserId)) {
       return;
@@ -282,7 +311,7 @@ class SignalRService implements ISignalRService {
       // This is the ID of the user we're chatting with (they are sending the response)
       senderId: recipientUserId,
       // This is our user ID (we are receiving the message)
-      recipientId: this.userId || 0,
+      recipientId: this.userId,
       // Use the actual username we determined
       actualUsername: senderName,
       // Mark as unread by default for incoming messages
@@ -290,7 +319,7 @@ class SignalRService implements ISignalRService {
     });
     
     // Add to chat history - use the current user's ID as the key
-    chatStorage.addMessageToHistory(this.userId || 0, newMessage);
+    chatStorage.addMessageToHistory(this.userId, this.userId, newMessage);
     
     // Notify message listeners
     this.messageCallbacks.forEach(callback => callback(newMessage));

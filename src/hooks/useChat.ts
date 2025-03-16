@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '@/services/signalRService';
+import { ChatMessageService } from '@/services/ChatMessageService';
 import type { ChatMessage } from '@/services/signalR/types';
 import { useMessages } from './useMessages';
 import { useMediaHandling } from './useMediaHandling';
@@ -10,9 +11,12 @@ import { useMediaGallery } from './useMediaGallery';
 import { useConversationManagement } from './useConversationManagement';
 import { useVipMessageFeatures } from './useVipMessageFeatures';
 import { useScrollManagement } from './useScrollManagement';
-import { toast } from "sonner";
+import { useUser } from '@/contexts/UserContext';
 
 export const useChat = (userId: number, userRole: string) => {
+  // Get current user info
+  const { currentUser } = useUser();
+  
   // Use custom hooks to organize logic
   const {
     messages,
@@ -20,7 +24,7 @@ export const useChat = (userId: number, userRole: string) => {
     message,
     setMessage,
     maxChars,
-    handleSendMessage,
+    handleSendMessage: baseHandleSendMessage,
     handleKeyDown,
     handleAddEmoji
   } = useMessages(userId, userRole);
@@ -90,8 +94,11 @@ export const useChat = (userId: number, userRole: string) => {
   } = useConversationManagement();
 
   const {
+    replyingTo,
     replyToMessage: baseReplyToMessage,
-    unsendMessage: baseUnsendMessage
+    sendReplyMessage,
+    unsendMessage: baseUnsendMessage,
+    clearReply
   } = useVipMessageFeatures(userRole);
 
   const {
@@ -105,6 +112,7 @@ export const useChat = (userId: number, userRole: string) => {
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const previousUserIdRef = useRef<number | null>(null);
 
+  // Load chat history when user changes
   useEffect(() => {
     // Clear messages when switching users
     if (previousUserIdRef.current !== null && previousUserIdRef.current !== userId) {
@@ -113,44 +121,42 @@ export const useChat = (userId: number, userRole: string) => {
     }
     
     previousUserIdRef.current = userId;
+    
+    // Load messages for this user
+    ChatMessageService.loadMessages(
+      userId,
+      isTranslationEnabled,
+      userRole,
+      selectedLanguage,
+      translateMessage,
+      setMessages,
+      setMediaGalleryItems,
+      isLinkMessage,
+      extractLink
+    );
+    
+    if (signalRService.isUserBlocked(userId)) {
+      setBlockedUsers(prev => [...prev, userId]);
+    }
+  }, [userId, userRole, isTranslationEnabled, selectedLanguage]);
 
+  // Set up message event handlers
+  useEffect(() => {
     const handleNewMessage = (msg: ChatMessage) => {
-      // Only show messages that belong to the current conversation
-      const isFromSelectedUser = msg.senderId === userId && msg.recipientId === signalRService.currentUserId;
-      const isToSelectedUser = msg.senderId === signalRService.currentUserId && msg.recipientId === userId;
-      
-      if (isFromSelectedUser || isToSelectedUser) {
-        console.log(`Message belongs to conversation with user ${userId}:`, msg);
-        
-        if (isTranslationEnabled && userRole === 'vip' && msg.senderId === userId && selectedLanguage !== 'en') {
-          translateMessage(msg).then(translatedMsg => {
-            setMessages(prev => [...prev, translatedMsg]);
-          });
-        } else {
-          setMessages(prev => [...prev, msg]);
-        }
-        
-        if (msg.isImage || msg.isVoiceMessage || (msg.content && isLinkMessage(msg.content))) {
-          setMediaGalleryItems(prev => [
-            ...prev, 
-            {
-              type: msg.isImage ? 'image' : msg.isVoiceMessage ? 'voice' : 'link',
-              url: msg.isImage ? (msg.imageUrl || '') : msg.isVoiceMessage ? (msg.audioUrl || '') : extractLink(msg.content || ''),
-              timestamp: new Date(msg.timestamp)
-            }
-          ]);
-        }
-        
-        if (isAtBottomRef.current) {
-          setAutoScrollToBottom(true);
-          
-          setTimeout(() => {
-            setAutoScrollToBottom(false);
-          }, 300);
-        }
-      } else {
-        console.log(`Message not for conversation with user ${userId}:`, msg);
-      }
+      ChatMessageService.processNewMessage(
+        msg,
+        userId,
+        isTranslationEnabled,
+        userRole,
+        selectedLanguage,
+        translateMessage,
+        setMessages,
+        setMediaGalleryItems,
+        isLinkMessage,
+        extractLink,
+        isAtBottomRef.current,
+        setAutoScrollToBottom
+      );
     };
     
     const handleUserTyping = (typingUserId: number) => {
@@ -168,50 +174,12 @@ export const useChat = (userId: number, userRole: string) => {
     };
     
     const handleMessageDeleted = (messageId: string) => {
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === messageId 
-            ? { ...msg, isDeleted: true } 
-            : msg
-        )
-      );
+      ChatMessageService.markAsDeleted(messageId, setMessages);
     };
     
     signalRService.onMessageReceived(handleNewMessage);
     signalRService.onUserTyping(handleUserTyping);
     signalRService.onMessageDeleted(handleMessageDeleted);
-    
-    console.log(`Loading chat history for user ${userId}`);
-    const existingMessages = signalRService.getChatHistory(userId);
-    if (existingMessages && existingMessages.length > 0) {
-      console.log(`Found ${existingMessages.length} messages for user ${userId}`);
-      
-      // Filter messages to only include ones relevant to this conversation
-      const filteredMessages = existingMessages.filter(msg => 
-        (msg.senderId === userId && msg.recipientId === signalRService.currentUserId) ||
-        (msg.senderId === signalRService.currentUserId && msg.recipientId === userId)
-      );
-      
-      setMessages(filteredMessages);
-      
-      const mediaItems = filteredMessages.filter(msg => 
-        msg.isImage || msg.isVoiceMessage || (msg.content && isLinkMessage(msg.content))
-      ).map(msg => ({
-        type: msg.isImage ? 'image' as const : msg.isVoiceMessage ? 'voice' as const : 'link' as const,
-        url: msg.isImage ? (msg.imageUrl || '') : msg.isVoiceMessage ? (msg.audioUrl || '') : extractLink(msg.content || ''),
-        timestamp: new Date(msg.timestamp)
-      }));
-      
-      setMediaGalleryItems(mediaItems);
-    } else {
-      console.log(`No existing messages found for user ${userId}`);
-      setMessages([]);
-      setMediaGalleryItems([]);
-    }
-    
-    if (signalRService.isUserBlocked(userId)) {
-      setBlockedUsers(prev => [...prev, userId]);
-    }
     
     return () => {
       signalRService.offMessageReceived(handleNewMessage);
@@ -222,12 +190,40 @@ export const useChat = (userId: number, userRole: string) => {
         clearTimeout(typingTimerRef.current);
       }
     };
-  }, [userId, userRole, isTranslationEnabled, selectedLanguage, setBlockedUsers, setMessages, setMediaGalleryItems]);
+  }, [userId, userRole, isTranslationEnabled, selectedLanguage]);
 
+  // Custom message sending handler to properly handle replies
+  const handleSendMessage = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
+    if (!message.trim()) return;
+    
+    if (signalRService.isUserBlocked(userId)) {
+      return;
+    }
+    
+    // Check if we're replying to a message
+    if (replyingTo && userRole === 'vip') {
+      const success = sendReplyMessage(message.trim(), userId, setMessages);
+      if (success) {
+        setMessage('');
+        return;
+      }
+    }
+    
+    // Regular message sending
+    const username = currentUser?.username || 'You';
+    ChatMessageService.sendMessage(userId, message.trim(), username, setMessages);
+    
+    // Clear input field and any reply state
+    setMessage('');
+    if (replyingTo) {
+      clearReply(setMessages);
+    }
+  };
+  
   const toggleImageBlur = (messageId: string) => {
-    setMessages(prev => prev.map(msg => 
-      msg.id === messageId ? { ...msg, isBlurred: !msg.isBlurred } : msg
-    ));
+    ChatMessageService.toggleImageBlur(messageId, setMessages);
   };
   
   const openImagePreview = (imageUrl: string) => {
@@ -246,6 +242,8 @@ export const useChat = (userId: number, userRole: string) => {
   };
 
   const handleReplyToMessage = (messageId: string, messageText: string) => {
+    if (userRole !== 'vip') return;
+    
     baseReplyToMessage(
       messageId, 
       messageText, 
@@ -258,6 +256,8 @@ export const useChat = (userId: number, userRole: string) => {
   };
 
   const handleUnsendMessage = (messageId: string) => {
+    if (userRole !== 'vip') return;
+    
     baseUnsendMessage(messageId, userId, setMessages);
   };
 

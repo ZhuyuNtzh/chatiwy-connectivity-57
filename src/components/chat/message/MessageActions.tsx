@@ -25,6 +25,11 @@ const MessageActions: React.FC<MessageActionsProps> = ({
   isVip,
   setIsDeleteDialogOpen
 }) => {
+  // If not VIP, don't show any message actions
+  if (!isVip) {
+    return null;
+  }
+  
   return (
     <div className={`absolute bottom-0 ${isFromCurrentUser ? 'left-0 -translate-x-full -ml-2' : 'right-0 translate-x-full mr-2'} opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1`}>
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-1 flex gap-1">
