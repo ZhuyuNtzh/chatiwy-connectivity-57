@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { toast } from "sonner";
 import type { ChatMessage } from '@/services/signalR/types';
+import { signalRService } from '@/services/signalRService';
 
 export const useConversationManagement = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -19,6 +20,12 @@ export const useConversationManagement = () => {
       setMessages([]);
       setMediaGalleryItems([]);
       
+      // Clear messages from storage for the selected user
+      const selectedUserId = signalRService.currentSelectedUserId;
+      if (selectedUserId) {
+        signalRService.clearChatHistory(selectedUserId);
+      }
+      
       // Show success message
       toast.success('Conversation deleted');
       
@@ -32,6 +39,7 @@ export const useConversationManagement = () => {
   };
   
   const cancelDeleteConversation = () => {
+    // Simply close the dialog without any other actions
     setIsDeleteDialogOpen(false);
   };
 

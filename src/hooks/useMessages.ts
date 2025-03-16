@@ -10,9 +10,13 @@ export const useMessages = (userId: number, userRole: string) => {
   const [unreadBySender, setUnreadBySender] = useState<Record<number, boolean>>({});
   const maxChars = userRole === 'vip' ? 1000 : 500;
   const messageListenerRef = useRef<any>(null);
+  const isInboxViewedRef = useRef<boolean>(false);
   
   // Set up message listener
   useEffect(() => {
+    // Load initial unread count
+    loadUnreadCount();
+    
     // Function to handle new messages
     const handleMessageReceived = (msg: ChatMessage) => {
       // Only count messages TO current user FROM others
@@ -41,20 +45,20 @@ export const useMessages = (userId: number, userRole: string) => {
     // Add event listener
     signalRService.onMessageReceived(handleMessageReceived);
     
-    // Load initial unread count
-    loadUnreadCount();
-    
     // Cleanup
     return () => {
       if (messageListenerRef.current) {
         signalRService.offMessageReceived(messageListenerRef.current);
       }
     };
-  }, [userId]);
+  }, []);
   
   // When selectedUserId changes, mark messages from that user as read
   useEffect(() => {
     if (userId > 0) {
+      // Store the current user ID in SignalR service for reference in other components
+      signalRService.currentSelectedUserId = userId;
+      
       // Mark messages as read for this specific user
       if (unreadBySender[userId]) {
         resetUnreadForUsers([userId]);
@@ -133,7 +137,8 @@ export const useMessages = (userId: number, userRole: string) => {
   
   // Mark inbox as viewed (doesn't reset unread count)
   const markInboxAsViewed = () => {
-    // We're not resetting the counter here, just acknowledging it was seen
+    // Just mark that inbox was viewed, don't reset counts
+    isInboxViewedRef.current = true;
     console.log('Inbox viewed, current unread count:', unreadCount);
   };
   
@@ -190,6 +195,7 @@ export const useMessages = (userId: number, userRole: string) => {
     handleKeyDown,
     handleAddEmoji,
     resetUnreadForUsers,
-    markInboxAsViewed
+    markInboxAsViewed,
+    loadUnreadCount
   };
 };

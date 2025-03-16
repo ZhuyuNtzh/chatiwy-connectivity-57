@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { signalRService } from '../services/signalRService';
@@ -55,16 +56,35 @@ export const useChatHistory = () => {
     
     // Process each conversation and sort by most recent message
     Object.entries(allHistory).forEach(([userIdStr, messages]) => {
+      const userId = parseInt(userIdStr);
       if (messages.length > 0) {
-        // Keep the original order of messages for each conversation
-        sortedHistory[parseInt(userIdStr)] = [...messages].sort((a, b) => 
+        // Find the most recent message timestamp for this conversation
+        const mostRecent = [...messages].sort((a, b) => 
           new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        );
+        )[0];
+        
+        // Add conversation to sorted history
+        sortedHistory[userId] = messages;
       }
     });
     
-    setChatHistory(sortedHistory);
-    return sortedHistory;
+    // Sort conversations by most recent message overall
+    const conversationsByRecency = Object.entries(sortedHistory)
+      .map(([userIdStr, messages]) => ({
+        userId: parseInt(userIdStr),
+        lastMessageTime: Math.max(...messages.map(m => new Date(m.timestamp).getTime())),
+        messages
+      }))
+      .sort((a, b) => b.lastMessageTime - a.lastMessageTime);
+    
+    // Rebuild sorted history
+    const finalSortedHistory: Record<number, ChatMessage[]> = {};
+    conversationsByRecency.forEach(item => {
+      finalSortedHistory[item.userId] = item.messages;
+    });
+    
+    setChatHistory(finalSortedHistory);
+    return finalSortedHistory;
   };
   
   const handleShowInbox = () => {
@@ -92,8 +112,23 @@ export const useChatHistory = () => {
       }
     });
     
-    setInboxMessages(filteredHistory);
-    return filteredHistory;
+    // Sort conversations by most recent message overall
+    const conversationsByRecency = Object.entries(filteredHistory)
+      .map(([userIdStr, messages]) => ({
+        userId: parseInt(userIdStr),
+        lastMessageTime: Math.max(...messages.map(m => new Date(m.timestamp).getTime())),
+        messages
+      }))
+      .sort((a, b) => b.lastMessageTime - a.lastMessageTime);
+    
+    // Rebuild sorted history
+    const finalSortedHistory: Record<number, ChatMessage[]> = {};
+    conversationsByRecency.forEach(item => {
+      finalSortedHistory[item.userId] = item.messages;
+    });
+    
+    setInboxMessages(finalSortedHistory);
+    return finalSortedHistory;
   };
 
   const handleContinueChat = (userId: number, mockUsers: User[]) => {

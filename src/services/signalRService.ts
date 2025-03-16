@@ -1,4 +1,3 @@
-
 import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import type { ChatMessage, UserReport, TypingIndicator, UserSession } from './signalR/types';
 import { messageHandler, handleIncomingMessage, processChatHistory } from './signalR/messageHandler';
@@ -20,6 +19,7 @@ class SignalRService {
   private typingUsers: Record<number, TypingIndicator> = {};
   private mockReports: UserReport[] = [];
   private userSession: UserSession | null = null;
+  currentSelectedUserId: number | null = null;
   
   constructor() {
     this.initialize();

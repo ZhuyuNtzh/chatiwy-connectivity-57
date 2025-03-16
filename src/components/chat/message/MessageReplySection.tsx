@@ -17,12 +17,12 @@ const MessageReplySection: React.FC<MessageReplySectionProps> = ({
   
   // Try to get stored reply text from localStorage as a fallback
   useEffect(() => {
-    if (!replyText) {
+    if (!replyText || replyText === "undefined") {
       const storedReplyText = localStorage.getItem(`replyText_${replyToId}`);
       if (storedReplyText) {
         setDisplayText(storedReplyText);
       }
-    } else {
+    } else if (replyText) {
       setDisplayText(replyText);
     }
   }, [replyToId, replyText]);

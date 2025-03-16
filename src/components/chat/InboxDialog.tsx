@@ -140,8 +140,7 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
                 
                 const { senderId, lastMessage, messages } = entry;
                 const isUnread = unreadBySender[senderId] || false;
-                // Use sender name from the message, not the current user
-                const senderName = lastMessage.sender;
+                const actualSender = lastMessage.actualUsername || lastMessage.sender;
                 
                 return (
                   <div 
@@ -154,7 +153,7 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
                           <div className="h-2 w-2 bg-blue-500 rounded-full mr-2"></div>
                         )}
                         <h3 className={`font-medium ${isUnread ? 'text-blue-600 dark:text-blue-400' : ''}`}>
-                          {senderName}
+                          {actualSender}
                         </h3>
                       </div>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
