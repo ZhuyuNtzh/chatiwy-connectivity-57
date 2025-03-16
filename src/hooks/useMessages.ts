@@ -11,6 +11,9 @@ export const useMessages = (userId: number, userRole: string) => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const { currentUser } = useUser();
   const maxChars = userRole === 'vip' ? 200 : 140;
+  
+  // Track unread messages by sender ID
+  const [unreadBySender, setUnreadBySender] = useState<Record<number, boolean>>({});
 
   // Listen for new messages and update unread count
   useEffect(() => {
@@ -20,7 +23,21 @@ export const useMessages = (userId: number, userRole: string) => {
       if (newMessage.senderId !== signalRService.currentUserId && 
           newMessage.recipientId === signalRService.currentUserId &&
           newMessage.senderId !== userId) {
-        setUnreadCount(prev => prev + 1);
+        
+        // Update the unread messages by sender mapping
+        setUnreadBySender(prev => ({
+          ...prev,
+          [newMessage.senderId]: true
+        }));
+        
+        // Calculate the new unread count based on unique senders
+        setUnreadCount(prev => {
+          // Only increment if we haven't already counted this sender
+          if (!unreadBySender[newMessage.senderId]) {
+            return prev + 1;
+          }
+          return prev;
+        });
       }
     };
 
@@ -29,7 +46,7 @@ export const useMessages = (userId: number, userRole: string) => {
     return () => {
       signalRService.offMessageReceived(handleNewMessage);
     };
-  }, [userId]);
+  }, [userId, unreadBySender]);
 
   // Reset unread count when changing the selected user (if they had unread messages)
   useEffect(() => {
@@ -42,12 +59,20 @@ export const useMessages = (userId: number, userRole: string) => {
         msg.senderId === userId && 
         msg.recipientId === signalRService.currentUserId);
       
-      // If we are now viewing messages from a user who sent us messages, reduce count
-      if (hasUnreadFromThisUser) {
+      // If we are now viewing messages from a user who sent us messages, 
+      // only clear the unread status for this specific user
+      if (hasUnreadFromThisUser && unreadBySender[userId]) {
+        // Update the unread by sender map to mark this sender as read
+        setUnreadBySender(prev => ({
+          ...prev,
+          [userId]: false
+        }));
+        
+        // Decrement the unread count
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
     }
-  }, [userId]);
+  }, [userId, unreadBySender]);
 
   const handleSendMessage = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -94,8 +119,10 @@ export const useMessages = (userId: number, userRole: string) => {
     }
   };
 
+  // Reset all unread counts - for use when opening the inbox dialog
   const resetUnreadCount = () => {
     setUnreadCount(0);
+    setUnreadBySender({});
   };
 
   return {
