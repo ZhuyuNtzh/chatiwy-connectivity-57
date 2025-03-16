@@ -39,14 +39,26 @@ const MediaGalleryDialog: React.FC<MediaGalleryDialogProps> = ({
     });
   };
   
+  const handleClose = () => {
+    // Properly handle the closing of the dialog
+    setSelectedTab('images'); // Reset to default tab
+    onOpenChange(false);
+  };
+  
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent 
         className="sm:max-w-[600px] max-h-[80vh] overflow-hidden flex flex-col dark:bg-gray-800" 
         onInteractOutside={(e) => {
-          // Prevent click outside from freezing the UI
+          // Prevent click outside from freezing the UI by stopping propagation and preventing default
+          e.stopPropagation();
           e.preventDefault();
-          onOpenChange(false);
+          handleClose();
+        }}
+        onEscapeKeyDown={(e) => {
+          // Also handle escape key properly
+          e.preventDefault();
+          handleClose();
         }}
       >
         <DialogHeader>

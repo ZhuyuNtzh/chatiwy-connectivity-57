@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
@@ -60,7 +61,7 @@ const ChatMobileSidebar: React.FC<ChatMobileSidebarProps> = ({
       <Button
         variant="outline"
         size="icon"
-        className="md:hidden fixed top-4 left-4 z-[1001] bg-white/90 dark:bg-gray-800/90 shadow-md border border-gray-200 dark:border-gray-700"
+        className="md:hidden fixed top-4 left-4 z-[9999] bg-white/90 dark:bg-gray-800/90 shadow-md border border-gray-200 dark:border-gray-700"
         onClick={toggleSidebar}
         aria-label="Toggle user sidebar"
       >
