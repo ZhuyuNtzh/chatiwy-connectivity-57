@@ -6,7 +6,7 @@ import { Check, CheckCheck } from 'lucide-react';
 interface MessageFooterProps {
   timestamp: Date;
   showMessageStatus?: boolean;
-  status?: 'sent' | 'delivered' | 'read';
+  status?: 'sent' | 'delivered' | 'read' | 'failed';
 }
 
 const MessageFooter: React.FC<MessageFooterProps> = ({
@@ -17,6 +17,7 @@ const MessageFooter: React.FC<MessageFooterProps> = ({
   const statusIcon = () => {
     if (status === 'read') return <CheckCheck className="h-3 w-3" />;
     if (status === 'delivered') return <Check className="h-3 w-3" />;
+    if (status === 'failed') return <span className="text-xs text-red-500">!</span>;
     return <Check className="h-3 w-3 opacity-50" />;
   };
 
