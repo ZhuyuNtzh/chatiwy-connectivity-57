@@ -27,6 +27,11 @@ const MessageReplySection: React.FC<MessageReplySectionProps> = ({
     }
   }, [replyToId, replyText]);
 
+  // Only show if we have some text to display
+  if (!displayText || displayText === "undefined") {
+    return null;
+  }
+
   return (
     <div className={`mb-1 p-1 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg max-w-[80%] ${isFromCurrentUser ? 'ml-auto mr-6' : 'ml-6'}`}>
       <div className="flex items-center">

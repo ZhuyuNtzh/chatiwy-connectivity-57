@@ -14,10 +14,21 @@ export const useConversationManagement = () => {
     setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
     setMediaGalleryItems: React.Dispatch<React.SetStateAction<any[]>>
   ) => {
-    setMessages([]);
-    setMediaGalleryItems([]);
-    toast.success('Conversation deleted');
-    setIsDeleteDialogOpen(false);
+    try {
+      // Clear messages from UI first
+      setMessages([]);
+      setMediaGalleryItems([]);
+      
+      // Show success message
+      toast.success('Conversation deleted');
+      
+      // Close dialog
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      toast.error('Failed to delete conversation');
+      setIsDeleteDialogOpen(false);
+    }
   };
   
   const cancelDeleteConversation = () => {

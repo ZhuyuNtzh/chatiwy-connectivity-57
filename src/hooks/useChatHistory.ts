@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { signalRService } from '../services/signalRService';
@@ -50,8 +49,22 @@ export const useChatHistory = () => {
   const handleShowHistory = () => {
     // Get fresh chat history when requesting it
     const allHistory = signalRService.getAllChatHistory();
-    setChatHistory(allHistory);
-    return allHistory;
+    
+    // Sort the history to display most recent conversations first
+    const sortedHistory: Record<number, ChatMessage[]> = {};
+    
+    // Process each conversation and sort by most recent message
+    Object.entries(allHistory).forEach(([userIdStr, messages]) => {
+      if (messages.length > 0) {
+        // Keep the original order of messages for each conversation
+        sortedHistory[parseInt(userIdStr)] = [...messages].sort((a, b) => 
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+      }
+    });
+    
+    setChatHistory(sortedHistory);
+    return sortedHistory;
   };
   
   const handleShowInbox = () => {

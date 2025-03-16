@@ -69,6 +69,7 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
   
   if (!isOpen) return null;
   
+  // Gather and sort all inbox entries
   const sortedInboxEntries = Object.entries(inboxMessages)
     .map(([senderId, messages]) => {
       const userIdNum = parseInt(senderId);
@@ -139,6 +140,7 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
                 
                 const { senderId, lastMessage, messages } = entry;
                 const isUnread = unreadBySender[senderId] || false;
+                // Use sender name from the message, not the current user
                 const senderName = lastMessage.sender;
                 
                 return (

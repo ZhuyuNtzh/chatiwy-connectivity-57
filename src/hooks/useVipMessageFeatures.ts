@@ -89,6 +89,7 @@ export const useVipMessageFeatures = (userRole: string) => {
       status: 'sent'
     };
     
+    // Add message to UI immediately
     setMessages(prev => [...prev, newReplyMessage]);
     
     // Send the message with the reply information to the server
