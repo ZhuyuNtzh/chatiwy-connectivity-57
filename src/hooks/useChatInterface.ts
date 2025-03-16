@@ -28,7 +28,7 @@ export const useChatInterface = (mockUsers: User[]) => {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   
   // Use the messages hook to track unread count
-  const { unreadCount, resetUnreadCount } = useMessages(selectedUserId || 0, userRole || 'standard');
+  const { unreadCount, unreadBySender, markInboxAsViewed, resetUnreadForUsers } = useMessages(selectedUserId || 0, userRole || 'standard');
   
   // Initialize all the smaller hooks
   const { handleLogout, confirmLogout, cancelLogout } = useAuthActions();
@@ -100,15 +100,9 @@ export const useChatInterface = (mockUsers: User[]) => {
       }));
     }
     
-    // If we're changing conversations and the new user has sent messages, reduce the unread count
-    const hasUnreadMessages = userHistory.some(msg => 
-      msg.senderId === user.id && 
-      msg.recipientId === signalRService.currentUserId
-    );
-    
-    if (hasUnreadMessages && previousUserId !== user.id) {
-      // Let useMessages effect handle the counter reduction
-      console.log(`Opening conversation with user ${user.id} who has sent messages`);
+    // If we're changing conversations and the new user has sent messages, reset unread for this user only
+    if (unreadBySender[user.id]) {
+      resetUnreadForUsers([user.id]);
     }
   };
   
@@ -135,6 +129,11 @@ export const useChatInterface = (mockUsers: User[]) => {
       handleUserClick(foundUser);
       setIsHistoryDialogOpen(false);
       setShowInbox(false); // Close inbox if it was open
+      
+      // Mark this specific user's messages as read
+      if (unreadBySender[userId]) {
+        resetUnreadForUsers([userId]);
+      }
     }
   };
   
@@ -154,9 +153,9 @@ export const useChatInterface = (mockUsers: User[]) => {
     setIsLogoutDialogOpen(false);
   };
 
-  // Handler for when inbox dialog is opened
+  // Handler for when inbox dialog is opened - just mark as viewed, don't reset counters
   const handleInboxOpened = () => {
-    resetUnreadCount();
+    markInboxAsViewed();
   };
 
   return {
@@ -179,6 +178,7 @@ export const useChatInterface = (mockUsers: User[]) => {
     inboxMessages,
     filteredUsers,
     unreadCount,
+    unreadBySender,
     handleLogoutClick,
     handleConfirmLogout,
     handleCancelLogout,

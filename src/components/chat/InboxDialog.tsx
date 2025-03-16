@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import type { ChatMessage } from '@/services/signalR/types';
 import { signalRService } from '@/services/signalRService';
 
@@ -12,6 +13,7 @@ interface InboxDialogProps {
   inboxMessages: Record<number, ChatMessage[]>;
   onOpenChat?: (userId: number) => void;
   onDialogOpened?: () => void;
+  unreadBySender?: Record<number, boolean>;
 }
 
 const InboxDialog: React.FC<InboxDialogProps> = ({
@@ -19,9 +21,10 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
   onOpenChange,
   inboxMessages,
   onOpenChat,
-  onDialogOpened
+  onDialogOpened,
+  unreadBySender = {}
 }) => {
-  // When the dialog opens, notify parent to reset counter
+  // When the dialog opens, notify parent to mark inbox as viewed
   useEffect(() => {
     if (isOpen && onDialogOpened) {
       onDialogOpened();
@@ -45,12 +48,15 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
       
       // Find the sender name from the messages
       const sender = receivedMessages[0].sender;
+      const senderId = parseInt(userId);
+      const isUnread = unreadBySender[senderId] === true;
       
       return {
-        userId: parseInt(userId),
+        userId: senderId,
         messages: receivedMessages,
         lastMessage: receivedMessages[receivedMessages.length - 1],
-        sender
+        sender,
+        isUnread
       };
     })
     .filter(Boolean); // Remove null entries
@@ -72,12 +78,12 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
             <div className="space-y-4">
               {messagesArray.map((item) => {
                 if (!item) return null;
-                const { userId, lastMessage, sender } = item;
+                const { userId, lastMessage, sender, isUnread } = item;
                 
                 return (
                   <div 
                     key={userId} 
-                    className="flex items-start p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md cursor-pointer"
+                    className={`flex items-start p-3 ${isUnread ? 'bg-gray-50 dark:bg-gray-800' : ''} hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md cursor-pointer relative`}
                     onClick={() => onOpenChat && onOpenChat(userId)}
                   >
                     <Avatar className="h-10 w-10 mr-3">
@@ -87,7 +93,17 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-center mb-1">
-                        <p className="font-medium truncate">{sender}</p>
+                        <div className="flex items-center">
+                          <p className={`${isUnread ? 'font-semibold' : 'font-medium'} truncate`}>{sender}</p>
+                          {isUnread && (
+                            <span className="ml-2">
+                              <Badge 
+                                variant="destructive" 
+                                className="h-2.5 w-2.5 p-0 rounded-full"
+                              />
+                            </span>
+                          )}
+                        </div>
                         <span className="text-xs text-muted-foreground">
                           {new Date(lastMessage.timestamp).toLocaleTimeString([], { 
                             hour: '2-digit', 
@@ -95,7 +111,7 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
                           })}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground truncate">
+                      <p className={`text-sm ${isUnread ? 'text-foreground font-medium' : 'text-muted-foreground'} truncate`}>
                         {lastMessage.isImage ? '🖼️ Image' : lastMessage.content}
                       </p>
                     </div>

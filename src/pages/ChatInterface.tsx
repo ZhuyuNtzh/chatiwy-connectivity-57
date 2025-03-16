@@ -59,6 +59,7 @@ const ChatInterface = () => {
     inboxMessages,
     filteredUsers,
     unreadCount,
+    unreadBySender,
     handleLogoutClick,
     handleConfirmLogout,
     handleCancelLogout,
@@ -139,6 +140,7 @@ const ChatInterface = () => {
         inboxMessages={inboxMessages}
         onOpenChat={handleContinueChat}
         onDialogOpened={handleInboxOpened}
+        unreadBySender={unreadBySender}
       />
     </div>
   );

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { signalRService } from '@/services/signalRService';
 import type { ChatMessage } from '@/services/signalR/types';
@@ -14,6 +13,9 @@ export const useMessages = (userId: number, userRole: string) => {
   
   // Track unread messages by sender ID
   const [unreadBySender, setUnreadBySender] = useState<Record<number, boolean>>({});
+  
+  // Track whether the inbox has been viewed (for UI purposes only)
+  const [inboxViewed, setInboxViewed] = useState(false);
 
   // Listen for new messages and update unread count
   useEffect(() => {
@@ -38,6 +40,9 @@ export const useMessages = (userId: number, userRole: string) => {
           }
           return prev;
         });
+        
+        // Reset the inbox viewed state when we get a new message
+        setInboxViewed(false);
       }
     };
 
@@ -119,10 +124,34 @@ export const useMessages = (userId: number, userRole: string) => {
     }
   };
 
+  // Mark the inbox as viewed but don't reset unread counts
+  const markInboxAsViewed = () => {
+    setInboxViewed(true);
+  };
+
+  // Reset only the unread counts for specific users
+  const resetUnreadForUsers = (userIds: number[]) => {
+    setUnreadBySender(prev => {
+      const newState = { ...prev };
+      userIds.forEach(id => {
+        newState[id] = false;
+      });
+      return newState;
+    });
+    
+    // Recalculate total unread count based on the updated unreadBySender
+    const remainingUnread = Object.entries(unreadBySender)
+      .filter(([_, isUnread]) => isUnread)
+      .length;
+    
+    setUnreadCount(remainingUnread);
+  };
+
   // Reset all unread counts - for use when opening the inbox dialog
   const resetUnreadCount = () => {
     setUnreadCount(0);
     setUnreadBySender({});
+    setInboxViewed(true);
   };
 
   return {
@@ -132,7 +161,11 @@ export const useMessages = (userId: number, userRole: string) => {
     setMessage,
     maxChars,
     unreadCount,
+    unreadBySender,
+    inboxViewed,
     resetUnreadCount,
+    markInboxAsViewed,
+    resetUnreadForUsers,
     handleSendMessage,
     handleKeyDown,
     handleAddEmoji,
