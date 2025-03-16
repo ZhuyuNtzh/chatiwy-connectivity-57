@@ -91,11 +91,14 @@ export const useVipMessageFeatures = (userRole: string) => {
     
     setMessages(prev => [...prev, newReplyMessage]);
     
-    // Send the message with the reply information
+    // Send the message with the reply information to the server
     signalRService.sendMessage(userId, content, undefined, replyingTo, replyText || undefined)
       .then(() => {
         // Clear the reply state
         setReplyingTo(null);
+        
+        // Clean up localStorage
+        localStorage.removeItem(`replyText_${replyingTo}`);
         
         // Update all messages to clear isBeingRepliedTo flag
         setMessages((prev) => {

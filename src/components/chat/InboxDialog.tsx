@@ -72,13 +72,25 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
   const sortedInboxEntries = Object.entries(inboxMessages)
     .map(([senderId, messages]) => {
       const userIdNum = parseInt(senderId);
+      const currentUserId = signalRService.currentUserId;
       
-      // For each user, find their most recent message
-      const sortedMessages = [...messages].sort((a, b) => {
+      // For each user, filter messages to only include those sent TO the current user
+      const incomingMessages = messages.filter(msg => 
+        msg.recipientId === currentUserId && msg.senderId === userIdNum
+      );
+      
+      // Skip if no incoming messages
+      if (incomingMessages.length === 0) return null;
+      
+      // Sort messages by timestamp (newest first)
+      const sortedMessages = [...incomingMessages].sort((a, b) => {
         return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
       });
       
       const lastMessage = sortedMessages[0];
+      
+      // Skip if no last message
+      if (!lastMessage) return null;
       
       return {
         senderId: userIdNum,
@@ -87,8 +99,8 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
         timestamp: new Date(lastMessage.timestamp).getTime()
       };
     })
-    .filter(entry => entry.lastMessage) // Filter out entries with no messages
-    .sort((a, b) => b.timestamp - a.timestamp); // Sort by most recent first
+    .filter(Boolean) // Remove null entries
+    .sort((a, b) => b!.timestamp - a!.timestamp); // Sort by most recent first
   
   const hasMessages = sortedInboxEntries.length > 0;
   
@@ -122,9 +134,12 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
         <ScrollArea className="flex-1 p-4">
           {hasMessages ? (
             <div className="space-y-6">
-              {sortedInboxEntries.map(({ senderId, lastMessage, messages }) => {
+              {sortedInboxEntries.map((entry) => {
+                if (!entry) return null;
+                
+                const { senderId, lastMessage, messages } = entry;
                 const isUnread = unreadBySender[senderId] || false;
-                const senderName = lastMessage.actualUsername || lastMessage.sender;
+                const senderName = lastMessage.sender;
                 
                 return (
                   <div 

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { signalRService } from '@/services/signalRService';
 import type { ChatMessage } from '@/services/signalR/types';
@@ -20,6 +21,38 @@ export const useMessages = (userId: number, userRole: string) => {
   
   // Track whether the inbox has been viewed (for UI purposes only)
   const [inboxViewed, setInboxViewed] = useState(false);
+
+  // Initialize by loading existing unread messages
+  useEffect(() => {
+    // Load initial unread state
+    const loadInitialUnread = () => {
+      const allHistory = signalRService.getAllChatHistory();
+      const currentUserIdFromSignalR = signalRService.currentUserId;
+      
+      const initialUnreadBySender: Record<number, boolean> = {};
+      let totalUnread = 0;
+      
+      Object.entries(allHistory).forEach(([userIdStr, messages]) => {
+        const senderId = parseInt(userIdStr);
+        // Check if we have unread messages from this sender
+        const hasUnread = messages.some(msg => 
+          msg.senderId === senderId && 
+          msg.recipientId === currentUserIdFromSignalR && 
+          !msg.isRead
+        );
+        
+        if (hasUnread) {
+          initialUnreadBySender[senderId] = true;
+          totalUnread++;
+        }
+      });
+      
+      setUnreadBySender(initialUnreadBySender);
+      setUnreadCount(totalUnread);
+    };
+    
+    loadInitialUnread();
+  }, []);
 
   // Listen for new messages and update unread count
   useEffect(() => {
@@ -54,38 +87,6 @@ export const useMessages = (userId: number, userRole: string) => {
     };
 
     signalRService.onMessageReceived(handleNewMessage);
-    
-    // Load initial unread state
-    const loadInitialUnread = () => {
-      const allHistory = signalRService.getAllChatHistory();
-      const currentUserIdFromSignalR = signalRService.currentUserId;
-      
-      const initialUnreadBySender: Record<number, boolean> = {};
-      let totalUnread = 0;
-      
-      Object.entries(allHistory).forEach(([userIdStr, messages]) => {
-        const senderId = parseInt(userIdStr);
-        // Check if we have unread messages from this sender
-        // (messages where current user is recipient but not from current conversation)
-        if (senderId !== userId) {
-          const hasUnread = messages.some(msg => 
-            msg.senderId === senderId && 
-            msg.recipientId === currentUserIdFromSignalR && 
-            !msg.isRead
-          );
-          
-          if (hasUnread) {
-            initialUnreadBySender[senderId] = true;
-            totalUnread++;
-          }
-        }
-      });
-      
-      setUnreadBySender(initialUnreadBySender);
-      setUnreadCount(totalUnread);
-    };
-    
-    loadInitialUnread();
     
     return () => {
       signalRService.offMessageReceived(handleNewMessage);
@@ -158,13 +159,14 @@ export const useMessages = (userId: number, userRole: string) => {
       recipientId: userId,
       timestamp: new Date(),
       isRead: true, // Mark as read since it's our own message
+      status: 'sent'
     };
     
     // Add message to local state first for immediate UI update
     setMessages(prev => [...prev, newMessage]);
     
     // Then send to service - pass the actual username so it can be stored with the message
-    signalRService.sendMessage(userId, message.trim(), undefined, undefined, undefined);
+    signalRService.sendMessage(userId, message.trim());
     
     // Clear input field and any reply state
     setMessage('');
@@ -186,12 +188,12 @@ export const useMessages = (userId: number, userRole: string) => {
     }
   };
 
-  // Mark the inbox as viewed but don't reset unread counts
+  // Mark the inbox as viewed but don't reset unread counts - only UI change
   const markInboxAsViewed = () => {
     setInboxViewed(true);
   };
 
-  // Reset only the unread counts for specific users
+  // Reset only the unread counts for specific users - this happens when actively opening a chat
   const resetUnreadForUsers = (userIds: number[]) => {
     // Mark these users' messages as read in the chat history
     userIds.forEach(id => {
@@ -212,7 +214,7 @@ export const useMessages = (userId: number, userRole: string) => {
     });
   };
 
-  // Reset all unread counts - for use when opening the inbox dialog
+  // Reset all unread counts - for use when explicitly viewing all messages in inbox dialog
   const resetUnreadCount = () => {
     // Mark all messages as read
     Object.keys(unreadBySender).forEach(id => {

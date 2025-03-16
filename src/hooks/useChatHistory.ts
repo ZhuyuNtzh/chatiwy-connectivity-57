@@ -70,7 +70,12 @@ export const useChatHistory = () => {
       );
       
       if (incomingMessages.length > 0) {
-        filteredHistory[userId] = incomingMessages;
+        // Sort messages by timestamp (newest first) before adding to filtered history
+        const sortedMessages = [...incomingMessages].sort((a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+        
+        filteredHistory[userId] = sortedMessages;
       }
     });
     
