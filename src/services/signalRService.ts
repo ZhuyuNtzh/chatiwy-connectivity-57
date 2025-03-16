@@ -1,11 +1,11 @@
 
 import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import type { ChatMessage, UserReport, TypingIndicator, UserSession } from './signalR/types';
-import { handleIncomingMessage, processChatHistory } from './signalR/messageHandler';
-import { isUserBlocked, blockUser, unblockUser } from './signalR/userBlocking';
+import { messageHandler, handleIncomingMessage, processChatHistory } from './signalR/messageHandler';
+import { isUserBlocked, blockUser, unblockUser, getBlockedUsers } from './signalR/userBlocking';
 import { reportUser, getReports, deleteReport, addReport } from './signalR/userReporting';
-import { storeChatMessage, getChatHistory, getAllChatHistoryForUser, clearAllChatHistoryForUser } from './signalR/chatStorage';
-import { createMockConnection } from './signalR/mockConnection';
+import { storeChatMessage, getChatHistory, getAllChatHistoryForUser, clearAllChatHistoryForUser, markMessagesAsRead } from './signalR/chatStorage';
+import createMockConnection from './signalR/mockConnection';
 import { checkAndFilterMessage } from './signalR/contentModeration';
 
 // Mock data for testing
@@ -25,7 +25,8 @@ class SignalRService {
     this.initialize();
   }
   
-  private initialize() {
+  // Changed to public so it can be called externally
+  public initialize(userId?: number, username?: string) {
     // Try to load user session if available
     const savedSession = localStorage.getItem('userSession');
     if (savedSession) {
@@ -39,6 +40,13 @@ class SignalRService {
         console.error('Error parsing user session:', error);
         this.resetSession();
       }
+    }
+    
+    // If userId and username are provided, update the current session
+    if (userId !== undefined && username !== undefined) {
+      this._currentUserId = userId;
+      this._currentUsername = username;
+      this.startConnection(userId, username, this._userRole);
     }
   }
   
@@ -80,6 +88,11 @@ class SignalRService {
     console.log(`SignalR initialized for user ${username} (ID: ${userId})`);
     
     return true;
+  }
+  
+  // Check if user is an admin
+  public isAdminUser(): boolean {
+    return this._userRole === 'admin';
   }
   
   // Disconnect
@@ -124,6 +137,55 @@ class SignalRService {
     }
   }
   
+  // Methods for event handling
+  public onMessageReceived(callback: (message: ChatMessage) => void) {
+    window.addEventListener('message-received', (e: any) => {
+      callback(e.detail);
+    });
+  }
+  
+  public offMessageReceived(callback: (message: ChatMessage) => void) {
+    window.removeEventListener('message-received', (e: any) => {
+      callback(e.detail);
+    });
+  }
+  
+  public onUserTyping(callback: (userId: number) => void) {
+    window.addEventListener('user-typing', (e: any) => {
+      callback(e.detail);
+    });
+  }
+  
+  public offUserTyping(callback: (userId: number) => void) {
+    window.removeEventListener('user-typing', (e: any) => {
+      callback(e.detail);
+    });
+  }
+  
+  public onMessageDeleted(callback: (messageId: string) => void) {
+    window.addEventListener('message-deleted', (e: any) => {
+      callback(e.detail);
+    });
+  }
+  
+  public offMessageDeleted(callback: (messageId: string) => void) {
+    window.removeEventListener('message-deleted', (e: any) => {
+      callback(e.detail);
+    });
+  }
+  
+  public onConnectedUsersCountChanged(callback: (count: number) => void) {
+    window.addEventListener('connected-users-count', (e: any) => {
+      callback(e.detail);
+    });
+    
+    // Simulate an initial count
+    setTimeout(() => {
+      const event = new CustomEvent('connected-users-count', { detail: Math.floor(Math.random() * 10) + 5 });
+      window.dispatchEvent(event);
+    }, 1000);
+  }
+  
   // Send a message to another user
   async sendMessage(
     recipientId: number, 
@@ -132,8 +194,8 @@ class SignalRService {
     replyToId?: string,
     replyText?: string
   ): Promise<boolean> {
-    if (!this.connection || !this._currentUserId) {
-      console.error('Cannot send message: not connected or no user ID');
+    if (!this._currentUserId) {
+      console.error('Cannot send message: no user ID');
       return false;
     }
     
@@ -179,6 +241,75 @@ class SignalRService {
     }
     
     return true;
+  }
+  
+  // Send an image message
+  public sendImage(recipientId: number, imageUrl: string, isBlurred: boolean = false): Promise<boolean> {
+    if (!this._currentUserId) {
+      console.error('Cannot send image: no user ID');
+      return Promise.resolve(false);
+    }
+    
+    // Create a unique message ID
+    const messageId = `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    // Create message object
+    const message: ChatMessage = {
+      id: messageId,
+      content: 'Image message',
+      sender: this._currentUsername,
+      actualUsername: this._currentUsername,
+      senderId: this._currentUserId,
+      recipientId: recipientId,
+      timestamp: new Date(),
+      isImage: true,
+      imageUrl,
+      isBlurred,
+      status: 'sent',
+      isRead: true
+    };
+    
+    // Store message in local storage
+    storeChatMessage(this._currentUserId, recipientId, message);
+    
+    // Trigger received message event for immediate UI update
+    handleIncomingMessage(message);
+    
+    return Promise.resolve(true);
+  }
+  
+  // Send a voice message
+  public sendVoiceMessage(recipientId: number, audioUrl: string): Promise<boolean> {
+    if (!this._currentUserId) {
+      console.error('Cannot send voice message: no user ID');
+      return Promise.resolve(false);
+    }
+    
+    // Create a unique message ID
+    const messageId = `voice_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    // Create message object
+    const message: ChatMessage = {
+      id: messageId,
+      content: 'Voice message',
+      sender: this._currentUsername,
+      actualUsername: this._currentUsername,
+      senderId: this._currentUserId,
+      recipientId: recipientId,
+      timestamp: new Date(),
+      isVoiceMessage: true,
+      audioUrl,
+      status: 'sent',
+      isRead: true
+    };
+    
+    // Store message in local storage
+    storeChatMessage(this._currentUserId, recipientId, message);
+    
+    // Trigger received message event for immediate UI update
+    handleIncomingMessage(message);
+    
+    return Promise.resolve(true);
   }
   
   // Simulate receiving a reply from another user
@@ -289,6 +420,17 @@ class SignalRService {
     clearAllChatHistoryForUser(this._currentUserId);
   }
   
+  // Mark messages from a specific user as read
+  markMessagesAsRead(userId: number): boolean {
+    try {
+      markMessagesAsRead(this._currentUserId, userId);
+      return true;
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+      return false;
+    }
+  }
+  
   // User blocking methods
   isUserBlocked(userId: number): boolean {
     return isUserBlocked(this._currentUserId, userId);
@@ -300,6 +442,11 @@ class SignalRService {
   
   unblockUser(userId: number): boolean {
     return unblockUser(this._currentUserId, userId);
+  }
+  
+  // Get all blocked users for the current user
+  getBlockedUsers(): number[] {
+    return getBlockedUsers(this._currentUserId);
   }
   
   // User reporting methods
@@ -347,6 +494,12 @@ class SignalRService {
   setTypingIndicator(isTyping: boolean, recipientId: number): void {
     // In a real app, this would notify other users via SignalR
     console.log(`User ${this._currentUsername} is ${isTyping ? 'typing' : 'not typing'} to user ${recipientId}`);
+    
+    // Dispatch event for typing indicator
+    if (isTyping) {
+      const event = new CustomEvent('user-typing', { detail: this._currentUserId });
+      window.dispatchEvent(event);
+    }
   }
   
   // Delete a message
@@ -370,6 +523,10 @@ class SignalRService {
     
     // Save to local storage
     localStorage.setItem(`chat_${this._currentUserId}`, JSON.stringify(allHistory));
+    
+    // Dispatch the message deleted event
+    const event = new CustomEvent('message-deleted', { detail: messageId });
+    window.dispatchEvent(event);
     
     return Promise.resolve(true);
   }

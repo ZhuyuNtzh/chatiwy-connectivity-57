@@ -1,128 +1,111 @@
 
-import { ChatMessage } from './types';
+import type { ChatMessage } from './types';
 
-// We need to namespace chat history by user ID to prevent data leakage between sessions
-let chatHistoryByUser: Record<number, Record<number, ChatMessage[]>> = {};
-
-export const chatStorage = {
-  loadFromStorage() {
-    const savedChatHistory = localStorage.getItem('chatHistory');
-    if (savedChatHistory) {
-      try {
-        // Load existing format for backward compatibility
-        const loadedHistory = JSON.parse(savedChatHistory);
-        
-        // Check if it's already in the new format
-        if (Object.values(loadedHistory).every(value => typeof value === 'object' && !(value instanceof Array))) {
-          chatHistoryByUser = loadedHistory;
-        } else {
-          // If it's in the old format, convert it
-          const currentUserId = parseInt(localStorage.getItem('currentUserId') || '0');
-          if (currentUserId) {
-            chatHistoryByUser[currentUserId] = loadedHistory;
-          }
-        }
-      } catch (e) {
-        console.error('Error parsing chat history:', e);
-        chatHistoryByUser = {};
-      }
-    }
-  },
-
-  addMessageToHistory(currentUserId: number, userId: number, message: ChatMessage) {
-    // Initialize user history if needed
-    if (!chatHistoryByUser[currentUserId]) {
-      chatHistoryByUser[currentUserId] = {};
+// Store a chat message
+export const storeChatMessage = (senderId: number, recipientId: number, message: ChatMessage): void => {
+  try {
+    // Get existing chat history for the current user
+    const allHistory = getAllChatHistoryForUser(senderId);
+    
+    // Check if there's already a conversation with this recipient
+    if (!allHistory[recipientId]) {
+      allHistory[recipientId] = [];
     }
     
-    // For a given message, get the correct conversation ID
-    // The conversation ID should always be the other user's ID, NOT the current user's ID
-    // For the current user sending a message: use recipientId (who they're sending to)
-    // For incoming messages to current user: use senderId (who sent it)
-    const conversationId = message.senderId === userId ? message.recipientId : message.senderId;
+    // Add the message to the conversation
+    allHistory[recipientId].push(message);
     
-    // Initialize array if this is the first message with this user
-    if (!chatHistoryByUser[currentUserId][conversationId]) {
-      chatHistoryByUser[currentUserId][conversationId] = [];
-    }
+    // Save back to local storage
+    localStorage.setItem(`chat_${senderId}`, JSON.stringify(allHistory));
     
-    // Check if we already have this message (prevent duplicates)
-    const isDuplicate = chatHistoryByUser[currentUserId][conversationId].some(msg => msg.id === message.id);
+  } catch (error) {
+    console.error('Error storing chat message:', error);
+  }
+};
+
+// Get chat history between two users
+export const getChatHistory = (userId1: number, userId2: number): ChatMessage[] => {
+  try {
+    // Get chats where userId1 is sender and userId2 is recipient
+    const allHistory = getAllChatHistoryForUser(userId1);
+    const messages1 = allHistory[userId2] || [];
     
-    if (!isDuplicate) {
-      // Add message to the specific conversation history
-      chatHistoryByUser[currentUserId][conversationId].push(message);
+    // Get chats where userId2 is sender and userId1 is recipient
+    const allHistory2 = getAllChatHistoryForUser(userId2);
+    const messages2 = allHistory2[userId1] || [];
+    
+    // Combine and sort by timestamp
+    const allMessages = [...messages1, ...messages2].sort((a, b) => {
+      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+    });
+    
+    return allMessages;
+  } catch (error) {
+    console.error('Error getting chat history:', error);
+    return [];
+  }
+};
+
+// Get all chat history for a user
+export const getAllChatHistoryForUser = (userId: number): Record<number, ChatMessage[]> => {
+  try {
+    const stored = localStorage.getItem(`chat_${userId}`);
+    if (stored) {
+      const history = JSON.parse(stored);
       
-      // Save to localStorage
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
-      localStorage.setItem('currentUserId', currentUserId.toString());
+      // Parse dates in all messages
+      Object.keys(history).forEach(recipientId => {
+        history[recipientId] = history[recipientId].map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+      });
       
-      // Debug info
-      console.log(`Added message to history for user ${currentUserId}, conversation ${conversationId}`, message);
-    } else {
-      console.log(`Prevented duplicate message for user ${currentUserId}, conversation ${conversationId}`, message);
+      return history;
     }
-  },
-
-  markMessageAsDeleted(currentUserId: number, userId: number, messageId: string) {
-    if (chatHistoryByUser[currentUserId] && chatHistoryByUser[currentUserId][userId]) {
-      chatHistoryByUser[currentUserId][userId] = chatHistoryByUser[currentUserId][userId].map(msg => 
-        msg.id === messageId ? { ...msg, isDeleted: true } : msg
-      );
-      
-      // Save to localStorage
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
-    }
-  },
-
-  markMessagesAsRead(currentUserId: number, senderId: number, recipientId: number) {
-    // Mark messages from this sender to this recipient as read
-    if (chatHistoryByUser[currentUserId] && chatHistoryByUser[currentUserId][senderId]) {
-      chatHistoryByUser[currentUserId][senderId] = chatHistoryByUser[currentUserId][senderId].map(msg => 
-        // Only mark messages where senderId is the sender and recipientId is the recipient
-        (msg.senderId === senderId && msg.recipientId === recipientId)
-          ? { ...msg, isRead: true } 
-          : msg
-      );
-      
-      // Save to localStorage
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
-    }
-  },
-
-  getChatHistory(currentUserId: number, userId: number): ChatMessage[] {
-    // Return only messages for this specific user conversation
-    return (chatHistoryByUser[currentUserId] && chatHistoryByUser[currentUserId][userId]) 
-      ? chatHistoryByUser[currentUserId][userId] 
-      : [];
-  },
-
-  getAllChatHistory(currentUserId: number): Record<number, ChatMessage[]> {
-    // Return all conversations for the current user
-    return chatHistoryByUser[currentUserId] || {};
-  },
-
-  clearAllChatHistory(currentUserId: number) {
-    // Only clear history for the current user
-    if (chatHistoryByUser[currentUserId]) {
-      delete chatHistoryByUser[currentUserId];
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
-    }
-  },
+  } catch (error) {
+    console.error('Error getting all chat history:', error);
+  }
   
-  // Method to clear a specific conversation history
-  clearChatHistory(currentUserId: number, userId: number) {
-    if (chatHistoryByUser[currentUserId] && chatHistoryByUser[currentUserId][userId]) {
-      delete chatHistoryByUser[currentUserId][userId];
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
-    }
-  },
+  return {};
+};
 
-  // Method to clear history on logout
-  clearUserSession(currentUserId: number) {
-    if (chatHistoryByUser[currentUserId]) {
-      delete chatHistoryByUser[currentUserId];
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
-    }
+// Clear all chat history for a user
+export const clearAllChatHistoryForUser = (userId: number): void => {
+  try {
+    localStorage.removeItem(`chat_${userId}`);
+  } catch (error) {
+    console.error('Error clearing chat history:', error);
+  }
+};
+
+// Mark messages as read
+export const markMessagesAsRead = (currentUserId: number, senderId: number): void => {
+  try {
+    // Get all chat history for current user
+    const allHistory = getAllChatHistoryForUser(currentUserId);
+    
+    // Get conversation with the sender
+    const conversation = allHistory[senderId] || [];
+    
+    // Mark all messages as read
+    const updatedConversation = conversation.map(msg => {
+      if (msg.senderId === senderId && msg.recipientId === currentUserId && !msg.isRead) {
+        return {
+          ...msg,
+          isRead: true
+        };
+      }
+      return msg;
+    });
+    
+    // Update the conversation
+    allHistory[senderId] = updatedConversation;
+    
+    // Save back to local storage
+    localStorage.setItem(`chat_${currentUserId}`, JSON.stringify(allHistory));
+    
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
   }
 };

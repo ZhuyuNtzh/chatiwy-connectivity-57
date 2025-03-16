@@ -34,10 +34,11 @@ const AdminChatInterface = () => {
   useEffect(() => {
     // Ensure admin is always connected
     if (currentUser) {
-      signalRService.initialize(
-        // Generate admin ID
+      // Start connection as admin
+      signalRService.startConnection(
         999, // Special admin ID
-        currentUser.username
+        currentUser.username || 'Admin',
+        'admin'
       );
       
       // Load mock users for the demo

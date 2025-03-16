@@ -19,6 +19,13 @@ export interface ChatMessage {
   replyToId?: string;
   replyText?: string;
   isBeingRepliedTo?: boolean;
+  
+  // Add missing properties for media content
+  isImage?: boolean;
+  imageUrl?: string;
+  isBlurred?: boolean;
+  isVoiceMessage?: boolean;
+  audioUrl?: string;
 }
 
 export interface UserReport {

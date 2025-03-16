@@ -1,6 +1,25 @@
 
 import { ChatMessage } from './types';
 
+// Add the functions that were missing but imported in signalRService
+export const handleIncomingMessage = (message: ChatMessage) => {
+  // Log the message for debugging
+  console.log('Received message:', message);
+  
+  // In a real app, this would dispatch to appropriate event handlers
+  // For now, just emit a custom event that other components can listen to
+  const messageEvent = new CustomEvent('message-received', { detail: message });
+  window.dispatchEvent(messageEvent);
+};
+
+export const processChatHistory = (messages: ChatMessage[]) => {
+  // Process and return the chat history
+  return messages.map(msg => ({
+    ...msg,
+    timestamp: new Date(msg.timestamp)
+  }));
+};
+
 export const messageHandler = {
   createMessage({
     content,

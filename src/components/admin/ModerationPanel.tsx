@@ -34,7 +34,7 @@ const ModerationPanel = () => {
       
       // If there are no reports, let's add a mock report for testing
       if (allReports.length === 0) {
-        const mockReport = {
+        const mockReport: UserReport = {
           id: `report_${Date.now()}`,
           reporterId: 123,
           reporterName: "User123",
@@ -43,7 +43,7 @@ const ModerationPanel = () => {
           reason: "Inappropriate content",
           details: "User sent offensive messages during our conversation",
           timestamp: new Date(),
-          status: "pending"
+          status: "pending" // Use the correct literal type
         };
         
         signalRService.addReport(mockReport);
