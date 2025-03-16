@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { signalRService } from '@/services/signalRService';
 import type { ChatMessage } from '@/services/signalR/types';
@@ -32,13 +33,20 @@ export const useMessages = (userId: number, userRole: string) => {
           [newMessage.senderId]: true
         }));
         
-        // Calculate the new unread count based on unique senders
-        setUnreadCount(prev => {
-          // Only increment if we haven't already counted this sender
-          if (!unreadBySender[newMessage.senderId]) {
-            return prev + 1;
-          }
-          return prev;
+        // Recalculate the unread count based on unique senders with unread messages
+        setUnreadBySender(prev => {
+          const updatedState = {
+            ...prev,
+            [newMessage.senderId]: true
+          };
+          
+          // Count the number of true values in updatedState
+          const newUnreadCount = Object.values(updatedState).filter(Boolean).length;
+          
+          // Update the count
+          setUnreadCount(newUnreadCount);
+          
+          return updatedState;
         });
         
         // Reset the inbox viewed state when we get a new message
@@ -68,13 +76,18 @@ export const useMessages = (userId: number, userRole: string) => {
       // only clear the unread status for this specific user
       if (hasUnreadFromThisUser && unreadBySender[userId]) {
         // Update the unread by sender map to mark this sender as read
-        setUnreadBySender(prev => ({
-          ...prev,
-          [userId]: false
-        }));
-        
-        // Decrement the unread count
-        setUnreadCount(prev => Math.max(0, prev - 1));
+        setUnreadBySender(prev => {
+          const updated = {
+            ...prev,
+            [userId]: false
+          };
+          
+          // Recalculate unread count based on updated state
+          const newCount = Object.values(updated).filter(Boolean).length;
+          setUnreadCount(newCount);
+          
+          return updated;
+        });
       }
     }
   }, [userId, unreadBySender]);
@@ -136,15 +149,13 @@ export const useMessages = (userId: number, userRole: string) => {
       userIds.forEach(id => {
         newState[id] = false;
       });
+      
+      // Calculate total unread count based on the updated unreadBySender
+      const remainingUnread = Object.values(newState).filter(Boolean).length;
+      setUnreadCount(remainingUnread);
+      
       return newState;
     });
-    
-    // Recalculate total unread count based on the updated unreadBySender
-    const remainingUnread = Object.entries(unreadBySender)
-      .filter(([_, isUnread]) => isUnread)
-      .length;
-    
-    setUnreadCount(remainingUnread);
   };
 
   // Reset all unread counts - for use when opening the inbox dialog
