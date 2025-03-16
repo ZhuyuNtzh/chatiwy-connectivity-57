@@ -1,8 +1,8 @@
 
-import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Button } from '@/components/ui/button';
+import React, { useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { X } from 'lucide-react';
 import type { ChatMessage } from '@/services/signalR/types';
 
 interface HistoryDialogProps {
@@ -23,17 +23,73 @@ const HistoryDialog: React.FC<HistoryDialogProps> = ({
   users,
   onContinueChat
 }) => {
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  
+  // Handle outside clicks
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (isOpen && backdropRef.current && !sidebarRef.current?.contains(e.target as Node)) {
+        e.preventDefault();
+        e.stopPropagation();
+        onOpenChange(false);
+      }
+    };
+    
+    // Handle escape key
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (isOpen && e.key === 'Escape') {
+        onOpenChange(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscapeKey);
+    
+    // If the dialog is open, prevent body scrolling
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscapeKey);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, onOpenChange]);
+  
+  if (!isOpen) return null;
+  
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>Chat History</DialogTitle>
-          <DialogDescription>
-            Your recent conversations
-          </DialogDescription>
-        </DialogHeader>
+    <div className="fixed inset-0 z-[100] overflow-hidden">
+      {/* Backdrop */}
+      <div 
+        ref={backdropRef}
+        className="absolute inset-0 bg-black/50 transition-opacity duration-300"
+        onClick={() => onOpenChange(false)}
+      />
+      
+      {/* Sidebar */}
+      <div 
+        ref={sidebarRef}
+        className="absolute top-0 right-0 bottom-0 w-full max-w-md bg-white dark:bg-gray-800 shadow-xl transform transition-transform duration-300 ease-in-out z-[101] flex flex-col"
+        style={{ transform: isOpen ? 'translateX(0)' : 'translateX(100%)' }}
+      >
+        <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
+          <h2 className="text-xl font-semibold">Chat History</h2>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => onOpenChange(false)}
+            className="h-8 w-8"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
         
-        <ScrollArea className="mt-6 h-96">
+        <ScrollArea className="flex-1 p-4">
           {Object.keys(chatHistory).length > 0 ? (
             <div className="space-y-8">
               {Object.entries(chatHistory).map(([userIdStr, messages]) => {
@@ -47,7 +103,10 @@ const HistoryDialog: React.FC<HistoryDialogProps> = ({
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => onContinueChat(userId)}
+                        onClick={() => {
+                          onContinueChat(userId);
+                          onOpenChange(false);
+                        }}
                       >
                         Continue Chat
                       </Button>
@@ -94,8 +153,8 @@ const HistoryDialog: React.FC<HistoryDialogProps> = ({
             </div>
           )}
         </ScrollArea>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 };
 

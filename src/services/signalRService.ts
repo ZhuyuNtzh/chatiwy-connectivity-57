@@ -1,4 +1,3 @@
-
 import { MockHubConnection } from './signalR/mockConnection';
 import { ISignalRService, ChatMessage, ConnectionStatus, UserReport } from './signalR/types';
 import { messageHandler } from './signalR/messageHandler';

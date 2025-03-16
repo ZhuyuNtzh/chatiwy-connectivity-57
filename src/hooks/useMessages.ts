@@ -4,6 +4,7 @@ import { signalRService } from '@/services/signalRService';
 import type { ChatMessage } from '@/services/signalR/types';
 import { toast } from "sonner";
 import { useUser } from '@/contexts/UserContext';
+import { useVipMessageFeatures } from './useVipMessageFeatures';
 
 export const useMessages = (userId: number, userRole: string) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -11,6 +12,9 @@ export const useMessages = (userId: number, userRole: string) => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const { currentUser } = useUser();
   const maxChars = userRole === 'vip' ? 200 : 140;
+  
+  // Get VIP message features
+  const { replyingTo, sendReplyMessage } = useVipMessageFeatures(userRole);
   
   // Track unread messages by sender ID
   const [unreadBySender, setUnreadBySender] = useState<Record<number, boolean>>({});
@@ -100,6 +104,15 @@ export const useMessages = (userId: number, userRole: string) => {
     if (signalRService.isUserBlocked(userId)) {
       toast.error(`You have blocked this user and cannot send messages.`);
       return;
+    }
+    
+    // Check if we're replying to a message
+    if (replyingTo && userRole === 'vip') {
+      const success = sendReplyMessage(message.trim(), userId, setMessages);
+      if (success) {
+        setMessage('');
+        return;
+      }
     }
     
     // Create a message with the correct username from currentUser
