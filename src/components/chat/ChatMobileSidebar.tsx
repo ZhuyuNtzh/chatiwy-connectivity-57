@@ -64,6 +64,7 @@ const ChatMobileSidebar: React.FC<ChatMobileSidebarProps> = ({
         className="md:hidden fixed top-4 left-4 z-[9999] bg-white/90 dark:bg-gray-800/90 shadow-md border border-gray-200 dark:border-gray-700"
         onClick={toggleSidebar}
         aria-label="Toggle user sidebar"
+        style={{ position: 'fixed' }}
       >
         <Menu className="h-5 w-5" />
         {!isSidebarOpen && (

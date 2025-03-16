@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Image, Link, Mic } from 'lucide-react';
@@ -26,6 +26,11 @@ const MediaGalleryDialog: React.FC<MediaGalleryDialogProps> = ({
   user
 }) => {
   const [selectedTab, setSelectedTab] = useState('images');
+  const [internalOpen, setInternalOpen] = useState(isOpen);
+
+  useEffect(() => {
+    setInternalOpen(isOpen);
+  }, [isOpen]);
 
   const imageItems = mediaItems.filter(item => item.type === 'image');
   const voiceItems = mediaItems.filter(item => item.type === 'voice');
@@ -40,23 +45,35 @@ const MediaGalleryDialog: React.FC<MediaGalleryDialogProps> = ({
   };
   
   const handleClose = () => {
-    // Properly handle the closing of the dialog
     setSelectedTab('images'); // Reset to default tab
-    onOpenChange(false);
+    setInternalOpen(false);
+    // Use setTimeout to ensure React has time to process state updates
+    setTimeout(() => {
+      onOpenChange(false);
+    }, 0);
   };
   
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog 
+      open={internalOpen} 
+      onOpenChange={(open) => {
+        if (!open) handleClose();
+        else setInternalOpen(open);
+      }}
+    >
       <DialogContent 
         className="sm:max-w-[600px] max-h-[80vh] overflow-hidden flex flex-col dark:bg-gray-800" 
         onInteractOutside={(e) => {
-          // Prevent click outside from freezing the UI by stopping propagation and preventing default
           e.stopPropagation();
           e.preventDefault();
           handleClose();
         }}
         onEscapeKeyDown={(e) => {
-          // Also handle escape key properly
+          e.preventDefault();
+          handleClose();
+        }}
+        onPointerDownOutside={(e) => {
+          e.stopPropagation();
           e.preventDefault();
           handleClose();
         }}
