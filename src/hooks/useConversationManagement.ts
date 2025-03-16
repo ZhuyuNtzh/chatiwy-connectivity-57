@@ -23,7 +23,8 @@ export const useConversationManagement = () => {
       // Clear messages from storage for the selected user
       const selectedUserId = signalRService.currentSelectedUserId;
       if (selectedUserId) {
-        signalRService.clearChatHistory(selectedUserId);
+        // Fix: Use clearAllChatHistory instead of clearChatHistory
+        signalRService.clearAllChatHistory();
       }
       
       // Show success message
