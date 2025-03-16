@@ -1,3 +1,4 @@
+
 import { MockHubConnection } from './signalR/mockConnection';
 import { ISignalRService, ChatMessage, ConnectionStatus, UserReport } from './signalR/types';
 import { messageHandler } from './signalR/messageHandler';
@@ -120,7 +121,8 @@ class SignalRService implements ISignalRService {
       senderId: this.userId || 0,
       recipientId,
       replyToId,
-      replyText
+      replyText,
+      isRead: true // Our own messages are always read
     });
     
     // Add to chat history
@@ -144,11 +146,12 @@ class SignalRService implements ISignalRService {
       senderId: this.userId || 0,
       recipientId,
       imageUrl,
-      isBlurred
+      isBlurred,
+      isRead: true // Our own messages are always read
     });
     
     // Add to chat history
-    chatStorage.addMessageToHistory(recipientId, newMessage);
+    chatStorage.addMessageToHistory(this.userId || 0, newMessage);
     
     return Promise.resolve();
   }
@@ -162,11 +165,12 @@ class SignalRService implements ISignalRService {
       sender: this.username || 'You',
       senderId: this.userId || 0,
       recipientId,
-      audioUrl
+      audioUrl,
+      isRead: true // Our own messages are always read
     });
     
     // Add to chat history
-    chatStorage.addMessageToHistory(recipientId, newMessage);
+    chatStorage.addMessageToHistory(this.userId || 0, newMessage);
     
     return Promise.resolve();
   }
@@ -184,6 +188,12 @@ class SignalRService implements ISignalRService {
   public sendTypingIndication(recipientId: number): void {
     // Notify typing listeners
     this.typingCallbacks.forEach(callback => callback(recipientId));
+  }
+  
+  // Message read status
+  public markMessagesAsRead(senderId: number): void {
+    // Update message read status in chat storage
+    chatStorage.markMessagesAsRead(senderId, this.userId || 0);
   }
   
   // User blocking
@@ -274,7 +284,9 @@ class SignalRService implements ISignalRService {
       // This is our user ID (we are receiving the message)
       recipientId: this.userId || 0,
       // Use the actual username we determined
-      actualUsername: senderName
+      actualUsername: senderName,
+      // Mark as unread by default for incoming messages
+      isRead: false
     });
     
     // Add to chat history - use the current user's ID as the key

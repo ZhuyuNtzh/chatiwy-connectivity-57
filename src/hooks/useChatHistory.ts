@@ -39,16 +39,34 @@ export const useChatHistory = () => {
   }, [userRole]);
   
   const handleShowHistory = () => {
+    // Get fresh chat history when requesting it
     const allHistory = signalRService.getAllChatHistory();
     setChatHistory(allHistory);
     return allHistory;
   };
   
   const handleShowInbox = () => {
-    // Get all chat history when opening inbox
+    // Get fresh chat history when opening inbox
     const allHistory = signalRService.getAllChatHistory();
-    setInboxMessages(allHistory);
-    return allHistory;
+    
+    // Filter messages to only show incoming messages for the current user
+    const currentUserId = signalRService.currentUserId;
+    const filteredHistory: Record<number, ChatMessage[]> = {};
+    
+    Object.entries(allHistory).forEach(([userIdStr, messages]) => {
+      const userId = parseInt(userIdStr);
+      // Only include messages where the current user is the recipient
+      const incomingMessages = messages.filter(msg => 
+        msg.recipientId === currentUserId && msg.senderId === userId
+      );
+      
+      if (incomingMessages.length > 0) {
+        filteredHistory[userId] = incomingMessages;
+      }
+    });
+    
+    setInboxMessages(filteredHistory);
+    return filteredHistory;
   };
 
   const handleContinueChat = (userId: number, mockUsers: User[]) => {

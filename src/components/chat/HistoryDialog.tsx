@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import type { ChatMessage } from '@/services/signalR/types';
+import { signalRService } from '@/services/signalRService';
 
 interface HistoryDialogProps {
   isOpen: boolean;
@@ -62,6 +63,25 @@ const HistoryDialog: React.FC<HistoryDialogProps> = ({
   
   if (!isOpen) return null;
   
+  // Sort conversations by most recent message
+  const sortedHistoryEntries = Object.entries(chatHistory)
+    .map(([userIdStr, messages]) => {
+      const userId = parseInt(userIdStr);
+      const sortedMessages = [...messages].sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      
+      return {
+        userId,
+        messages: sortedMessages,
+        lastMessageTime: sortedMessages.length > 0 
+          ? new Date(sortedMessages[0].timestamp).getTime() 
+          : 0
+      };
+    })
+    .filter(entry => entry.messages.length > 0)
+    .sort((a, b) => b.lastMessageTime - a.lastMessageTime);
+  
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden">
       {/* Backdrop */}
@@ -90,11 +110,28 @@ const HistoryDialog: React.FC<HistoryDialogProps> = ({
         </div>
         
         <ScrollArea className="flex-1 p-4">
-          {Object.keys(chatHistory).length > 0 ? (
+          {sortedHistoryEntries.length > 0 ? (
             <div className="space-y-8">
-              {Object.entries(chatHistory).map(([userIdStr, messages]) => {
-                const userId = parseInt(userIdStr);
-                const user = users.find(u => u.id === userId) || { id: userId, username: `Unknown User ${userId}` };
+              {sortedHistoryEntries.map(({ userId, messages }) => {
+                const user = users.find(u => u.id === userId) || { id: userId, username: `User ${userId}` };
+                const currentUserId = signalRService.currentUserId;
+                
+                // Find chat messages relevant to the current user and this conversation partner
+                const relevantMessages = messages.filter(msg => 
+                  (msg.senderId === userId && msg.recipientId === currentUserId) || 
+                  (msg.senderId === currentUserId && msg.recipientId === userId)
+                );
+                
+                // Skip if there are no relevant messages
+                if (relevantMessages.length === 0) return null;
+                
+                // Sort messages by timestamp
+                const sortedRelevantMessages = [...relevantMessages].sort((a, b) => 
+                  new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                );
+                
+                // Get the 3 most recent messages (or all if less than 3)
+                const recentMessages = sortedRelevantMessages.slice(0, 3);
                 
                 return (
                   <div key={userId} className="border rounded-lg p-4">
@@ -113,32 +150,37 @@ const HistoryDialog: React.FC<HistoryDialogProps> = ({
                     </div>
                     
                     <div className="space-y-2">
-                      {messages.slice(-3).map((msg) => (
+                      {recentMessages.reverse().map((msg) => (
                         <div 
                           key={msg.id} 
-                          className={`flex ${msg.sender === 'You' ? 'justify-end' : 'justify-start'}`}
+                          className={`flex ${msg.senderId === currentUserId ? 'justify-end' : 'justify-start'}`}
                         >
                           <div 
                             className={`max-w-[80%] rounded-lg p-2 text-sm ${
-                              msg.sender === 'You' 
+                              msg.senderId === currentUserId 
                                 ? 'bg-primary text-white' 
                                 : 'bg-gray-100 dark:bg-gray-700'
                             }`}
                           >
                             {msg.isImage ? (
                               <p className="italic">Image message</p>
+                            ) : msg.isDeleted ? (
+                              <p className="italic">This message was deleted</p>
                             ) : (
                               <p>{msg.content.length > 80 ? msg.content.substring(0, 80) + '...' : msg.content}</p>
                             )}
                             <div className="text-xs opacity-70 mt-1 text-right">
-                              {new Date(msg.timestamp).toLocaleString()}
+                              {new Date(msg.timestamp).toLocaleString(undefined, {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
                             </div>
                           </div>
                         </div>
                       ))}
-                      {messages.length > 3 && (
+                      {sortedRelevantMessages.length > 3 && (
                         <p className="text-center text-xs text-muted-foreground">
-                          Showing {messages.length > 3 ? 'last 3 of ' + messages.length : messages.length} messages
+                          Showing last 3 of {sortedRelevantMessages.length} messages
                         </p>
                       )}
                     </div>

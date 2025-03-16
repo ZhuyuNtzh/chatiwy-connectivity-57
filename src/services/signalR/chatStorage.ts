@@ -56,6 +56,21 @@ export const chatStorage = {
     }
   },
 
+  markMessagesAsRead(senderId: number, recipientId: number) {
+    // Mark messages from this sender to this recipient as read
+    if (chatHistory[senderId]) {
+      chatHistory[senderId] = chatHistory[senderId].map(msg => 
+        // Only mark messages where senderId is the sender and recipientId is the recipient
+        (msg.senderId === senderId && msg.recipientId === recipientId)
+          ? { ...msg, isRead: true } 
+          : msg
+      );
+      
+      // Save to localStorage
+      localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+    }
+  },
+
   getChatHistory(userId: number): ChatMessage[] {
     // Return only messages for this specific user conversation
     return chatHistory[userId] || [];

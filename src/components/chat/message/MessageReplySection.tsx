@@ -22,6 +22,8 @@ const MessageReplySection: React.FC<MessageReplySectionProps> = ({
       if (storedReplyText) {
         setDisplayText(storedReplyText);
       }
+    } else {
+      setDisplayText(replyText);
     }
   }, [replyToId, replyText]);
 

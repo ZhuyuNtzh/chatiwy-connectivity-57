@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { X, Mail } from 'lucide-react';
 import type { ChatMessage } from '@/services/signalR/types';
+import { signalRService } from '@/services/signalRService';
 
 interface InboxDialogProps {
   isOpen: boolean;
@@ -68,7 +69,28 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
   
   if (!isOpen) return null;
   
-  const hasMessages = Object.keys(inboxMessages).length > 0;
+  const sortedInboxEntries = Object.entries(inboxMessages)
+    .map(([senderId, messages]) => {
+      const userIdNum = parseInt(senderId);
+      
+      // For each user, find their most recent message
+      const sortedMessages = [...messages].sort((a, b) => {
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      });
+      
+      const lastMessage = sortedMessages[0];
+      
+      return {
+        senderId: userIdNum,
+        lastMessage,
+        messages: sortedMessages,
+        timestamp: new Date(lastMessage.timestamp).getTime()
+      };
+    })
+    .filter(entry => entry.lastMessage) // Filter out entries with no messages
+    .sort((a, b) => b.timestamp - a.timestamp); // Sort by most recent first
+  
+  const hasMessages = sortedInboxEntries.length > 0;
   
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden">
@@ -100,15 +122,9 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
         <ScrollArea className="flex-1 p-4">
           {hasMessages ? (
             <div className="space-y-6">
-              {Object.entries(inboxMessages).map(([senderId, messages]) => {
-                const userIdNum = parseInt(senderId);
-                // Only show conversations where others have sent messages to the current user
-                const incomingMessages = messages.filter(msg => msg.recipientId === userIdNum);
-                
-                if (incomingMessages.length === 0) return null;
-                
-                const lastMessage = incomingMessages[incomingMessages.length - 1];
-                const isUnread = unreadBySender[userIdNum] || false;
+              {sortedInboxEntries.map(({ senderId, lastMessage, messages }) => {
+                const isUnread = unreadBySender[senderId] || false;
+                const senderName = lastMessage.actualUsername || lastMessage.sender;
                 
                 return (
                   <div 
@@ -121,7 +137,7 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
                           <div className="h-2 w-2 bg-blue-500 rounded-full mr-2"></div>
                         )}
                         <h3 className={`font-medium ${isUnread ? 'text-blue-600 dark:text-blue-400' : ''}`}>
-                          {lastMessage.sender}
+                          {senderName}
                         </h3>
                       </div>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -139,6 +155,8 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
                         <span className="flex items-center text-gray-500 italic">
                           <Mail className="h-3 w-3 mr-1" /> Image attachment
                         </span>
+                      ) : lastMessage.isDeleted ? (
+                        <span className="text-gray-400 italic">This message was deleted</span>
                       ) : (
                         lastMessage.content
                       )}
@@ -149,7 +167,7 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
                       size="sm" 
                       className="w-full"
                       onClick={() => {
-                        onOpenChat(userIdNum);
+                        onOpenChat(senderId);
                         onOpenChange(false);
                       }}
                     >

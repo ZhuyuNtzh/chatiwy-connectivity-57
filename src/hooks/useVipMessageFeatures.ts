@@ -71,6 +71,26 @@ export const useVipMessageFeatures = (userRole: string) => {
     // Get the stored reply text
     const replyText = localStorage.getItem(`replyText_${replyingTo}`);
     
+    // Create a unique ID for the new reply message
+    const messageId = `reply_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    // Add the reply message to the local messages immediately for UI responsiveness
+    const newReplyMessage: ChatMessage = {
+      id: messageId,
+      content: content,
+      sender: 'You',
+      actualUsername: 'You',
+      senderId: signalRService.currentUserId,
+      recipientId: userId,
+      timestamp: new Date(),
+      replyToId: replyingTo,
+      replyText: replyText || undefined,
+      isRead: true,
+      status: 'sent'
+    };
+    
+    setMessages(prev => [...prev, newReplyMessage]);
+    
     // Send the message with the reply information
     signalRService.sendMessage(userId, content, undefined, replyingTo, replyText || undefined)
       .then(() => {
