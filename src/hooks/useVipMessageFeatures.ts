@@ -34,14 +34,16 @@ export const useVipMessageFeatures = (userRole: string) => {
     }
     
     // Update all messages to mark the one being replied to
-    // Fix TypeScript error by explicitly typing prev as ChatMessage[]
-    setMessages((prev: ChatMessage[]) => {
+    setMessages((prev) => {
       return prev.map(msg => 
         msg.id === messageId 
-          ? { ...msg, isBeingRepliedTo: true }
+          ? { ...msg, isBeingRepliedTo: true, replyText: messageText }
           : { ...msg, isBeingRepliedTo: false }
       );
     });
+    
+    // Store the messageText in localStorage temporarily so we can reference it when sending
+    localStorage.setItem(`replyText_${messageId}`, messageText);
     
     // Update the reply message in the UI
     const prefix = currentMessage.trim() ? `${currentMessage} ` : '';
@@ -74,8 +76,7 @@ export const useVipMessageFeatures = (userRole: string) => {
     signalRService.deleteMessage(messageId, recipientId)
       .then(() => {
         // Update the message in the UI to show it's deleted
-        // Fix TypeScript error by explicitly typing prev as ChatMessage[]
-        setMessages((prev: ChatMessage[]) => {
+        setMessages((prev) => {
           return prev.map(msg => 
             msg.id === messageId 
               ? { ...msg, isDeleted: true, content: 'This message has been deleted' }
@@ -102,8 +103,7 @@ export const useVipMessageFeatures = (userRole: string) => {
     setReplyingTo(null);
     
     // Update all messages to clear isBeingRepliedTo flag
-    // Fix TypeScript error by explicitly typing prev as ChatMessage[]
-    setMessages((prev: ChatMessage[]) => {
+    setMessages((prev) => {
       return prev.map(msg => ({ ...msg, isBeingRepliedTo: false }));
     });
   };

@@ -19,7 +19,9 @@ const MessageReplySection: React.FC<MessageReplySectionProps> = ({
         <MessageSquare className="h-3 w-3 mr-1 text-gray-500 dark:text-gray-400" />
         <span className="text-gray-500 dark:text-gray-400">Replying to</span>
       </div>
-      <div className="mt-0.5 line-clamp-1">{replyText || "Previous message"}</div>
+      <div className="mt-0.5 line-clamp-2 text-gray-700 dark:text-gray-300">
+        {replyText || "Previous message"}
+      </div>
     </div>
   );
 };

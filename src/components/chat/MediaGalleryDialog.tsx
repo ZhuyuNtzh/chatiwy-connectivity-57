@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Image, Link, Mic } from 'lucide-react';
@@ -27,10 +27,21 @@ const MediaGalleryDialog: React.FC<MediaGalleryDialogProps> = ({
 }) => {
   const [selectedTab, setSelectedTab] = useState('images');
   const [internalOpen, setInternalOpen] = useState(isOpen);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Sync internal state with external state
   useEffect(() => {
     setInternalOpen(isOpen);
   }, [isOpen]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const imageItems = mediaItems.filter(item => item.type === 'image');
   const voiceItems = mediaItems.filter(item => item.type === 'voice');
@@ -47,22 +58,32 @@ const MediaGalleryDialog: React.FC<MediaGalleryDialogProps> = ({
   const handleClose = () => {
     setSelectedTab('images'); // Reset to default tab
     setInternalOpen(false);
+    
+    // Clear any existing timeout
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+    }
+    
     // Use setTimeout to ensure React has time to process state updates
-    setTimeout(() => {
+    closeTimeoutRef.current = setTimeout(() => {
       onOpenChange(false);
-    }, 0);
+    }, 50);
   };
   
   return (
     <Dialog 
       open={internalOpen} 
       onOpenChange={(open) => {
-        if (!open) handleClose();
-        else setInternalOpen(open);
+        if (!open) {
+          handleClose();
+        } else {
+          setInternalOpen(open);
+        }
       }}
     >
       <DialogContent 
         className="sm:max-w-[600px] max-h-[80vh] overflow-hidden flex flex-col dark:bg-gray-800" 
+        onClick={(e) => e.stopPropagation()}
         onInteractOutside={(e) => {
           e.stopPropagation();
           e.preventDefault();
