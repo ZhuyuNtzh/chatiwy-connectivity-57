@@ -1,6 +1,8 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useUser, BannedUser } from '@/contexts/UserContext';
+import { UserRole } from '@/types/user';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { 
