@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
@@ -45,7 +44,6 @@ const ChatMobileSidebar: React.FC<ChatMobileSidebarProps> = ({
   onUserClick,
   isDarkMode
 }) => {
-  // Create a custom user click handler that also closes the sidebar on mobile
   const handleUserSelection = (user: any) => {
     onUserClick(user);
     if (window.innerWidth <= 768) {
@@ -53,18 +51,16 @@ const ChatMobileSidebar: React.FC<ChatMobileSidebarProps> = ({
     }
   };
 
-  // Handle touch events - convert touch event to standard event
   const handleSwipeOpen = () => {
     toggleSidebar();
   };
 
   return (
     <>
-      {/* Sidebar toggle button - always visible on mobile */}
       <Button
         variant="outline"
         size="icon"
-        className="md:hidden fixed top-4 left-4 z-[1000] bg-white/90 dark:bg-gray-800/90 shadow-md border border-gray-200 dark:border-gray-700"
+        className="md:hidden fixed top-4 left-4 z-[1001] bg-white/90 dark:bg-gray-800/90 shadow-md border border-gray-200 dark:border-gray-700"
         onClick={toggleSidebar}
         aria-label="Toggle user sidebar"
       >
@@ -123,7 +119,6 @@ const ChatMobileSidebar: React.FC<ChatMobileSidebarProps> = ({
         <div 
           className="fixed inset-0 bg-black/30 z-30 md:hidden"
           onClick={(e) => {
-            // Only close if clicking directly on the backdrop
             if (e.target === e.currentTarget) {
               closeSidebar(e);
             }

@@ -41,7 +41,14 @@ const MediaGalleryDialog: React.FC<MediaGalleryDialogProps> = ({
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-hidden flex flex-col dark:bg-gray-800">
+      <DialogContent 
+        className="sm:max-w-[600px] max-h-[80vh] overflow-hidden flex flex-col dark:bg-gray-800" 
+        onInteractOutside={(e) => {
+          // Prevent click outside from freezing the UI
+          e.preventDefault();
+          onOpenChange(false);
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Shared Media with {user.username}</DialogTitle>
         </DialogHeader>
