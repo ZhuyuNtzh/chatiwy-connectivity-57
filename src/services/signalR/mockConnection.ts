@@ -12,9 +12,9 @@ export const createMockConnection = (): HubConnection => {
       console.log(`Mock connection registered handler for ${methodName}`);
       return mockConnection as HubConnection;
     },
-    invoke: (methodName: string, ...args: any[]) => {
+    invoke: <T = any>(methodName: string, ...args: any[]): Promise<T> => {
       console.log(`Mock connection invoked ${methodName} with args:`, args);
-      return Promise.resolve();
+      return Promise.resolve({} as T);
     },
     off: (methodName: string, method?: (...args: any[]) => void) => {
       console.log(`Mock connection removed handler for ${methodName}`);

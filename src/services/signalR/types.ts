@@ -20,7 +20,7 @@ export interface ChatMessage {
   replyText?: string;
   isBeingRepliedTo?: boolean;
   
-  // Add missing properties for media content
+  // Media content properties
   isImage?: boolean;
   imageUrl?: string;
   isBlurred?: boolean;

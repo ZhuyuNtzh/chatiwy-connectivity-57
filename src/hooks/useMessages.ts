@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { signalRService } from '@/services/signalRService';
 import type { ChatMessage } from '@/services/signalR/types';
@@ -165,7 +164,7 @@ export const useMessages = (userId: number, userRole: string) => {
     setMessages(prev => [...prev, newMessage]);
     
     // Then send to service - pass the actual username so it can be stored with the message
-    signalRService.sendMessage(userId, message.trim(), username);
+    signalRService.sendMessage(userId, message.trim(), undefined, undefined, undefined);
     
     // Clear input field and any reply state
     setMessage('');

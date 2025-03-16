@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { signalRService } from '@/services/signalRService';
 import { toast } from "sonner";
@@ -16,7 +15,7 @@ export const useUserInteractions = (userId: number) => {
 
   const handleBlockUser = () => {
     // Admin users cannot be blocked
-    if (signalRService.isAdminUser(userId)) {
+    if (signalRService.isAdminUser()) {
       toast.error(`You cannot block an admin.`);
       return;
     }
@@ -40,7 +39,7 @@ export const useUserInteractions = (userId: number) => {
 
   const handleReportUser = () => {
     // Admin users cannot be reported
-    if (signalRService.isAdminUser(userId)) {
+    if (signalRService.isAdminUser()) {
       toast.error(`You cannot report an admin.`);
       return;
     }
