@@ -42,7 +42,7 @@ export const useVipMessageFeatures = (userRole: string) => {
       );
     });
     
-    // Store the messageText in localStorage so we can reference it when sending
+    // Store the messageText in localStorage temporarily so we can reference it when sending
     localStorage.setItem(`replyText_${messageId}`, messageText);
     
     // Update the reply message in the UI
@@ -56,41 +56,6 @@ export const useVipMessageFeatures = (userRole: string) => {
     
     // Add a toast notification
     toast.info('Replying to message', { duration: 2000 });
-  };
-  
-  /**
-   * Send a reply message
-   */
-  const sendReplyMessage = (
-    content: string,
-    userId: number,
-    setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>
-  ) => {
-    if (!replyingTo || userRole !== 'vip') return false;
-    
-    // Get the stored reply text
-    const replyText = localStorage.getItem(`replyText_${replyingTo}`);
-    
-    // Send the message with the reply information
-    signalRService.sendMessage(userId, content, undefined, replyingTo, replyText || undefined)
-      .then(() => {
-        // Clear the reply state
-        setReplyingTo(null);
-        
-        // Update all messages to clear isBeingRepliedTo flag
-        setMessages((prev) => {
-          return prev.map(msg => ({ ...msg, isBeingRepliedTo: false }));
-        });
-        
-        return true;
-      })
-      .catch(error => {
-        console.error('Error sending reply:', error);
-        toast.error('Failed to send reply');
-        return false;
-      });
-    
-    return true;
   };
   
   /**
@@ -147,7 +112,6 @@ export const useVipMessageFeatures = (userRole: string) => {
     replyingTo,
     setReplyingTo,
     replyToMessage,
-    sendReplyMessage,
     unsendMessage,
     clearReply
   };

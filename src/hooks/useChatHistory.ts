@@ -19,17 +19,13 @@ export const useChatHistory = () => {
   const [inboxMessages, setInboxMessages] = useState<Record<number, ChatMessage[]>>({});
   const { userRole } = useUser();
   
-  // Clear chat history based on user role
+  // Clear chat history every 10 hours for VIP users
   useEffect(() => {
-    // Clear interval times
-    const clearIntervalTime = userRole === 'vip' 
-      ? 8 * 60 * 60 * 1000  // 8 hours for VIP users
-      : 1 * 60 * 60 * 1000; // 1 hour for standard users
+    if (userRole !== 'vip') return;
     
-    console.log(`Setting up chat history clear interval for ${userRole} user: ${clearIntervalTime / (60 * 60 * 1000)} hours`);
-    
+    const clearIntervalTime = 10 * 60 * 60 * 1000; // 10 hours in milliseconds
     const intervalId = setInterval(() => {
-      console.log(`Clearing chat history for ${userRole} user`);
+      console.log('Clearing chat history for VIP user');
       signalRService.clearAllChatHistory();
       setChatHistory({});
       setInboxMessages({});
