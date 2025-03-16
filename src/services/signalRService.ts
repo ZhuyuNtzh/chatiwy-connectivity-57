@@ -1,329 +1,384 @@
 
-import { MockHubConnection } from './signalR/mockConnection';
-import { ISignalRService, ChatMessage, ConnectionStatus, UserReport } from './signalR/types';
-import { messageHandler } from './signalR/messageHandler';
-import { userBlocking } from './signalR/userBlocking';
-import { chatStorage } from './signalR/chatStorage';
-import { userReporting } from './signalR/userReporting';
-import { contentModeration } from './signalR/contentModeration';
+import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
+import type { ChatMessage, UserReport, TypingIndicator, UserSession } from './signalR/types';
+import { handleIncomingMessage, processChatHistory } from './signalR/messageHandler';
+import { isUserBlocked, blockUser, unblockUser } from './signalR/userBlocking';
+import { reportUser, getReports, deleteReport, addReport } from './signalR/userReporting';
+import { storeChatMessage, getChatHistory, getAllChatHistoryForUser, clearAllChatHistoryForUser } from './signalR/chatStorage';
+import { createMockConnection } from './signalR/mockConnection';
+import { checkAndFilterMessage } from './signalR/contentModeration';
 
-// Mock users data for generating realistic responses
-const mockUserNames: Record<number, string> = {
-  1: "Alice",
-  2: "Bob",
-  3: "Clara",
-  4: "David",
-  5: "Elena",
-  6: "Feng",
-  7: "Gabriela",
-  8: "Hiroshi",
-  9: "Isabella",
-  10: "Jamal",
-  11: "TravelBot",
-  12: "FitnessGuru",
-  13: "BookWorm",
-  14: "TechGeek",
-  15: "ArtLover"
-};
+// Mock data for testing
+const mockBannedWords = ['badword', 'offensive', 'inappropriate', 'slur'];
 
-// This is using the mock connection for now, but can be replaced with a real connection
-class SignalRService implements ISignalRService {
-  private connection: any = null;
-  private userId: number | null = null;
-  private username: string | null = null;
-  private connectedUsersCount = 0;
-  private messageCallbacks: ((message: ChatMessage) => void)[] = [];
-  private typingCallbacks: ((userId: number) => void)[] = [];
-  private deleteCallbacks: ((messageId: string) => void)[] = [];
+class SignalRService {
+  private connection: HubConnection | null = null;
+  private _currentUserId: number = 0;
+  private _currentUsername: string = '';
+  private _sessionToken: string = '';
+  private _userRole: 'standard' | 'vip' | 'admin' = 'standard';
+  private typingUsers: Record<number, TypingIndicator> = {};
+  private mockReports: UserReport[] = [];
+  private userSession: UserSession | null = null;
   
-  public get currentUserId(): number {
-    return this.userId || 0;
+  constructor() {
+    this.initialize();
   }
-
-  public async initialize(userId: number, username: string): Promise<void> {
-    // Clear any previous user data if there was a session
-    if (this.userId && this.userId !== userId) {
-      this.clearUserSession(this.userId);
+  
+  private initialize() {
+    // Try to load user session if available
+    const savedSession = localStorage.getItem('userSession');
+    if (savedSession) {
+      try {
+        this.userSession = JSON.parse(savedSession);
+        this._currentUserId = this.userSession.userId;
+        this._currentUsername = this.userSession.username;
+        this._userRole = this.userSession.role;
+        this._sessionToken = this.userSession.sessionToken;
+      } catch (error) {
+        console.error('Error parsing user session:', error);
+        this.resetSession();
+      }
     }
+  }
+  
+  // Reset user session
+  private resetSession() {
+    this._currentUserId = 0;
+    this._currentUsername = '';
+    this._sessionToken = '';
+    this._userRole = 'standard';
+    this.userSession = null;
+    localStorage.removeItem('userSession');
+  }
+  
+  // Start a connection with the specified user details
+  async startConnection(userId: number, username: string, userRole: 'standard' | 'vip' | 'admin' = 'standard') {
+    // Save current user information
+    this._currentUserId = userId;
+    this._currentUsername = username;
+    this._userRole = userRole;
     
-    this.userId = userId;
-    this.username = username;
+    // Generate session token
+    this._sessionToken = this.generateSessionToken();
     
-    // Load data from localStorage
-    userBlocking.loadFromStorage();
-    chatStorage.loadFromStorage();
-    userReporting.loadFromStorage();
-    contentModeration.loadFromStorage();
+    // Save user session
+    this.userSession = {
+      userId,
+      username,
+      role: userRole,
+      sessionToken: this._sessionToken
+    };
     
-    this.connection = new MockHubConnection();
-    this.connectedUsersCount = Math.floor(Math.random() * 100) + 50; // Random number of users for mock
+    // Save to localStorage
+    localStorage.setItem('userSession', JSON.stringify(this.userSession));
+    
+    // In a real app, we would connect to SignalR here
+    // For mock implementation, we use the mock connection
+    this.connection = createMockConnection();
     
     console.log(`SignalR initialized for user ${username} (ID: ${userId})`);
-    return Promise.resolve();
+    
+    return true;
   }
   
-  public async disconnect(): Promise<void> {
+  // Disconnect
+  disconnect() {
     if (this.connection) {
-      if (this.userId) {
-        // Clear user session data on disconnect
-        this.clearUserSession(this.userId);
-      }
-      
+      // In a real app, we would disconnect from SignalR here
       this.connection = null;
-      this.userId = null;
-      this.username = null;
       console.log('SignalR disconnected');
     }
-    return Promise.resolve();
+    
+    // Reset the session
+    this.resetSession();
   }
   
-  private clearUserSession(userId: number): void {
-    chatStorage.clearUserSession(userId);
+  // Generate a unique session token
+  private generateSessionToken(): string {
+    const timestamp = Date.now().toString(36);
+    const randomStr = Math.random().toString(36).substring(2, 10);
+    return `${timestamp}_${randomStr}_${this._currentUserId}`;
   }
   
-  public onConnectedUsersCountChanged(callback: (count: number) => void): void {
-    // For mock purposes, just return the stored count
-    callback(this.connectedUsersCount);
+  // Getters for current user info
+  get currentUserId(): number {
+    return this._currentUserId;
   }
   
-  // Message handling
-  public onMessageReceived(callback: (message: ChatMessage) => void): void {
-    this.messageCallbacks.push(callback);
+  get currentUsername(): string {
+    return this._currentUsername;
   }
   
-  public offMessageReceived(callback: (message: ChatMessage) => void): void {
-    this.messageCallbacks = this.messageCallbacks.filter(cb => cb !== callback);
+  get userRole(): 'standard' | 'vip' | 'admin' {
+    return this._userRole;
   }
   
-  public onMessageDeleted(callback: (messageId: string) => void): void {
-    this.deleteCallbacks.push(callback);
+  // Update user role (used when admin upgrades a user)
+  updateUserRole(role: 'standard' | 'vip' | 'admin') {
+    this._userRole = role;
+    
+    if (this.userSession) {
+      this.userSession.role = role;
+      localStorage.setItem('userSession', JSON.stringify(this.userSession));
+    }
   }
   
-  public offMessageDeleted(callback: (messageId: string) => void): void {
-    this.deleteCallbacks = this.deleteCallbacks.filter(cb => cb !== callback);
-  }
-  
-  public onUserTyping(callback: (userId: number) => void): void {
-    this.typingCallbacks.push(callback);
-  }
-  
-  public offUserTyping(callback: (userId: number) => void): void {
-    this.typingCallbacks = this.typingCallbacks.filter(cb => cb !== callback);
-  }
-  
-  public onConnectionStatusChanged(callback: (status: ConnectionStatus) => void): void {
-    callback('connected'); // Always connected in mock
-  }
-  
-  // Message sending
-  public async sendMessage(
+  // Send a message to another user
+  async sendMessage(
     recipientId: number, 
-    content: string, 
-    actualUsername?: string,
+    content: string,
+    attachments?: any[],
     replyToId?: string,
     replyText?: string
-  ): Promise<void> {
-    if (!this.userId) return Promise.resolve();
-    
-    if (userBlocking.isUserBlocked(recipientId)) {
-      console.log(`Cannot send message to blocked user ${recipientId}`);
-      return Promise.resolve();
+  ): Promise<boolean> {
+    if (!this.connection || !this._currentUserId) {
+      console.error('Cannot send message: not connected or no user ID');
+      return false;
     }
     
-    const newMessage = messageHandler.createMessage({
-      content,
-      sender: this.username || 'You',
-      actualUsername: actualUsername || this.username,
-      senderId: this.userId,
-      recipientId,
+    // Check if message contains banned words
+    const { isAllowed, filteredMessage } = checkAndFilterMessage(content, this.getBannedWords());
+    if (!isAllowed) {
+      console.error('Message contains banned words');
+      return false;
+    }
+    
+    // Create a unique message ID
+    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    // Create message object
+    const message: ChatMessage = {
+      id: messageId,
+      content: filteredMessage,
+      sender: this._currentUsername,
+      actualUsername: this._currentUsername,
+      senderId: this._currentUserId,
+      recipientId: recipientId,
+      timestamp: new Date(),
+      status: 'sent',
+      isRead: true,
       replyToId,
-      replyText,
-      isRead: true // Our own messages are always read
-    });
+      replyText
+    };
     
-    // Add to chat history with the current user ID
-    chatStorage.addMessageToHistory(this.userId, this.userId, newMessage);
-    
-    // Simulate a response - pass the actual username to create a proper response
-    setTimeout(() => {
-      this.simulateReceivedMessage(recipientId);
-    }, 1000 + Math.random() * 2000);
-    
-    return Promise.resolve();
-  }
-  
-  public async sendImage(recipientId: number, imageUrl: string, isBlurred: boolean = false): Promise<void> {
-    if (!this.userId) return Promise.resolve();
-    
-    if (userBlocking.isUserBlocked(recipientId)) {
-      return Promise.resolve();
+    if (attachments && attachments.length > 0) {
+      message.attachments = attachments;
     }
     
-    const newMessage = messageHandler.createImageMessage({
-      sender: this.username || 'You',
-      senderId: this.userId,
-      recipientId,
-      imageUrl,
-      isBlurred,
-      isRead: true // Our own messages are always read
-    });
+    // Store message in local storage
+    storeChatMessage(this._currentUserId, recipientId, message);
     
-    // Add to chat history with the current user ID
-    chatStorage.addMessageToHistory(this.userId, this.userId, newMessage);
+    console.log(`Added message to history for user ${this._currentUserId}, conversation ${recipientId}`, message);
     
-    return Promise.resolve();
-  }
-  
-  public async sendVoiceMessage(recipientId: number, audioUrl: string): Promise<void> {
-    if (!this.userId) return Promise.resolve();
-    
-    if (userBlocking.isUserBlocked(recipientId)) {
-      return Promise.resolve();
+    // Simulate receiving a reply after a short delay
+    if (recipientId < 100) { // Only auto-reply for mock users
+      setTimeout(() => {
+        this.simulateReply(recipientId, this._currentUserId, messageId);
+      }, 1000 + Math.random() * 2000);
     }
     
-    const newMessage = messageHandler.createVoiceMessage({
-      sender: this.username || 'You',
-      senderId: this.userId,
-      recipientId,
-      audioUrl,
-      isRead: true // Our own messages are always read
-    });
+    return true;
+  }
+  
+  // Simulate receiving a reply from another user
+  private simulateReply(senderId: number, recipientId: number, replyToId?: string) {
+    // Generate a reply based on the type of bot
+    const replies: Record<number, string[]> = {
+      1: [
+        "Hi there! How are you doing today?",
+        "Nice to meet you!",
+        "What's up?",
+        "Hello! What brings you here today?",
+        "Hey! How's your day going?"
+      ],
+      2: [
+        "Have you traveled anywhere interesting recently?",
+        "I'm planning a trip next month. Any recommendations?",
+        "Do you enjoy outdoor activities?",
+        "What's your favorite hobby?",
+        "I've been trying to learn a new language. Do you speak any foreign languages?"
+      ],
+      11: [
+        "Paris is beautiful in the spring! Have you ever been?",
+        "The food in Japan is absolutely amazing. What's your favorite cuisine?",
+        "Hiking in the Alps was one of my best experiences. Do you like hiking?",
+        "Beach or mountains? I can't decide which I prefer more for vacations.",
+        "Travel tip: always pack lighter than you think you need to!"
+      ],
+      12: [
+        "Have you tried high-intensity interval training? It's great for burning calories!",
+        "Staying hydrated is so important during workouts. Do you drink enough water?",
+        "What's your favorite form of exercise?",
+        "I find morning workouts give me energy for the whole day. When do you prefer to exercise?",
+        "Balance is key - both in fitness and nutrition!"
+      ],
+      13: [
+        "Have you read any good books lately?",
+        "I just finished a fascinating novel about time travel. Do you enjoy science fiction?",
+        "What genre of books do you enjoy the most?",
+        "Physical books or e-readers? I'm torn between convenience and the feel of paper.",
+        "I think reading before bed helps me sleep better. Do you read at night?"
+      ]
+    };
     
-    // Add to chat history with the current user ID
-    chatStorage.addMessageToHistory(this.userId, this.userId, newMessage);
+    // If there are no specific replies for this sender, use generic ones
+    const senderReplies = replies[senderId] || replies[1];
     
-    return Promise.resolve();
-  }
-  
-  public async deleteMessage(messageId: string, recipientId: number): Promise<void> {
-    if (!this.userId) return Promise.resolve();
+    // Pick a random reply
+    const randomReply = senderReplies[Math.floor(Math.random() * senderReplies.length)];
     
-    // Update chat history
-    chatStorage.markMessageAsDeleted(this.userId, recipientId, messageId);
+    // Create a unique message ID with "reply_" prefix
+    const messageId = `reply_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     
-    // Notify listeners
-    this.deleteCallbacks.forEach(callback => callback(messageId));
+    // Determine sender username based on ID
+    const senderNames: Record<number, string> = {
+      1: "Alice",
+      2: "Bob",
+      3: "Clara",
+      4: "David",
+      5: "Elena",
+      6: "Frank",
+      7: "Gina",
+      8: "Henry",
+      9: "Irene",
+      10: "Jack",
+      11: "TravelBot",
+      12: "FitnessGuru",
+      13: "BookWorm"
+    };
     
-    return Promise.resolve();
-  }
-  
-  public sendTypingIndication(recipientId: number): void {
-    // Notify typing listeners
-    this.typingCallbacks.forEach(callback => callback(recipientId));
-  }
-  
-  // Message read status
-  public markMessagesAsRead(senderId: number): void {
-    if (!this.userId) return;
+    const senderName = senderNames[senderId] || `User${senderId}`;
     
-    // Update message read status in chat storage
-    chatStorage.markMessagesAsRead(this.userId, senderId, this.userId);
-  }
-  
-  // User blocking
-  public blockUser(userId: number): void {
-    userBlocking.blockUser(userId);
-  }
-  
-  public unblockUser(userId: number): void {
-    userBlocking.unblockUser(userId);
-  }
-  
-  public isUserBlocked(userId: number): boolean {
-    return userBlocking.isUserBlocked(userId);
-  }
-  
-  public isAdminUser(userId: number): boolean {
-    // Admin users have a special ID range (e.g., 999 as defined in useSignalRConnection.ts)
-    return userId === 999;
-  }
-  
-  public getBlockedUsers(): number[] {
-    return userBlocking.getBlockedUsers();
-  }
-  
-  // Chat history management
-  public getChatHistory(userId: number): ChatMessage[] {
-    if (!this.userId) return [];
-    return chatStorage.getChatHistory(this.userId, userId);
-  }
-  
-  public getAllChatHistory(): Record<number, ChatMessage[]> {
-    if (!this.userId) return {};
-    return chatStorage.getAllChatHistory(this.userId);
-  }
-  
-  public clearAllChatHistory(): void {
-    if (!this.userId) return;
-    chatStorage.clearAllChatHistory(this.userId);
-  }
-  
-  // Banned words management
-  public getBannedWords(): string[] {
-    return contentModeration.getBannedWords();
-  }
-  
-  public addBannedWord(word: string): void {
-    contentModeration.addBannedWord(word);
-  }
-  
-  public removeBannedWord(word: string): void {
-    contentModeration.removeBannedWord(word);
-  }
-  
-  public setBannedWords(words: string[]): void {
-    contentModeration.setBannedWords(words);
-  }
-  
-  // Reporting functionality
-  public reportUser(
-    reporterId: number,
-    reporterName: string,
-    reportedId: number,
-    reportedName: string,
-    reason: string,
-    details?: string
-  ): void {
-    userReporting.reportUser(reporterId, reporterName, reportedId, reportedName, reason, details);
-  }
-  
-  public getReports(): UserReport[] {
-    return userReporting.getReports();
-  }
-  
-  public deleteReport(reportId: string): void {
-    userReporting.deleteReport(reportId);
-  }
-  
-  // Helper method to simulate received messages
-  private simulateReceivedMessage(recipientUserId: number): void {
-    if (!this.userId) return;
-    
-    // Skip for blocked users
-    if (userBlocking.isUserBlocked(recipientUserId)) {
-      return;
-    }
-    
-    // Get the mock username from recipientUserId
-    const senderName = mockUserNames[recipientUserId] || `User${recipientUserId}`;
-    
-    const newMessage = messageHandler.createSimulatedResponse({
-      // This is the ID of the user we're chatting with (they are sending the response)
-      senderId: recipientUserId,
-      // This is our user ID (we are receiving the message)
-      recipientId: this.userId,
-      // Use the actual username we determined
+    // Create message object for the reply
+    const replyMessage: ChatMessage = {
+      id: messageId,
+      content: randomReply,
+      sender: senderName,
       actualUsername: senderName,
-      // Mark as unread by default for incoming messages
-      isRead: false
-    });
+      senderId: senderId,
+      recipientId: recipientId,
+      timestamp: new Date(),
+      status: 'delivered',
+      isRead: false,
+      replyToId: replyToId
+    };
     
-    // Add to chat history - use the current user's ID as the key
-    chatStorage.addMessageToHistory(this.userId, this.userId, newMessage);
+    // Store the reply message
+    storeChatMessage(senderId, recipientId, replyMessage);
     
-    // Notify message listeners
-    this.messageCallbacks.forEach(callback => callback(newMessage));
+    console.log(`Added message to history for user ${senderId}, conversation ${recipientId}`, replyMessage);
+    
+    // In a real app, this would be handled by the SignalR hub
+    // For the mock version, we directly call the handler
+    handleIncomingMessage(replyMessage);
+  }
+  
+  // Get conversation history with a specific user
+  getChatHistory(userId: number): ChatMessage[] {
+    return getChatHistory(this._currentUserId, userId);
+  }
+  
+  // Get all chat history for the current user
+  getAllChatHistory(): Record<number, ChatMessage[]> {
+    return getAllChatHistoryForUser(this._currentUserId);
+  }
+  
+  // Clear all chat history for the current user
+  clearAllChatHistory() {
+    clearAllChatHistoryForUser(this._currentUserId);
+  }
+  
+  // User blocking methods
+  isUserBlocked(userId: number): boolean {
+    return isUserBlocked(this._currentUserId, userId);
+  }
+  
+  blockUser(userId: number): boolean {
+    return blockUser(this._currentUserId, userId);
+  }
+  
+  unblockUser(userId: number): boolean {
+    return unblockUser(this._currentUserId, userId);
+  }
+  
+  // User reporting methods
+  reportUser(reportedUserId: number, reportedUsername: string, reason: string, details?: string): boolean {
+    return reportUser(this._currentUserId, this._currentUsername, reportedUserId, reportedUsername, reason, details);
+  }
+  
+  getReports(): UserReport[] {
+    return getReports();
+  }
+  
+  deleteReport(reportId: string): boolean {
+    return deleteReport(reportId);
+  }
+  
+  addReport(report: UserReport): boolean {
+    return addReport(report);
+  }
+  
+  // Content moderation methods
+  getBannedWords(): string[] {
+    try {
+      const storedWords = localStorage.getItem('bannedWords');
+      if (storedWords) {
+        return JSON.parse(storedWords);
+      }
+    } catch (error) {
+      console.error('Error loading banned words:', error);
+    }
+    
+    return mockBannedWords;
+  }
+  
+  setBannedWords(words: string[]): boolean {
+    try {
+      localStorage.setItem('bannedWords', JSON.stringify(words));
+      return true;
+    } catch (error) {
+      console.error('Error saving banned words:', error);
+      return false;
+    }
+  }
+  
+  // Set typing indicator
+  setTypingIndicator(isTyping: boolean, recipientId: number): void {
+    // In a real app, this would notify other users via SignalR
+    console.log(`User ${this._currentUsername} is ${isTyping ? 'typing' : 'not typing'} to user ${recipientId}`);
+  }
+  
+  // Delete a message
+  deleteMessage(messageId: string, recipientId: number): Promise<boolean> {
+    // Get chat history
+    const history = getChatHistory(this._currentUserId, recipientId);
+    
+    // Find the message
+    const messageIndex = history.findIndex(msg => msg.id === messageId);
+    if (messageIndex === -1) {
+      return Promise.resolve(false);
+    }
+    
+    // Mark the message as deleted
+    history[messageIndex].isDeleted = true;
+    history[messageIndex].content = 'This message has been deleted';
+    
+    // Update the history
+    const allHistory = getAllChatHistoryForUser(this._currentUserId);
+    allHistory[recipientId] = history;
+    
+    // Save to local storage
+    localStorage.setItem(`chat_${this._currentUserId}`, JSON.stringify(allHistory));
+    
+    return Promise.resolve(true);
+  }
+  
+  // Get auth token
+  getAuthToken(): string {
+    return this._sessionToken;
   }
 }
 
+// Create a singleton instance
 export const signalRService = new SignalRService();

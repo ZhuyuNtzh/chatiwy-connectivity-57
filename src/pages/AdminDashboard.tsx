@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useUser, BannedUser } from '@/contexts/UserContext';
@@ -38,7 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import UserManagement from '@/components/admin/UserManagement';
-import SystemSettings from '@/components/admin/SystemSettings'; // Add this import
+import SystemSettings from '@/components/admin/SystemSettings';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -124,6 +123,23 @@ const AdminDashboard = () => {
   useEffect(() => {
     if (bannedUsers.length === 0) {
       setBannedUsers(initialBannedUsers);
+    }
+    
+    const hasReports = localStorage.getItem('user_reports');
+    if (!hasReports) {
+      const initialReport = {
+        id: `report_${Date.now()}`,
+        reporterId: 123,
+        reporterName: "User123",
+        reportedId: 456,
+        reportedName: "ToxicUser456",
+        reason: "Inappropriate content",
+        details: "User sent offensive messages during our conversation",
+        timestamp: new Date(),
+        status: "pending"
+      };
+      
+      localStorage.setItem('user_reports', JSON.stringify([initialReport]));
     }
   }, [bannedUsers.length, setBannedUsers]);
   
