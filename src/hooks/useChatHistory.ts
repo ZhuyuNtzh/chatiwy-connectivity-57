@@ -45,7 +45,7 @@ export const useChatHistory = () => {
     // Reset state when user changes
     setChatHistory({});
     setInboxMessages({});
-  }, [currentUser?.id]);
+  }, [currentUser?.username]); // Using username instead of id since UserProfile doesn't have id
   
   const handleShowHistory = () => {
     // Get fresh chat history when requesting it
