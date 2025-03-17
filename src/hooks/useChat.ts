@@ -171,6 +171,7 @@ export const useChat = (userId: number, effectiveRole: string, isAdmin = false) 
         senderId: signalRService.currentUserId,
         recipientId: userId,
         sender: username,
+        content: 'Image message', // Add content property
         timestamp: new Date(),
         isImage: true,
         imageUrl,
@@ -181,7 +182,8 @@ export const useChat = (userId: number, effectiveRole: string, isAdmin = false) 
       setMessages(prev => [...prev, newMessage]);
       
       // Call SignalR service to send image message
-      signalRService.sendImageMessage(userId, imageUrl);
+      // Use the correct method from the service
+      signalRService.sendImage(userId, imageUrl);
       
       // Update media gallery
       setMediaGalleryItems(prev => [
@@ -218,6 +220,7 @@ export const useChat = (userId: number, effectiveRole: string, isAdmin = false) 
       senderId: signalRService.currentUserId,
       recipientId: userId,
       sender: username,
+      content: 'Voice message', // Add content property
       timestamp: new Date(),
       isVoiceMessage: true,
       audioUrl,
@@ -279,8 +282,18 @@ export const useChat = (userId: number, effectiveRole: string, isAdmin = false) 
   
   // Confirm delete conversation
   const confirmDeleteConversation = () => {
-    // Delete all messages for this user
-    signalRService.deleteAllMessages(userId);
+    // Delete all messages for this user one by one instead of using a non-existent bulk delete method
+    const messagesForUser = messages.filter(msg => 
+      (msg.senderId === userId && msg.recipientId === signalRService.currentUserId) ||
+      (msg.senderId === signalRService.currentUserId && msg.recipientId === userId)
+    );
+    
+    // Delete each message individually
+    messagesForUser.forEach(msg => {
+      if (msg.id) {
+        signalRService.deleteMessage(msg.id, userId);
+      }
+    });
     
     // Clear local messages
     setMessages([]);
