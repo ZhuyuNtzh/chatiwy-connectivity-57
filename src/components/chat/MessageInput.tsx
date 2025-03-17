@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Image, Mic, Smile, StopCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ interface MessageInputProps {
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleVoiceMessageClick?: () => void;
   sendVoiceMessage?: (audioUrl: string) => void;
+  isAdmin?: boolean;
 }
 
 const commonEmojis = [
@@ -43,7 +45,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
   isVipUser,
   fileInputRef,
   handleVoiceMessageClick,
-  sendVoiceMessage
+  sendVoiceMessage,
+  isAdmin = false
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -60,7 +63,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
   }, []);
   
   const startRecording = async () => {
-    if (!isVipUser) {
+    // Admin can always send voice messages
+    if (!isVipUser && !isAdmin) {
       toast("Voice messages are a VIP feature");
       return;
     }
@@ -121,6 +125,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
   
+  // For admin users, we don't show character limit
+  const showCharLimit = !isAdmin;
+  
   return (
     <form onSubmit={handleSendMessage} className="flex items-center gap-2 sticky bottom-0 bg-white dark:bg-gray-800 p-2 border-t border-gray-200 dark:border-gray-700">
       <Popover>
@@ -172,27 +179,30 @@ const MessageInput: React.FC<MessageInputProps> = ({
           variant="ghost" 
           size="icon" 
           className="h-9 w-9 shrink-0"
-          disabled={!isVipUser || isUserBlocked}
+          disabled={!isVipUser && !isAdmin || isUserBlocked}
           onClick={startRecording}
-          title={!isVipUser ? "VIP feature" : "Record voice message"}
+          title={!isVipUser && !isAdmin ? "VIP feature" : "Record voice message"}
         >
-          <Mic className={`h-5 w-5 ${!isVipUser ? "opacity-50" : ""}`} />
+          <Mic className={`h-5 w-5 ${!isVipUser && !isAdmin ? "opacity-50" : ""}`} />
         </Button>
       )}
       
       <div className="relative flex-1">
         <Input
           value={message}
-          onChange={(e) => setMessage(e.target.value.slice(0, maxChars))}
+          onChange={(e) => setMessage(isAdmin ? e.target.value : e.target.value.slice(0, maxChars))}
           onKeyDown={handleKeyDown}
           placeholder="Type a message..."
           className="pr-16 dark:bg-gray-700 dark:text-white"
-          maxLength={maxChars}
+          maxLength={isAdmin ? undefined : maxChars}
           disabled={isUserBlocked || isRecording}
+          name="message"
         />
-        <div className="absolute right-2 bottom-1 text-xs text-gray-400">
-          {message.length}/{maxChars}
-        </div>
+        {showCharLimit && (
+          <div className="absolute right-2 bottom-1 text-xs text-gray-400">
+            {message.length}/{maxChars}
+          </div>
+        )}
       </div>
       
       <Button 

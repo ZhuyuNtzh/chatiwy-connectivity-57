@@ -5,11 +5,15 @@ import { signalRService } from '@/services/signalRService';
 import ChatWindow from '@/components/ChatWindow';
 import { useCountryFlags } from '@/hooks/useCountryFlags';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft, History, Inbox, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import HistoryDialog from '@/components/chat/HistoryDialog';
+import InboxDialog from '@/components/chat/InboxDialog';
+import { useChatHistory } from '@/hooks/useChatHistory';
+import { useMessages } from '@/hooks/useMessages';
 
 interface User {
   id: number;
@@ -30,6 +34,19 @@ const AdminChatInterface = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [connectedUsers, setConnectedUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  const [showInbox, setShowInbox] = useState(false);
+  const { unreadCount } = useMessages(selectedUser?.id || 0, 'vip');
+  
+  const {
+    chatHistory,
+    setChatHistory,
+    inboxMessages,
+    setInboxMessages,
+    handleShowHistory,
+    handleShowInbox,
+    handleContinueChat
+  } = useChatHistory();
   
   useEffect(() => {
     // Ensure admin is always connected
@@ -51,6 +68,18 @@ const AdminChatInterface = () => {
   }, [currentUser]);
   
   const loadMockUsers = () => {
+    // Check if we have saved mock users in localStorage
+    const savedUsers = localStorage.getItem('mockUsers');
+    if (savedUsers) {
+      try {
+        const parsed = JSON.parse(savedUsers);
+        setConnectedUsers(parsed);
+        return;
+      } catch (e) {
+        console.error('Error parsing saved users:', e);
+      }
+    }
+    
     // This is a mock implementation - in production this would come from the server
     const mockUsers = [
       { id: 1, username: "Alice", gender: "Female", age: 28, location: "Australia", interests: ["Art", "Photography", "Travel"], isOnline: true, isVip: true },
@@ -66,6 +95,9 @@ const AdminChatInterface = () => {
     ];
     
     setConnectedUsers(mockUsers);
+    
+    // Save to localStorage for persistence
+    localStorage.setItem('mockUsers', JSON.stringify(mockUsers));
   };
   
   const handleBackToAdmin = () => {
@@ -84,24 +116,82 @@ const AdminChatInterface = () => {
     user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleOpenHistory = () => {
+    const allHistory = handleShowHistory();
+    setIsHistoryDialogOpen(true);
+    return allHistory;
+  };
+  
+  const handleOpenInbox = () => {
+    const allHistory = handleShowInbox();
+    setShowInbox(true);
+    return allHistory;
+  };
+  
+  const handleContinueChatWithUser = (userId: number) => {
+    const foundUser = connectedUsers.find(user => user.id === userId);
+    if (foundUser) {
+      setSelectedUser(foundUser);
+      setIsHistoryDialogOpen(false);
+      setShowInbox(false);
+    }
+  };
+  
+  // Prevent closing when clicking outside
+  const handleSidebarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
   
   return (
     <div className="flex flex-col h-screen">
-      <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 py-4 px-6 flex items-center">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={handleBackToAdmin}
-          className="mr-2"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="text-xl font-bold">Admin Chat Interface</h1>
+      <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 py-4 px-6 flex items-center justify-between">
+        <div className="flex items-center">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleBackToAdmin}
+            className="mr-2"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl font-bold">Admin Chat Interface</h1>
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex items-center gap-1"
+            onClick={handleOpenHistory}
+          >
+            <History className="h-4 w-4" />
+            <span>History</span>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex items-center gap-1 relative"
+            onClick={handleOpenInbox}
+          >
+            <Inbox className="h-4 w-4" />
+            <span>Inbox</span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Button>
+        </div>
       </div>
       
       <div className="flex flex-1 overflow-hidden">
-        {/* User sidebar */}
-        <div className="w-1/4 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        {/* User sidebar - with click event handler to prevent closing when clicking inside */}
+        <div 
+          className="w-1/4 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+          onClick={handleSidebarClick}
+        >
           <div className="p-4">
             <Input
               placeholder="Search users..."
@@ -171,6 +261,7 @@ const AdminChatInterface = () => {
               user={selectedUser}
               countryFlags={countryFlags}
               onClose={handleCloseChat}
+              isAdmin={true}
             />
           ) : (
             <div className="h-full flex items-center justify-center">
@@ -184,6 +275,24 @@ const AdminChatInterface = () => {
           )}
         </div>
       </div>
+      
+      {/* History and Inbox Dialogs */}
+      <HistoryDialog 
+        isOpen={isHistoryDialogOpen}
+        onOpenChange={setIsHistoryDialogOpen}
+        chatHistory={chatHistory}
+        users={connectedUsers}
+        onContinueChat={handleContinueChatWithUser}
+      />
+      
+      <InboxDialog
+        isOpen={showInbox}
+        onOpenChange={setShowInbox}
+        inboxMessages={inboxMessages}
+        onOpenChat={handleContinueChatWithUser}
+        onDialogOpened={() => {}}
+        unreadBySender={{}}
+      />
     </div>
   );
 };

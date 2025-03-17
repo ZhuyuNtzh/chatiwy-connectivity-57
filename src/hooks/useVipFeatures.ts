@@ -38,7 +38,7 @@ export const useVipFeatures = () => {
         const mockUsers = JSON.parse(mockUsersJSON);
         const userIndex = mockUsers.findIndex((u: any) => u.id === userId);
         if (userIndex !== -1) {
-          mockUsers[userIndex].role = 'vip';
+          mockUsers[userIndex].isVip = true;
           localStorage.setItem('mockUsers', JSON.stringify(mockUsers));
         }
       } catch (e) {
@@ -78,7 +78,7 @@ export const useVipFeatures = () => {
         const mockUsers = JSON.parse(mockUsersJSON);
         const userIndex = mockUsers.findIndex((u: any) => u.id === userId);
         if (userIndex !== -1) {
-          mockUsers[userIndex].role = 'vip';
+          mockUsers[userIndex].isVip = true;
           localStorage.setItem('mockUsers', JSON.stringify(mockUsers));
         }
       } catch (e) {

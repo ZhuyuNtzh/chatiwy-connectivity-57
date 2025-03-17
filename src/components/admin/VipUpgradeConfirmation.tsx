@@ -28,8 +28,7 @@ const VipUpgradeConfirmation: React.FC<VipUpgradeConfirmationProps> = ({
   const [expiryDate, setExpiryDate] = useState<Date | undefined>(
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Default to 30 days from now
   );
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-
+  
   const handleConfirm = () => {
     if (expiryDate && user) {
       onConfirm(user.id, user.username, expiryDate);
@@ -49,46 +48,25 @@ const VipUpgradeConfirmation: React.FC<VipUpgradeConfirmationProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4 space-y-4">
+        <div className="py-4">
           <div className="space-y-2">
-            <Label htmlFor="date-picker">VIP Status Expiry Date</Label>
-            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  id="date-picker"
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !expiryDate && "text-muted-foreground"
-                  )}
-                >
-                  {expiryDate ? format(expiryDate, "PPP") : "Select expiry date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={expiryDate}
-                  onSelect={(date) => {
-                    if (date) {
-                      setExpiryDate(date);
-                      // Don't auto-close to prevent issues
-                    }
-                  }}
-                  initialFocus
-                  disabled={(date) => date < new Date()}
-                />
-                <div className="p-3 border-t border-border">
-                  <Button 
-                    size="sm" 
-                    className="w-full"
-                    onClick={() => setIsCalendarOpen(false)}
-                  >
-                    Confirm Date
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
+            <Label>VIP Status Expiry Date</Label>
+            <div className="border rounded-md p-4">
+              <Calendar
+                mode="single"
+                selected={expiryDate}
+                onSelect={setExpiryDate}
+                disabled={(date) => date < new Date()}
+                initialFocus
+              />
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              {expiryDate ? (
+                <>Selected expiry date: <span className="font-medium">{format(expiryDate, "PPP")}</span></>
+              ) : (
+                "Please select an expiry date"
+              )}
+            </p>
           </div>
         </div>
 
@@ -99,6 +77,7 @@ const VipUpgradeConfirmation: React.FC<VipUpgradeConfirmationProps> = ({
           <Button 
             onClick={handleConfirm}
             className="bg-gradient-to-r from-amber-400 to-amber-600 text-white"
+            disabled={!expiryDate}
           >
             Confirm Upgrade
           </Button>

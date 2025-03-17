@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Flag, Ban, Users, Languages, Image, Trash } from 'lucide-react';
+import { Flag, Ban, Users, Languages, Image, Trash, UserX, Shield } from 'lucide-react';
 import {
   DropdownMenuContent,
   DropdownMenuItem,
@@ -18,6 +18,9 @@ interface HeaderDropdownContentProps {
   selectedLanguage?: string;
   onShowMediaGallery?: () => void;
   onDeleteConversation?: () => void;
+  onKickUser?: () => void;
+  onBanUser?: () => void;
+  isAdmin?: boolean;
 }
 
 const HeaderDropdownContent: React.FC<HeaderDropdownContentProps> = ({
@@ -30,6 +33,9 @@ const HeaderDropdownContent: React.FC<HeaderDropdownContentProps> = ({
   selectedLanguage,
   onShowMediaGallery,
   onDeleteConversation,
+  onKickUser,
+  onBanUser,
+  isAdmin,
 }) => {
   const languages = [
     { value: 'en', label: 'English' },
@@ -46,15 +52,34 @@ const HeaderDropdownContent: React.FC<HeaderDropdownContentProps> = ({
 
   return (
     <DropdownMenuContent align="end" className="w-56">
-      <DropdownMenuItem onClick={onReportUser} className="text-amber-600 dark:text-amber-400">
-        <Flag className="mr-2 h-4 w-4" />
-        <span>Report user</span>
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={onBlockUser} className="text-red-600 dark:text-red-400">
-        <Ban className="mr-2 h-4 w-4" />
-        <span>Block user</span>
-      </DropdownMenuItem>
-      <DropdownMenuSeparator />
+      {!isAdmin && (
+        <>
+          <DropdownMenuItem onClick={onReportUser} className="text-amber-600 dark:text-amber-400">
+            <Flag className="mr-2 h-4 w-4" />
+            <span>Report user</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onBlockUser} className="text-red-600 dark:text-red-400">
+            <Ban className="mr-2 h-4 w-4" />
+            <span>Block user</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+        </>
+      )}
+      
+      {isAdmin && (
+        <>
+          <DropdownMenuItem onClick={onKickUser} className="text-amber-600 dark:text-amber-400">
+            <UserX className="mr-2 h-4 w-4" />
+            <span>Kick user</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onBanUser} className="text-red-600 dark:text-red-400">
+            <Shield className="mr-2 h-4 w-4" />
+            <span>Ban user</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+        </>
+      )}
+      
       <DropdownMenuItem onClick={onShowBlockedUsers}>
         <Users className="mr-2 h-4 w-4" />
         <span>Blocked users</span>
