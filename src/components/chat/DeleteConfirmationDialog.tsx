@@ -31,8 +31,16 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   title = "Delete Conversation",
   description = "Are you sure you want to delete this entire conversation? This action cannot be undone."
 }) => {
+  // Prevent dialog from closing during deletion
+  const handleOpenChange = (open: boolean) => {
+    if (isDeleting && !open) {
+      return; // Prevent closing during deletion
+    }
+    onOpenChange(open);
+  };
+  
   return (
-    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+    <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
       <AlertDialogContent className="dark:bg-gray-800">
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>

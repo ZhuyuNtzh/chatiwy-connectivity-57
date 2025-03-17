@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '@/services/signalRService';
 import { ChatMessageService } from '@/services/ChatMessageService';
@@ -239,6 +238,7 @@ export const useChat = (userId: number, userRole: string) => {
   };
   
   const handleConfirmDeleteConversation = () => {
+    // Ensure we pass the state setters to the base function
     baseConfirmDeleteConversation(setMessages, setMediaGalleryItems);
   };
 
