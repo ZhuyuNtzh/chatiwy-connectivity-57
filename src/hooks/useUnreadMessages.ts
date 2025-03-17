@@ -35,6 +35,10 @@ export const useUnreadMessages = () => {
     
     setUnreadCount(count);
     setUnreadBySender(newUnreadBySender);
+    
+    // Also save to localStorage to persist across page reloads
+    localStorage.setItem('unreadCount', count.toString());
+    localStorage.setItem('unreadBySender', JSON.stringify(newUnreadBySender));
   };
   
   // Reset unread count for specific users
@@ -50,38 +54,61 @@ export const useUnreadMessages = () => {
       userIds.forEach(id => {
         delete newState[id];
       });
+      
+      // Save updated state to localStorage
+      localStorage.setItem('unreadBySender', JSON.stringify(newState));
       return newState;
     });
     
     // Recalculate total unread count
-    const remainingUnreadSenders = Object.keys(unreadBySender)
-      .filter(id => !userIds.includes(parseInt(id)))
-      .map(id => parseInt(id));
-    
-    // Get all conversations
     const allHistory = signalRService.getAllChatHistory();
     const currentUserId = signalRService.currentUserId;
     let count = 0;
     
-    // Count remaining unread messages
-    remainingUnreadSenders.forEach(senderId => {
-      const messages = allHistory[senderId] || [];
+    // Count all unread messages
+    Object.entries(allHistory).forEach(([senderId, messages]) => {
+      const senderIdNum = parseInt(senderId);
+      // Skip users we just marked as read
+      if (userIds.includes(senderIdNum)) return;
+      
       const unreadMessages = messages.filter(msg => 
         msg.recipientId === currentUserId && 
-        msg.senderId === senderId && 
+        msg.senderId === senderIdNum && 
         !msg.isRead
       );
+      
       count += unreadMessages.length;
     });
     
     setUnreadCount(count);
+    localStorage.setItem('unreadCount', count.toString());
   };
   
   // Mark inbox as viewed (doesn't reset unread count)
   const markInboxAsViewed = () => {
-    // Just mark that inbox was viewed, don't reset counts
     isInboxViewedRef.current = true;
   };
+
+  // Effect to load data from localStorage on initial render
+  useEffect(() => {
+    const storedCount = localStorage.getItem('unreadCount');
+    const storedBySender = localStorage.getItem('unreadBySender');
+    
+    if (storedCount) {
+      setUnreadCount(parseInt(storedCount));
+    }
+    
+    if (storedBySender) {
+      try {
+        setUnreadBySender(JSON.parse(storedBySender));
+      } catch (e) {
+        console.error('Failed to parse unreadBySender from localStorage', e);
+      }
+    }
+    
+    // Then load fresh data
+    loadUnreadCount();
+  }, []);
 
   // Effect to set up message listener for unread counts
   useEffect(() => {
@@ -96,22 +123,27 @@ export const useUnreadMessages = () => {
         
         if (!isCurrentConversation) {
           // Increment the unread count
-          setUnreadCount(prev => prev + 1);
+          setUnreadCount(prev => {
+            const newCount = prev + 1;
+            localStorage.setItem('unreadCount', newCount.toString());
+            return newCount;
+          });
           
           // Mark this sender as having unread messages
-          setUnreadBySender(prev => ({
-            ...prev,
-            [msg.senderId]: true
-          }));
+          setUnreadBySender(prev => {
+            const newState = {
+              ...prev,
+              [msg.senderId]: true
+            };
+            localStorage.setItem('unreadBySender', JSON.stringify(newState));
+            return newState;
+          });
         }
       }
     };
 
     // Add event listener
     signalRService.onMessageReceived(handleMessageReceived);
-    
-    // Load initial unread count
-    loadUnreadCount();
     
     // Cleanup
     return () => {

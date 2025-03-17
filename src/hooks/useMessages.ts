@@ -47,6 +47,11 @@ export const useMessages = (userId: number, userRole: string) => {
       // Mark messages as read for this specific user
       if (unreadBySender[userId]) {
         resetUnreadForUsers([userId]);
+        
+        // Re-calculate unread counts after marking as read
+        setTimeout(() => {
+          loadUnreadCount();
+        }, 100);
       }
     }
   }, [userId, unreadBySender, resetUnreadForUsers]);

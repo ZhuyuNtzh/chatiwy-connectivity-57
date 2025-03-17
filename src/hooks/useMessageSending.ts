@@ -6,6 +6,9 @@ export const useMessageSending = (userId: number, setMessage: React.Dispatch<Rea
   const handleSendMessage = (e?: React.FormEvent, message: string = '') => {
     if (e) e.preventDefault();
     
+    // Don't send empty messages
+    if (!message.trim()) return;
+    
     // Create a unique ID for the message
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     

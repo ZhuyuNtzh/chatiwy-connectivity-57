@@ -69,39 +69,66 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
   
   if (!isOpen) return null;
   
-  // Gather and sort all inbox entries
-  const sortedInboxEntries = Object.entries(inboxMessages)
-    .map(([senderId, messages]) => {
-      const userIdNum = parseInt(senderId);
-      const currentUserId = signalRService.currentUserId;
-      
-      // For each user, filter messages to only include those sent TO the current user
-      const incomingMessages = messages.filter(msg => 
-        msg.recipientId === currentUserId && msg.senderId === userIdNum
-      );
-      
-      // Skip if no incoming messages
-      if (incomingMessages.length === 0) return null;
-      
-      // Sort messages by timestamp (newest first)
-      const sortedMessages = [...incomingMessages].sort((a, b) => {
-        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-      });
-      
-      const lastMessage = sortedMessages[0];
-      
-      // Skip if no last message
-      if (!lastMessage) return null;
-      
-      return {
-        senderId: userIdNum,
-        lastMessage,
-        messages: sortedMessages,
-        timestamp: new Date(lastMessage.timestamp).getTime()
+  // Process inbox entries
+  const processedInboxEntries = Object.entries(inboxMessages).map(([senderId, messages]) => {
+    const userIdNum = parseInt(senderId);
+    const currentUserId = signalRService.currentUserId;
+    
+    // Only include messages sent TO the current user
+    const incomingMessages = messages.filter(msg => 
+      msg.recipientId === currentUserId && 
+      msg.senderId === userIdNum
+    );
+    
+    if (incomingMessages.length === 0) return null;
+    
+    // Sort messages by timestamp (newest first)
+    const sortedMessages = [...incomingMessages].sort((a, b) => 
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+    
+    const lastMessage = sortedMessages[0];
+    if (!lastMessage) return null;
+    
+    // Get sender names from user lookups or use generic name
+    let senderName = lastMessage.actualUsername || lastMessage.sender;
+    if (!senderName) {
+      // Map known user IDs to names
+      const senderNames: Record<number, string> = {
+        1: "Alice",
+        2: "Bob",
+        3: "Clara",
+        4: "David", 
+        5: "Elena",
+        6: "Feng",
+        7: "Gabriela",
+        8: "Hiroshi",
+        9: "Isabella",
+        10: "Jamal",
+        11: "TravelBot",
+        12: "FitnessGuru",
+        13: "BookWorm",
+        14: "TechGeek",
+        15: "ArtLover"
       };
-    })
-    .filter(Boolean) // Remove null entries
-    .sort((a, b) => b!.timestamp - a!.timestamp); // Sort by most recent first
+      
+      senderName = senderNames[userIdNum] || `User${userIdNum}`;
+    }
+    
+    return {
+      senderId: userIdNum,
+      senderName,
+      lastMessage,
+      messages: sortedMessages,
+      timestamp: new Date(lastMessage.timestamp).getTime(),
+      isUnread: unreadBySender[userIdNum] || false
+    };
+  }).filter(Boolean); // Remove null entries
+  
+  // Sort entries by timestamp (newest first)
+  const sortedInboxEntries = processedInboxEntries.sort((a, b) => 
+    b!.timestamp - a!.timestamp
+  );
   
   const hasMessages = sortedInboxEntries.length > 0;
   
@@ -138,13 +165,11 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
               {sortedInboxEntries.map((entry) => {
                 if (!entry) return null;
                 
-                const { senderId, lastMessage, messages } = entry;
-                const isUnread = unreadBySender[senderId] || false;
-                const actualSender = lastMessage.actualUsername || lastMessage.sender;
+                const { senderId, senderName, lastMessage, isUnread } = entry;
                 
                 return (
                   <div 
-                    key={senderId} 
+                    key={`inbox-entry-${senderId}-${lastMessage.id}`} 
                     className={`p-3 rounded-lg border ${isUnread ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : 'border-gray-200 dark:border-gray-700'}`}
                   >
                     <div className="flex justify-between items-start mb-2">
@@ -153,7 +178,7 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
                           <div className="h-2 w-2 bg-blue-500 rounded-full mr-2"></div>
                         )}
                         <h3 className={`font-medium ${isUnread ? 'text-blue-600 dark:text-blue-400' : ''}`}>
-                          {actualSender}
+                          {senderName}
                         </h3>
                       </div>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
