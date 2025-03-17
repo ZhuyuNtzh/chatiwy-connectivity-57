@@ -76,6 +76,7 @@ const VipUpgradeConfirmation: React.FC<VipUpgradeConfirmationProps> = ({
                   }}
                   initialFocus
                   disabled={(date) => date < new Date()}
+                  className={cn("p-3 pointer-events-auto")}
                 />
               </PopoverContent>
             </Popover>

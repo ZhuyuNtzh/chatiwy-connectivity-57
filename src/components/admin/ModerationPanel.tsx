@@ -2,15 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Flag, Trash2 } from 'lucide-react';
+import { Flag, Trash2, RefreshCw } from 'lucide-react';
 import { signalRService } from '@/services/signalRService';
 import { UserReport } from '@/services/signalR/types';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import UserTypeDisplay from '@/components/UserTypeDisplay';
 
 const ModerationPanel = () => {
   const [reports, setReports] = useState<UserReport[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     loadReports();
@@ -22,21 +22,34 @@ const ModerationPanel = () => {
   }, []);
 
   const loadReports = () => {
+    setIsLoading(true);
     console.log("Loading reports...");
     try {
+      // Make sure signalRService is properly initialized and has this method
       const allReports = signalRService.getReports();
       console.log("Got reports:", allReports);
-      setReports(allReports);
+      
+      // Filter out reports older than 24 hours
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const filteredReports = allReports.filter(report => {
+        const reportDate = new Date(report.timestamp);
+        return reportDate > twentyFourHoursAgo;
+      });
+      
+      setReports(filteredReports);
     } catch (error) {
       console.error("Error loading reports:", error);
       toast.error("Failed to load reports");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleDeleteReport = (reportId: string) => {
     try {
       signalRService.deleteReport(reportId);
-      loadReports();
+      // Update the local state to remove the deleted report
+      setReports(prevReports => prevReports.filter(report => report.id !== reportId));
       toast.success('Report deleted successfully');
     } catch (error) {
       console.error("Error deleting report:", error);
@@ -59,9 +72,11 @@ const ModerationPanel = () => {
 
       <Button 
         variant="outline" 
-        className="mb-4 self-end"
+        className="mb-4 self-end flex items-center gap-2"
         onClick={loadReports}
+        disabled={isLoading}
       >
+        <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         Refresh Reports
       </Button>
 

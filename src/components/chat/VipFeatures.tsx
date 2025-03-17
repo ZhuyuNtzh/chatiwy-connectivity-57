@@ -31,7 +31,7 @@ interface VipFeaturesProps {
   vipUpgradeUser?: {
     id: number;
     username: string;
-  };
+  } | null;
   onConfirmVipUpgrade?: (userId: number, username: string, expiryDate: Date) => void;
 }
 

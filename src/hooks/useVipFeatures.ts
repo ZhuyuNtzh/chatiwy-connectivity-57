@@ -24,7 +24,18 @@ export const useVipFeatures = () => {
       expiryDate: expiryDate.toISOString(),
     }));
 
+    // Update the VIP status so it takes effect immediately
+    localStorage.setItem(`vipStatus_${userId}`, JSON.stringify({
+      username,
+      isPermanent: false,
+      expiryDate: expiryDate.toISOString(),
+    }));
+
     toast.success(`${username} has been granted VIP status until ${expiryDate.toLocaleDateString()}`);
+    
+    // Close the dialog
+    setIsVipUpgradeDialogOpen(false);
+    setVipUpgradeUser(null);
   }, []);
 
   // Upgrade a user to VIP status
