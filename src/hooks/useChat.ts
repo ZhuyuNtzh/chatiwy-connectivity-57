@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '@/services/signalRService';
 import { ChatMessageService } from '@/services/ChatMessageService';
@@ -89,7 +90,7 @@ export const useChat = (userId: number, userRole: string) => {
     setIsDeleteDialogOpen,
     isDeletingConversation,
     deleteConversation,
-    confirmDeleteConversation,
+    confirmDeleteConversation: baseConfirmDeleteConversation,
     cancelDeleteConversation
   } = useConversationManagement();
 
@@ -238,7 +239,7 @@ export const useChat = (userId: number, userRole: string) => {
   };
   
   const handleConfirmDeleteConversation = () => {
-    confirmDeleteConversation(setMessages, setMediaGalleryItems);
+    baseConfirmDeleteConversation(setMessages, setMediaGalleryItems);
   };
 
   const handleReplyToMessage = (messageId: string, messageText: string) => {
@@ -286,6 +287,7 @@ export const useChat = (userId: number, userRole: string) => {
     fileInputRef,
     maxChars,
     autoScrollToBottom,
+    updateScrollPosition,
     isTyping,
     isTranslationEnabled,
     selectedLanguage,
@@ -298,11 +300,28 @@ export const useChat = (userId: number, userRole: string) => {
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
     isDeletingConversation,
+    handleSendMessage,
+    handleKeyDown,
+    handleAddEmoji,
+    handleBlockUser,
+    confirmBlockUser,
+    handleUnblockUser,
+    handleReportUser,
+    handleSubmitReport,
+    handleImageClick,
+    handleImageChange,
+    handleSendImage,
+    handleVoiceMessageClick,
+    sendVoiceMessage,
+    toggleImageBlur,
+    openImagePreview,
+    showBlockedUsersList,
+    toggleTranslation,
+    showMediaGallery,
     deleteConversation,
     confirmDeleteConversation: handleConfirmDeleteConversation,
     cancelDeleteConversation,
     replyToMessage: handleReplyToMessage,
-    unsendMessage: handleUnsendMessage,
-    updateScrollPosition
+    unsendMessage: handleUnsendMessage
   };
 };
