@@ -2,7 +2,7 @@
 import { useRef } from 'react';
 import { signalRService } from '@/services/signalRService';
 
-export const useMessageSending = (userId: number, setMessage: (message: string) => void) => {
+export const useMessageSending = (userId: number, setMessage: React.Dispatch<React.SetStateAction<string>>) => {
   const handleSendMessage = (e?: React.FormEvent, message: string = '') => {
     if (e) e.preventDefault();
     
@@ -24,7 +24,7 @@ export const useMessageSending = (userId: number, setMessage: (message: string) 
   };
   
   const handleAddEmoji = (emoji: string) => {
-    setMessage((prev) => prev + emoji);
+    setMessage(prev => prev + emoji);
   };
 
   return {
