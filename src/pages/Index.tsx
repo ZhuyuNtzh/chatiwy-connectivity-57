@@ -126,7 +126,13 @@ const Index = () => {
   return (
     <div className={`min-h-screen bg-background flex flex-col ${isDarkMode ? 'dark' : ''}`}>
       <header className="w-full px-8 py-4 flex justify-between items-center">
-        <div className="text-2xl font-bold text-foreground">chativy.</div>
+        <div className="flex items-center">
+          <img 
+            src="/lovable-uploads/d8841acc-5cb4-4eb0-a83b-3a8d99e4eaf6.png" 
+            alt="Chatwii Logo" 
+            className="h-10"
+          />
+        </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Switch 

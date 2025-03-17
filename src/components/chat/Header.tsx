@@ -26,9 +26,11 @@ const Header = ({
     <header className={`fixed top-0 left-0 right-0 z-10 py-3 px-4 ${isDarkMode ? 'bg-gray-900' : 'bg-white'} border-b border-gray-200 dark:border-gray-700`}>
       <div className="flex items-center justify-between max-w-7xl mx-auto">
         <div className="hidden md:flex items-center">
-          <span className="text-xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-pink-500">
-            Chatiwy
-          </span>
+          <img 
+            src="/lovable-uploads/d8841acc-5cb4-4eb0-a83b-3a8d99e4eaf6.png" 
+            alt="Chatwii Logo" 
+            className="h-7"
+          />
         </div>
         
         <div className="flex items-center gap-2 ml-auto">

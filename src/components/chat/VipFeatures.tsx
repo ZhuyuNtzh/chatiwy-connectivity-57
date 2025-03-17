@@ -2,6 +2,7 @@
 import React from 'react';
 import MediaGalleryDialog from './MediaGalleryDialog';
 import DeleteConfirmationDialog from './DeleteConfirmationDialog';
+import VipUpgradeConfirmation from '../admin/VipUpgradeConfirmation';
 
 interface VipFeaturesProps {
   isMediaGalleryOpen: boolean;
@@ -24,6 +25,14 @@ interface VipFeaturesProps {
   setIsDeleteDialogOpen: (isOpen: boolean) => void;
   onConfirmDelete: () => void;
   onCancelDelete: () => void;
+  // Added for admin VIP upgrade
+  isVipUpgradeDialogOpen?: boolean;
+  setIsVipUpgradeDialogOpen?: (isOpen: boolean) => void;
+  vipUpgradeUser?: {
+    id: number;
+    username: string;
+  };
+  onConfirmVipUpgrade?: (userId: number, username: string, expiryDate: Date) => void;
 }
 
 const VipFeatures: React.FC<VipFeaturesProps> = ({
@@ -34,7 +43,11 @@ const VipFeatures: React.FC<VipFeaturesProps> = ({
   isDeleteDialogOpen,
   setIsDeleteDialogOpen,
   onConfirmDelete,
-  onCancelDelete
+  onCancelDelete,
+  isVipUpgradeDialogOpen,
+  setIsVipUpgradeDialogOpen,
+  vipUpgradeUser,
+  onConfirmVipUpgrade
 }) => {
   return (
     <>
@@ -51,6 +64,15 @@ const VipFeatures: React.FC<VipFeaturesProps> = ({
         onConfirm={onConfirmDelete}
         onCancel={onCancelDelete}
       />
+
+      {onConfirmVipUpgrade && setIsVipUpgradeDialogOpen && vipUpgradeUser && (
+        <VipUpgradeConfirmation
+          isOpen={isVipUpgradeDialogOpen || false}
+          onOpenChange={setIsVipUpgradeDialogOpen}
+          user={vipUpgradeUser}
+          onConfirm={onConfirmVipUpgrade}
+        />
+      )}
     </>
   );
 };

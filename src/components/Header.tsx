@@ -54,9 +54,11 @@ const Header = () => {
             </Button>
           )}
           <Link to="/" className="text-xl font-semibold hidden md:flex items-center">
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
-              Chatwii
-            </span>
+            <img 
+              src="/lovable-uploads/d8841acc-5cb4-4eb0-a83b-3a8d99e4eaf6.png" 
+              alt="Chatwii Logo" 
+              className="h-8"
+            />
           </Link>
         </div>
 
