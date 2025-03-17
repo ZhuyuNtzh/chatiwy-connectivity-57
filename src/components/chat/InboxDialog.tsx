@@ -69,7 +69,7 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
   
   if (!isOpen) return null;
   
-  // Process inbox entries
+  // Process inbox entries - Fix sender name display issue
   const processedInboxEntries = Object.entries(inboxMessages).map(([senderId, messages]) => {
     const userIdNum = parseInt(senderId);
     const currentUserId = signalRService.currentUserId;
@@ -91,8 +91,12 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
     if (!lastMessage) return null;
     
     // Get sender names from user lookups or use generic name
-    let senderName = lastMessage.actualUsername || lastMessage.sender;
-    if (!senderName) {
+    // FIX: Don't use recipient name (current user), use sender name
+    let senderName = lastMessage.senderId === currentUserId 
+      ? (lastMessage.actualUsername || lastMessage.sender || "You")
+      : (lastMessage.actualUsername || lastMessage.sender);
+      
+    if (!senderName || senderName === currentUserId.toString()) {
       // Map known user IDs to names
       const senderNames: Record<number, string> = {
         1: "Alice",

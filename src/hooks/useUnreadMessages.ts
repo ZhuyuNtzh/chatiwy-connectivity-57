@@ -39,10 +39,14 @@ export const useUnreadMessages = () => {
     // Also save to localStorage to persist across page reloads
     localStorage.setItem('unreadCount', count.toString());
     localStorage.setItem('unreadBySender', JSON.stringify(newUnreadBySender));
+    
+    return { count, newUnreadBySender };
   };
   
   // Reset unread count for specific users
   const resetUnreadForUsers = (userIds: number[]) => {
+    if (!userIds.length) return;
+    
     // Mark messages as read in signalR service
     userIds.forEach(id => {
       signalRService.markMessagesAsRead(id);
