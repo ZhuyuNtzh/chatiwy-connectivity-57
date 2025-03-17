@@ -25,9 +25,10 @@ interface ChatWindowProps {
   };
   countryFlags: Record<string, string>;
   onClose: () => void;
+  isAdminView?: boolean;
 }
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) => {
+const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, isAdminView = false }) => {
   const { userRole } = useUser();
   const {
     message,
@@ -102,12 +103,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
           onBlockUser={handleBlockUser}
           onReportUser={handleReportUser}
           onShowBlockedUsers={showBlockedUsersList}
-          onToggleTranslation={userRole === 'vip' ? toggleTranslation : undefined}
+          onToggleTranslation={userRole === 'vip' || isAdminView ? toggleTranslation : undefined}
           isTranslationEnabled={isTranslationEnabled}
-          onSelectLanguage={userRole === 'vip' ? setSelectedLanguage : undefined}
+          onSelectLanguage={userRole === 'vip' || isAdminView ? setSelectedLanguage : undefined}
           selectedLanguage={selectedLanguage}
-          onShowMediaGallery={userRole === 'vip' ? showMediaGallery : undefined}
-          onDeleteConversation={userRole === 'vip' ? deleteConversation : undefined}
+          onShowMediaGallery={userRole === 'vip' || isAdminView ? showMediaGallery : undefined}
+          onDeleteConversation={userRole === 'vip' || isAdminView ? deleteConversation : undefined}
         />
       </div>
       
@@ -134,8 +135,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
         isUserBlocked={signalRService.isUserBlocked(user.id)}
         isVipUser={userRole === 'vip'}
         fileInputRef={fileInputRef}
-        handleVoiceMessageClick={userRole === 'vip' ? handleVoiceMessageClick : undefined}
-        sendVoiceMessage={userRole === 'vip' ? sendVoiceMessage : undefined}
+        handleVoiceMessageClick={userRole === 'vip' || isAdminView ? handleVoiceMessageClick : undefined}
+        sendVoiceMessage={userRole === 'vip' || isAdminView ? sendVoiceMessage : undefined}
+        isAdminView={isAdminView}
       />
       
       <ChatInputHandlers
@@ -168,7 +170,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
       />
       
       {/* VIP Feature Components */}
-      {userRole === 'vip' && (
+      {(userRole === 'vip' || isAdminView) && (
         <VipFeatures
           isMediaGalleryOpen={isMediaGalleryOpen}
           setIsMediaGalleryOpen={setIsMediaGalleryOpen}
