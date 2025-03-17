@@ -1,11 +1,11 @@
 import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import type { ChatMessage, UserReport, TypingIndicator, UserSession } from './signalR/types';
-import { messageHandler, handleIncomingMessage, processChatHistory } from './signalR/messageHandler';
+import { messageHandler, handleIncomingMessage } from './signalR/messageHandler';
 import { isUserBlocked, blockUser, unblockUser, getBlockedUsers } from './signalR/userBlocking';
 import { reportUser, getReports, deleteReport, addReport } from './signalR/userReporting';
-import { storeChatMessage, getChatHistory, getAllChatHistoryForUser, clearAllChatHistoryForUser, markMessagesAsRead } from './signalR/chatStorage';
 import createMockConnection from './signalR/mockConnection';
-import { checkAndFilterMessage } from './signalR/contentModeration';
+import { createChatManagementService } from './signalR/chatManagement';
+import { createEventHandlers } from './signalR/eventHandlers';
 
 // Mock data for testing
 const mockBannedWords = ['badword', 'offensive', 'inappropriate', 'slur'];
@@ -20,6 +20,16 @@ class SignalRService {
   private mockReports: UserReport[] = [];
   private userSession: UserSession | null = null;
   currentSelectedUserId: number | null = null;
+  
+  // Initialize the chat management service
+  private chatManagement = createChatManagementService(
+    () => this._currentUserId,
+    () => this._currentUsername, 
+    () => this.getBannedWords()
+  );
+  
+  // Initialize event handlers
+  private eventHandlers = createEventHandlers();
   
   constructor() {
     this.initialize();
@@ -137,179 +147,81 @@ class SignalRService {
     }
   }
   
-  // Methods for event handling
+  // Event handling methods (delegated to eventHandlers)
   public onMessageReceived(callback: (message: ChatMessage) => void) {
-    window.addEventListener('message-received', (e: any) => {
-      callback(e.detail);
-    });
+    this.eventHandlers.onMessageReceived(callback);
   }
   
   public offMessageReceived(callback: (message: ChatMessage) => void) {
-    window.removeEventListener('message-received', (e: any) => {
-      callback(e.detail);
-    });
+    this.eventHandlers.offMessageReceived(callback);
   }
   
   public onUserTyping(callback: (userId: number) => void) {
-    window.addEventListener('user-typing', (e: any) => {
-      callback(e.detail);
-    });
+    this.eventHandlers.onUserTyping(callback);
   }
   
   public offUserTyping(callback: (userId: number) => void) {
-    window.removeEventListener('user-typing', (e: any) => {
-      callback(e.detail);
-    });
+    this.eventHandlers.offUserTyping(callback);
   }
   
   public onMessageDeleted(callback: (messageId: string) => void) {
-    window.addEventListener('message-deleted', (e: any) => {
-      callback(e.detail);
-    });
+    this.eventHandlers.onMessageDeleted(callback);
   }
   
   public offMessageDeleted(callback: (messageId: string) => void) {
-    window.removeEventListener('message-deleted', (e: any) => {
-      callback(e.detail);
-    });
+    this.eventHandlers.offMessageDeleted(callback);
   }
   
   public onConnectedUsersCountChanged(callback: (count: number) => void) {
-    window.addEventListener('connected-users-count', (e: any) => {
-      callback(e.detail);
-    });
-    
-    // Simulate an initial count
-    setTimeout(() => {
-      const event = new CustomEvent('connected-users-count', { detail: Math.floor(Math.random() * 10) + 5 });
-      window.dispatchEvent(event);
-    }, 1000);
+    this.eventHandlers.onConnectedUsersCountChanged(callback);
   }
   
-  // Send a message to another user
-  async sendMessage(
+  // Message handling methods (delegated to chatManagement)
+  public sendMessage(
     recipientId: number, 
     content: string,
     attachments?: any[],
     replyToId?: string,
     replyText?: string
   ): Promise<boolean> {
-    if (!this._currentUserId) {
-      console.error('Cannot send message: no user ID');
-      return false;
-    }
-    
-    // Check if message contains banned words
-    const { isAllowed, filteredMessage } = checkAndFilterMessage(content, this.getBannedWords());
-    if (!isAllowed) {
-      console.error('Message contains banned words');
-      return false;
-    }
-    
-    // Create a unique message ID
-    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    
-    // Create message object
-    const message: ChatMessage = {
-      id: messageId,
-      content: filteredMessage,
-      sender: this._currentUsername,
-      actualUsername: this._currentUsername,
-      senderId: this._currentUserId,
-      recipientId: recipientId,
-      timestamp: new Date(),
-      status: 'sent',
-      isRead: true,
-      replyToId,
-      replyText
-    };
-    
-    if (attachments && attachments.length > 0) {
-      message.attachments = attachments;
-    }
-    
-    // Store message in local storage
-    storeChatMessage(this._currentUserId, recipientId, message);
-    
-    console.log(`Added message to history for user ${this._currentUserId}, conversation ${recipientId}`, message);
+    const result = this.chatManagement.sendMessage(recipientId, content, attachments, replyToId, replyText);
     
     // Simulate receiving a reply after a short delay
     if (recipientId < 100) { // Only auto-reply for mock users
       setTimeout(() => {
-        this.simulateReply(recipientId, this._currentUserId, messageId);
+        this.simulateReply(recipientId, this._currentUserId, replyToId);
       }, 1000 + Math.random() * 2000);
     }
     
-    return true;
+    return result;
   }
   
-  // Send an image message
   public sendImage(recipientId: number, imageUrl: string, isBlurred: boolean = false): Promise<boolean> {
-    if (!this._currentUserId) {
-      console.error('Cannot send image: no user ID');
-      return Promise.resolve(false);
-    }
-    
-    // Create a unique message ID
-    const messageId = `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    
-    // Create message object
-    const message: ChatMessage = {
-      id: messageId,
-      content: 'Image message',
-      sender: this._currentUsername,
-      actualUsername: this._currentUsername,
-      senderId: this._currentUserId,
-      recipientId: recipientId,
-      timestamp: new Date(),
-      isImage: true,
-      imageUrl,
-      isBlurred,
-      status: 'sent',
-      isRead: true
-    };
-    
-    // Store message in local storage
-    storeChatMessage(this._currentUserId, recipientId, message);
-    
-    // Trigger received message event for immediate UI update
-    handleIncomingMessage(message);
-    
-    return Promise.resolve(true);
+    return this.chatManagement.sendImage(recipientId, imageUrl, isBlurred);
   }
   
-  // Send a voice message
   public sendVoiceMessage(recipientId: number, audioUrl: string): Promise<boolean> {
-    if (!this._currentUserId) {
-      console.error('Cannot send voice message: no user ID');
-      return Promise.resolve(false);
-    }
-    
-    // Create a unique message ID
-    const messageId = `voice_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    
-    // Create message object
-    const message: ChatMessage = {
-      id: messageId,
-      content: 'Voice message',
-      sender: this._currentUsername,
-      actualUsername: this._currentUsername,
-      senderId: this._currentUserId,
-      recipientId: recipientId,
-      timestamp: new Date(),
-      isVoiceMessage: true,
-      audioUrl,
-      status: 'sent',
-      isRead: true
-    };
-    
-    // Store message in local storage
-    storeChatMessage(this._currentUserId, recipientId, message);
-    
-    // Trigger received message event for immediate UI update
-    handleIncomingMessage(message);
-    
-    return Promise.resolve(true);
+    return this.chatManagement.sendVoiceMessage(recipientId, audioUrl);
+  }
+  
+  public getChatHistory(userId: number): ChatMessage[] {
+    return this.chatManagement.getChatHistoryForUser(userId);
+  }
+  
+  public getAllChatHistory(): Record<number, ChatMessage[]> {
+    return this.chatManagement.getAllChatHistory();
+  }
+  
+  public async clearAllChatHistory(): Promise<void> {
+    return this.chatManagement.clearAllChatHistory();
+  }
+  
+  public markMessagesAsRead(userId: number): boolean {
+    return this.chatManagement.markMessagesAsReadForUser(userId);
+  }
+  
+  public deleteMessage(messageId: string, recipientId: number): Promise<boolean> {
+    return this.chatManagement.deleteMessage(messageId, recipientId);
   }
   
   // Simulate receiving a reply from another user
@@ -395,40 +307,23 @@ class SignalRService {
       replyToId: replyToId
     };
     
-    // Store the reply message
-    storeChatMessage(senderId, recipientId, replyMessage);
-    
-    console.log(`Added message to history for user ${senderId}, conversation ${recipientId}`, replyMessage);
+    // Store the reply in chat history
+    this.chatManagement.sendMessage(
+      recipientId, 
+      randomReply, 
+      undefined, 
+      replyToId, 
+      replyToId ? "Previous message" : undefined
+    );
     
     // In a real app, this would be handled by the SignalR hub
     // For the mock version, we directly call the handler
     handleIncomingMessage(replyMessage);
   }
   
-  // Get conversation history with a specific user
-  getChatHistory(userId: number): ChatMessage[] {
-    return getChatHistory(this._currentUserId, userId);
-  }
-  
-  // Get all chat history for the current user
-  getAllChatHistory(): Record<number, ChatMessage[]> {
-    return getAllChatHistoryForUser(this._currentUserId);
-  }
-  
-  // Clear all chat history for the current user
-  clearAllChatHistory() {
-    clearAllChatHistoryForUser(this._currentUserId);
-  }
-  
-  // Mark messages from a specific user as read
-  markMessagesAsRead(userId: number): boolean {
-    try {
-      markMessagesAsRead(this._currentUserId, userId);
-      return true;
-    } catch (error) {
-      console.error('Error marking messages as read:', error);
-      return false;
-    }
+  // Set typing indicator
+  setTypingIndicator(isTyping: boolean, recipientId: number): void {
+    this.eventHandlers.setTypingIndicator(isTyping, recipientId, this._currentUserId, this._currentUsername);
   }
   
   // User blocking methods
@@ -488,47 +383,6 @@ class SignalRService {
       console.error('Error saving banned words:', error);
       return false;
     }
-  }
-  
-  // Set typing indicator
-  setTypingIndicator(isTyping: boolean, recipientId: number): void {
-    // In a real app, this would notify other users via SignalR
-    console.log(`User ${this._currentUsername} is ${isTyping ? 'typing' : 'not typing'} to user ${recipientId}`);
-    
-    // Dispatch event for typing indicator
-    if (isTyping) {
-      const event = new CustomEvent('user-typing', { detail: this._currentUserId });
-      window.dispatchEvent(event);
-    }
-  }
-  
-  // Delete a message
-  deleteMessage(messageId: string, recipientId: number): Promise<boolean> {
-    // Get chat history
-    const history = getChatHistory(this._currentUserId, recipientId);
-    
-    // Find the message
-    const messageIndex = history.findIndex(msg => msg.id === messageId);
-    if (messageIndex === -1) {
-      return Promise.resolve(false);
-    }
-    
-    // Mark the message as deleted
-    history[messageIndex].isDeleted = true;
-    history[messageIndex].content = 'This message has been deleted';
-    
-    // Update the history
-    const allHistory = getAllChatHistoryForUser(this._currentUserId);
-    allHistory[recipientId] = history;
-    
-    // Save to local storage
-    localStorage.setItem(`chat_${this._currentUserId}`, JSON.stringify(allHistory));
-    
-    // Dispatch the message deleted event
-    const event = new CustomEvent('message-deleted', { detail: messageId });
-    window.dispatchEvent(event);
-    
-    return Promise.resolve(true);
   }
   
   // Get auth token

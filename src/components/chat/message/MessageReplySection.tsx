@@ -13,7 +13,7 @@ const MessageReplySection: React.FC<MessageReplySectionProps> = ({
   replyText,
   isFromCurrentUser
 }) => {
-  const [displayText, setDisplayText] = useState<string>(replyText || "Previous message");
+  const [displayText, setDisplayText] = useState<string>("");
   
   // Try to get stored reply text from localStorage as a fallback
   useEffect(() => {
@@ -21,14 +21,16 @@ const MessageReplySection: React.FC<MessageReplySectionProps> = ({
       const storedReplyText = localStorage.getItem(`replyText_${replyToId}`);
       if (storedReplyText) {
         setDisplayText(storedReplyText);
+      } else {
+        setDisplayText("Previous message");
       }
-    } else if (replyText) {
+    } else {
       setDisplayText(replyText);
     }
   }, [replyToId, replyText]);
 
   // Only show if we have some text to display
-  if (!displayText || displayText === "undefined") {
+  if (!replyToId) {
     return null;
   }
 
