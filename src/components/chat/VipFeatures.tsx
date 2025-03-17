@@ -22,7 +22,6 @@ interface VipFeaturesProps {
   };
   isDeleteDialogOpen: boolean;
   setIsDeleteDialogOpen: (isOpen: boolean) => void;
-  isDeletingConversation?: boolean;
   onConfirmDelete: () => void;
   onCancelDelete: () => void;
 }
@@ -34,7 +33,6 @@ const VipFeatures: React.FC<VipFeaturesProps> = ({
   user,
   isDeleteDialogOpen,
   setIsDeleteDialogOpen,
-  isDeletingConversation = false,
   onConfirmDelete,
   onCancelDelete
 }) => {
@@ -52,7 +50,6 @@ const VipFeatures: React.FC<VipFeaturesProps> = ({
         onOpenChange={setIsDeleteDialogOpen}
         onConfirm={onConfirmDelete}
         onCancel={onCancelDelete}
-        isDeleting={isDeletingConversation}
       />
     </>
   );

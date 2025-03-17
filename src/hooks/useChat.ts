@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '@/services/signalRService';
 import { ChatMessageService } from '@/services/ChatMessageService';
@@ -13,11 +14,6 @@ import { useScrollManagement } from './useScrollManagement';
 import { useUser } from '@/contexts/UserContext';
 
 export const useChat = (userId: number, userRole: string) => {
-  // Set the selected user ID in signalRService when it changes
-  useEffect(() => {
-    signalRService.selectedUserId = userId;
-  }, [userId]);
-
   // Get current user info
   const { currentUser } = useUser();
   
@@ -92,9 +88,8 @@ export const useChat = (userId: number, userRole: string) => {
   const {
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
-    isDeletingConversation,
     deleteConversation,
-    confirmDeleteConversation: baseConfirmDeleteConversation,
+    confirmDeleteConversation,
     cancelDeleteConversation
   } = useConversationManagement();
 
@@ -243,8 +238,7 @@ export const useChat = (userId: number, userRole: string) => {
   };
   
   const handleConfirmDeleteConversation = () => {
-    // Always make sure we pass the state setters to the base function
-    baseConfirmDeleteConversation(setMessages, setMediaGalleryItems);
+    confirmDeleteConversation(setMessages, setMediaGalleryItems);
   };
 
   const handleReplyToMessage = (messageId: string, messageText: string) => {
@@ -292,7 +286,6 @@ export const useChat = (userId: number, userRole: string) => {
     fileInputRef,
     maxChars,
     autoScrollToBottom,
-    updateScrollPosition,
     isTyping,
     isTranslationEnabled,
     selectedLanguage,
@@ -304,7 +297,6 @@ export const useChat = (userId: number, userRole: string) => {
     audioPreview,
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
-    isDeletingConversation,
     handleSendMessage,
     handleKeyDown,
     handleAddEmoji,
@@ -327,6 +319,7 @@ export const useChat = (userId: number, userRole: string) => {
     confirmDeleteConversation: handleConfirmDeleteConversation,
     cancelDeleteConversation,
     replyToMessage: handleReplyToMessage,
-    unsendMessage: handleUnsendMessage
+    unsendMessage: handleUnsendMessage,
+    updateScrollPosition
   };
 };
