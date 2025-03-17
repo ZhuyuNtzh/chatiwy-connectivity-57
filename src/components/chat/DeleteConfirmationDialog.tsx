@@ -10,12 +10,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Loader2 } from "lucide-react";
 
 interface DeleteConfirmationDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
   onCancel: () => void;
+  isDeleting?: boolean;
   title?: string;
   description?: string;
 }
@@ -25,6 +27,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   onOpenChange,
   onConfirm,
   onCancel,
+  isDeleting = false,
   title = "Delete Conversation",
   description = "Are you sure you want to delete this entire conversation? This action cannot be undone."
 }) => {
@@ -38,12 +41,20 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={onCancel} disabled={isDeleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction 
             onClick={onConfirm}
             className="bg-red-600 hover:bg-red-700 text-white"
+            disabled={isDeleting}
           >
-            Delete
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              'Delete'
+            )}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

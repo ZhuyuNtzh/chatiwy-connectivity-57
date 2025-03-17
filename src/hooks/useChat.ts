@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '@/services/signalRService';
 import { ChatMessageService } from '@/services/ChatMessageService';
@@ -88,6 +87,7 @@ export const useChat = (userId: number, userRole: string) => {
   const {
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
+    isDeletingConversation,
     deleteConversation,
     confirmDeleteConversation,
     cancelDeleteConversation
@@ -297,24 +297,7 @@ export const useChat = (userId: number, userRole: string) => {
     audioPreview,
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
-    handleSendMessage,
-    handleKeyDown,
-    handleAddEmoji,
-    handleBlockUser,
-    confirmBlockUser,
-    handleUnblockUser,
-    handleReportUser,
-    handleSubmitReport,
-    handleImageClick,
-    handleImageChange,
-    handleSendImage,
-    handleVoiceMessageClick,
-    sendVoiceMessage,
-    toggleImageBlur,
-    openImagePreview,
-    showBlockedUsersList,
-    toggleTranslation,
-    showMediaGallery,
+    isDeletingConversation,
     deleteConversation,
     confirmDeleteConversation: handleConfirmDeleteConversation,
     cancelDeleteConversation,

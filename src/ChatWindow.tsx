@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
@@ -65,6 +64,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
     isRecording,
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
+    isDeletingConversation,
     handleSendMessage,
     handleKeyDown,
     handleAddEmoji,
@@ -176,6 +176,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) 
           user={user}
           isDeleteDialogOpen={isDeleteDialogOpen}
           setIsDeleteDialogOpen={setIsDeleteDialogOpen}
+          isDeletingConversation={isDeletingConversation}
           onConfirmDelete={confirmDeleteConversation}
           onCancelDelete={cancelDeleteConversation}
         />
