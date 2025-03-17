@@ -213,7 +213,20 @@ class SignalRService {
   }
   
   public async clearAllChatHistory(): Promise<void> {
-    return this.chatManagement.clearAllChatHistory();
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const localStorageKeys = Object.keys(localStorage);
+        localStorageKeys.forEach(key => {
+          if (key.startsWith('chat_') || key.startsWith('history_')) {
+            localStorage.removeItem(key);
+          }
+        });
+        
+        this.chatManagement.clearAllChatHistory();
+        
+        resolve();
+      }, 0);
+    });
   }
   
   public markMessagesAsRead(userId: number): boolean {

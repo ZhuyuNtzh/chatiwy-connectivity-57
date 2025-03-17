@@ -16,8 +16,8 @@ export const useMessages = (userId: number, userRole: string) => {
   } = useMessageState(userRole);
   
   const {
-    handleSendMessage,
-    handleKeyDown,
+    handleSendMessage: baseSendMessage,
+    handleKeyDown: baseKeyDown,
     handleAddEmoji
   } = useMessageSending(userId, setMessage);
   
@@ -28,6 +28,15 @@ export const useMessages = (userId: number, userRole: string) => {
     resetUnreadForUsers,
     markInboxAsViewed
   } = useUnreadMessages();
+  
+  // Wrapper functions to pass the current message
+  const handleSendMessage = (e?: React.FormEvent) => {
+    baseSendMessage(e, message);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    baseKeyDown(e, message);
+  };
   
   // When selectedUserId changes, mark messages from that user as read
   useEffect(() => {

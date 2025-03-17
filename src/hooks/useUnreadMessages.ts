@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '@/services/signalRService';
+import type { ChatMessage } from '@/services/signalR/types';
 
 export const useUnreadMessages = () => {
   const [unreadCount, setUnreadCount] = useState<number>(0);

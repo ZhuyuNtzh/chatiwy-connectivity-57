@@ -3,7 +3,7 @@ import { useRef } from 'react';
 import { signalRService } from '@/services/signalRService';
 
 export const useMessageSending = (userId: number, setMessage: (message: string) => void) => {
-  const handleSendMessage = (e?: React.FormEvent) => {
+  const handleSendMessage = (e?: React.FormEvent, message: string = '') => {
     if (e) e.preventDefault();
     
     // Create a unique ID for the message
@@ -16,15 +16,15 @@ export const useMessageSending = (userId: number, setMessage: (message: string) 
     setMessage('');
   };
   
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, message: string) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      handleSendMessage(undefined, message);
     }
   };
   
   const handleAddEmoji = (emoji: string) => {
-    setMessage(prev => prev + emoji);
+    setMessage((prev) => prev + emoji);
   };
 
   return {

@@ -11,54 +11,44 @@ export const useConversationManagement = () => {
   const deleteConversation = () => {
     setIsDeleteDialogOpen(true);
   };
-  
+
   const confirmDeleteConversation = async (
     setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
     setMediaGalleryItems: React.Dispatch<React.SetStateAction<any[]>>
   ) => {
+    if (isDeleting) return; // Prevent multiple deletion attempts
+    
     try {
-      // Set deleting flag to prevent multiple clicks
-      setIsDeleting(true);
+      setIsDeleting(true); // Set loading state
       
-      // Clear messages from UI first for immediate feedback
+      // Clear UI immediately to improve perceived performance
       setMessages([]);
       setMediaGalleryItems([]);
-      
-      // Clear messages from storage for the selected user
-      const selectedUserId = signalRService.currentSelectedUserId;
-      if (selectedUserId) {
-        // Use the async version of clearAllChatHistory
-        await signalRService.clearAllChatHistory();
-      }
-      
+
+      // Clear messages from storage asynchronously
+      await signalRService.clearAllChatHistory();
+
       // Show success message
-      toast.success('Conversation deleted');
-      
-      // Close dialog and reset deleting flag
-      setIsDeleteDialogOpen(false);
-      setIsDeleting(false);
+      toast.success('Conversation deleted successfully');
     } catch (error) {
       console.error('Error deleting conversation:', error);
       toast.error('Failed to delete conversation');
+    } finally {
       setIsDeleteDialogOpen(false);
       setIsDeleting(false);
     }
   };
-  
+
   const cancelDeleteConversation = () => {
-    // Only allow cancel if not in the middle of deleting
-    if (!isDeleting) {
-      // Simply close the dialog without any other actions
-      setIsDeleteDialogOpen(false);
-    }
+    setIsDeleteDialogOpen(false);
   };
 
   return {
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
-    isDeleting,
     deleteConversation,
     confirmDeleteConversation,
-    cancelDeleteConversation
+    cancelDeleteConversation,
+    isDeleting
   };
 };
