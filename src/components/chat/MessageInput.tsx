@@ -18,6 +18,7 @@ interface MessageInputProps {
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleVoiceMessageClick?: () => void;
   sendVoiceMessage?: (audioUrl: string) => void;
+  isAdminView?: boolean;
 }
 
 const commonEmojis = [
@@ -43,7 +44,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
   isVipUser,
   fileInputRef,
   handleVoiceMessageClick,
-  sendVoiceMessage
+  sendVoiceMessage,
+  isAdminView = false
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -60,7 +62,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   }, []);
   
   const startRecording = async () => {
-    if (!isVipUser) {
+    if (!isVipUser && !isAdminView) {
       toast("Voice messages are a VIP feature");
       return;
     }
@@ -172,11 +174,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
           variant="ghost" 
           size="icon" 
           className="h-9 w-9 shrink-0"
-          disabled={!isVipUser || isUserBlocked}
+          disabled={!isVipUser && !isAdminView || isUserBlocked}
           onClick={startRecording}
-          title={!isVipUser ? "VIP feature" : "Record voice message"}
+          title={!isVipUser && !isAdminView ? "VIP feature" : "Record voice message"}
         >
-          <Mic className={`h-5 w-5 ${!isVipUser ? "opacity-50" : ""}`} />
+          <Mic className={`h-5 w-5 ${!isVipUser && !isAdminView ? "opacity-50" : ""}`} />
         </Button>
       )}
       
