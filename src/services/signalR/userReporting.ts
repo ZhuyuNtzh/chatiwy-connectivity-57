@@ -13,7 +13,11 @@ export const userReporting = {
         // Filter out reports older than 24 hours whenever we load
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         reports = reports.filter(report => {
-          const reportDate = new Date(report.timestamp);
+          // Check if timestamp is a string and convert if needed
+          const reportDate = report.timestamp instanceof Date 
+            ? report.timestamp 
+            : new Date(report.timestamp);
+          
           return reportDate > twentyFourHoursAgo;
         });
         
@@ -43,7 +47,7 @@ export const userReporting = {
       reason,
       details,
       timestamp: new Date(),
-      status: 'pending'
+      status: 'pending'  // Add the required status field
     };
     
     reports.push(newReport);
@@ -60,7 +64,11 @@ export const userReporting = {
     // Filter out reports older than 24 hours
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     reports = reports.filter(report => {
-      const reportDate = new Date(report.timestamp);
+      // Check if timestamp is a string and convert if needed
+      const reportDate = report.timestamp instanceof Date 
+        ? report.timestamp 
+        : new Date(report.timestamp);
+      
       return reportDate > twentyFourHoursAgo;
     });
     

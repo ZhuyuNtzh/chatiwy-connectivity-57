@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useUser, BannedUser } from '@/contexts/UserContext';
@@ -26,7 +25,8 @@ import {
   EyeOff,
   User,
   ChevronDown,
-  X
+  X,
+  MessagesSquare,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
@@ -38,7 +38,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import UserManagement from '@/components/admin/UserManagement';
-import SystemSettings from '@/components/admin/SystemSettings'; // Add this import
+import SystemSettings from '@/components/admin/SystemSettings';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +47,8 @@ import Sidebar from '@/components/Sidebar';
 import ChatWindow from '@/components/ChatWindow';
 import { useTheme } from '@/contexts/ThemeContext';
 import { toast } from 'sonner';
+import ChatInterface from '@/pages/ChatInterface';
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const mockUsers = [
   { id: 1, username: "Alice", role: "standard", isOnline: true, location: "Canada", gender: "Female", age: 28, email: "alice@example.com", isBot: false, isBanned: false },
@@ -120,6 +122,14 @@ const AdminDashboard = () => {
     avatarUrl: adminSettings.avatarUrl || '',
   });
   const [fileInputRef, setFileInputRef] = useState<HTMLInputElement | null>(null);
+  const [isChatInterfaceOpen, setIsChatInterfaceOpen] = useState(false);
+  
+  useEffect(() => {
+    const storedMockUsers = localStorage.getItem('mockUsers');
+    if (!storedMockUsers) {
+      localStorage.setItem('mockUsers', JSON.stringify(mockUsers));
+    }
+  }, []);
   
   useEffect(() => {
     if (bannedUsers.length === 0) {
@@ -176,6 +186,10 @@ const AdminDashboard = () => {
   const handleChatModerationClick = () => {
     navigate('/admin-moderation');
   };
+
+  const handleOpenChatInterface = () => {
+    setIsChatInterfaceOpen(true);
+  };
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -223,6 +237,23 @@ const AdminDashboard = () => {
                 </>
               )}
             </Button>
+            
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  onClick={handleOpenChatInterface}
+                  className="gap-1 bg-purple-600 hover:bg-purple-700"
+                >
+                  <MessagesSquare className="h-4 w-4" />
+                  <span className="hidden sm:inline">Chat Interface</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:w-[800px] p-0 overflow-hidden">
+                <ChatInterface isAdminView={true} />
+              </SheetContent>
+            </Sheet>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

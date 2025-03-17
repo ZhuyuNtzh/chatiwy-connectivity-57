@@ -28,12 +28,11 @@ const VipUpgradeConfirmation: React.FC<VipUpgradeConfirmationProps> = ({
   const [expiryDate, setExpiryDate] = useState<Date | undefined>(
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Default to 30 days from now
   );
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const handleConfirm = () => {
     if (expiryDate && user) {
       onConfirm(user.id, user.username, expiryDate);
-      onOpenChange(false);
     }
   };
 
@@ -53,7 +52,7 @@ const VipUpgradeConfirmation: React.FC<VipUpgradeConfirmationProps> = ({
         <div className="py-4 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="date-picker">VIP Status Expiry Date</Label>
-            <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
               <PopoverTrigger asChild>
                 <Button
                   id="date-picker"
@@ -71,13 +70,23 @@ const VipUpgradeConfirmation: React.FC<VipUpgradeConfirmationProps> = ({
                   mode="single"
                   selected={expiryDate}
                   onSelect={(date) => {
-                    setExpiryDate(date);
-                    setDatePickerOpen(false);
+                    if (date) {
+                      setExpiryDate(date);
+                      // Don't auto-close to prevent issues
+                    }
                   }}
                   initialFocus
                   disabled={(date) => date < new Date()}
-                  className={cn("p-3 pointer-events-auto")}
                 />
+                <div className="p-3 border-t border-border">
+                  <Button 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => setIsCalendarOpen(false)}
+                  >
+                    Confirm Date
+                  </Button>
+                </div>
               </PopoverContent>
             </Popover>
           </div>
