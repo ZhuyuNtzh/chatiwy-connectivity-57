@@ -1,4 +1,3 @@
-
 import * as signalR from '@microsoft/signalr';
 import { ChatMessage, UserReport } from './signalR/types';
 import { chatStorage } from './signalR/chatStorage';
@@ -12,16 +11,13 @@ class SignalRService {
   private messageDeletedHandlers: ((messageId: string) => void)[] = [];
   private connectedUsersCountHandlers: ((count: number) => void)[] = [];
   
-  // Add this property to track the currently selected user in the chat
   public selectedUserId: number | null = null;
-
   public currentUserId: number | null = null;
   private bannedWords: string[] = [];
   private reports: UserReport[] = [];
 
   constructor() {
     chatStorage.loadFromStorage();
-    // Load banned words from localStorage if available
     const savedBannedWords = localStorage.getItem('bannedWords');
     if (savedBannedWords) {
       this.bannedWords = JSON.parse(savedBannedWords);
@@ -30,7 +26,6 @@ class SignalRService {
 
   public initialize(userId: number, username: string): void {
     this.currentUserId = userId;
-    // In a real app, this would connect to the server
     console.log(`Initialized SignalR for user ${username} (ID: ${userId})`);
   }
 
@@ -182,10 +177,8 @@ class SignalRService {
   
   public async sendImage(userId: number, imageData: string, isBlurred: boolean): Promise<void> {
     try {
-      // In a real app, this would upload the image to a server
       const messageId = `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       
-      // Create a message with image data
       const imageMessage: ChatMessage = {
         id: messageId,
         content: 'Sent an image',
@@ -199,10 +192,8 @@ class SignalRService {
         isRead: true
       };
       
-      // Add to chat history
       this.addMessageToChatHistory(this.currentUserId || 0, userId, imageMessage);
       
-      // Notify message handlers
       this.messageHandlers.forEach(handler => handler(imageMessage));
       
       console.log('Image sent:', { userId, imageId: messageId });
@@ -213,10 +204,8 @@ class SignalRService {
   
   public async sendVoiceMessage(userId: number, audioData: string): Promise<void> {
     try {
-      // In a real app, this would upload the audio to a server
       const messageId = `voice_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       
-      // Create a message with audio data
       const voiceMessage: ChatMessage = {
         id: messageId,
         content: 'Sent a voice message',
@@ -229,10 +218,8 @@ class SignalRService {
         isRead: true
       };
       
-      // Add to chat history
       this.addMessageToChatHistory(this.currentUserId || 0, userId, voiceMessage);
       
-      // Notify message handlers
       this.messageHandlers.forEach(handler => handler(voiceMessage));
       
       console.log('Voice message sent:', { userId, voiceId: messageId });
@@ -279,7 +266,6 @@ class SignalRService {
         await this.connection.invoke('BlockUser', targetUserId);
       } else {
         console.log('Simulating user block:', targetUserId);
-        // Store in localStorage for persistence in demo
         const blockedUsers = this.getBlockedUsers();
         if (!blockedUsers.includes(targetUserId)) {
           blockedUsers.push(targetUserId);
@@ -297,7 +283,6 @@ class SignalRService {
         await this.connection.invoke('UnblockUser', targetUserId);
       } else {
         console.log('Simulating user unblock:', targetUserId);
-        // Remove from localStorage in demo
         const blockedUsers = this.getBlockedUsers();
         const updatedBlockedUsers = blockedUsers.filter(id => id !== targetUserId);
         localStorage.setItem(`blockedUsers_${this.currentUserId}`, JSON.stringify(updatedBlockedUsers));
@@ -308,7 +293,6 @@ class SignalRService {
   }
 
   public isUserBlocked(userId: number): boolean {
-    // Check if the user is in the blocked list
     const blockedUsers = this.getBlockedUsers();
     return blockedUsers.includes(userId);
   }
@@ -316,11 +300,8 @@ class SignalRService {
   public getBlockedUsers(): number[] {
     try {
       if (this.connection) {
-        // Assuming there's a method to get blocked users from the server
-        // Adjust the method name if it's different
         return this.connection.invoke('GetBlockedUsers') || [];
       } else {
-        // For demo, retrieve from localStorage
         const stored = localStorage.getItem(`blockedUsers_${this.currentUserId}`);
         return stored ? JSON.parse(stored) : [];
       }
@@ -336,7 +317,6 @@ class SignalRService {
         await this.connection.invoke('ReportUser', targetUserId, reason, otherReason);
       } else {
         console.log('Simulating user report:', { targetUserId, reason, otherReason });
-        // For demo purposes, store the report locally
         const report: UserReport = {
           id: `report_${Date.now()}`,
           reporterId: this.currentUserId || 0,
@@ -345,10 +325,10 @@ class SignalRService {
           reportedName: `User ${targetUserId}`,
           reason: reason,
           details: otherReason,
-          timestamp: new Date()
+          timestamp: new Date(),
+          status: 'pending'
         };
         this.reports.push(report);
-        // Store in localStorage for persistence
         localStorage.setItem('userReports', JSON.stringify(this.reports));
       }
     } catch (err) {
@@ -357,14 +337,11 @@ class SignalRService {
   }
   
   public isAdminUser(userId: number): boolean {
-    // In a real app, this would check if the user has admin role
-    // For demo, we'll consider user ID 999 as admin
     return userId === 999;
   }
   
   public getReports(): UserReport[] {
     if (this.reports.length === 0) {
-      // Try to load from localStorage for demo
       const stored = localStorage.getItem('userReports');
       if (stored) {
         this.reports = JSON.parse(stored);
@@ -375,7 +352,6 @@ class SignalRService {
   
   public deleteReport(reportId: string): void {
     this.reports = this.reports.filter(report => report.id !== reportId);
-    // Update localStorage for persistence in demo
     localStorage.setItem('userReports', JSON.stringify(this.reports));
   }
   
@@ -385,7 +361,6 @@ class SignalRService {
   
   public setBannedWords(words: string[]): void {
     this.bannedWords = words;
-    // Store in localStorage for persistence in demo
     localStorage.setItem('bannedWords', JSON.stringify(words));
   }
 }
