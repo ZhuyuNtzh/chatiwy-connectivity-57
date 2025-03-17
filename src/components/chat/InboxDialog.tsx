@@ -12,7 +12,7 @@ interface InboxDialogProps {
   inboxMessages: Record<number, ChatMessage[]>;
   onOpenChat: (userId: number) => void;
   onDialogOpened?: () => void;
-  unreadBySender?: Record<number, boolean>;
+  unreadBySender?: Record<number, number>; // Changed from boolean to number
 }
 
 const InboxDialog: React.FC<InboxDialogProps> = ({
@@ -125,7 +125,7 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
       lastMessage,
       messages: sortedMessages,
       timestamp: new Date(lastMessage.timestamp).getTime(),
-      isUnread: unreadBySender[userIdNum] || false
+      isUnread: unreadBySender[userIdNum] > 0 // Changed to check for count > 0 instead of boolean
     };
   }).filter(Boolean); // Remove null entries
   
