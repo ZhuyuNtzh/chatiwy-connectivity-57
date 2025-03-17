@@ -1,35 +1,50 @@
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '@/services/signalRService';
-import { ChatMessage } from '@/services/signalR/types';
-import { toast } from 'sonner';
-import { useUser } from '@/contexts/UserContext';
-import { useUserInteractions } from './useUserInteractions';
 import { ChatMessageService } from '@/services/ChatMessageService';
+import type { ChatMessage } from '@/services/signalR/types';
+import { useMessages } from './useMessages';
+import { useMediaHandling } from './useMediaHandling';
+import { useUserInteractions } from './useUserInteractions';
+import { useMessageTranslation } from './useMessageTranslation';
+import { useMediaGallery } from './useMediaGallery';
+import { useConversationManagement } from './useConversationManagement';
+import { useVipMessageFeatures } from './useVipMessageFeatures';
+import { useScrollManagement } from './useScrollManagement';
+import { useUser } from '@/contexts/UserContext';
 
-export const useChat = (userId: number, effectiveRole: string, isAdmin = false) => {
-  const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [autoScrollToBottom, setAutoScrollToBottom] = useState(true);
-  const [isAtBottom, setIsAtBottom] = useState(true);
-  const [isTyping, setIsTyping] = useState(false);
-  const [isTranslationEnabled, setIsTranslationEnabled] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('en');
-  const [isMediaGalleryOpen, setIsMediaGalleryOpen] = useState(false);
-  const [mediaGalleryItems, setMediaGalleryItems] = useState<any[]>([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const { userRole, currentUser } = useUser();
+export const useChat = (userId: number, userRole: string) => {
+  // Get current user info
+  const { currentUser } = useUser();
   
-  // Admin-specific state
-  const [isKickDialogOpen, setIsKickDialogOpen] = useState(false);
-  const [isBanDialogOpen, setIsBanDialogOpen] = useState(false);
-  
-  // Get interactions from hook
+  // Use custom hooks to organize logic
+  const {
+    messages,
+    setMessages,
+    message,
+    setMessage,
+    maxChars,
+    handleSendMessage: baseHandleSendMessage,
+    handleKeyDown,
+    handleAddEmoji
+  } = useMessages(userId, userRole);
+
+  const {
+    isImageDialogOpen,
+    setIsImageDialogOpen,
+    imagePreview,
+    isRecording,
+    audioPreview,
+    previewImage,
+    setPreviewImage,
+    fileInputRef,
+    handleImageClick,
+    handleImageChange,
+    handleSendImage,
+    handleVoiceMessageClick,
+    sendVoiceMessage
+  } = useMediaHandling(userId);
+
   const {
     showOptions,
     setShowOptions,
@@ -51,19 +66,67 @@ export const useChat = (userId: number, effectiveRole: string, isAdmin = false) 
     handleReportUser,
     handleSubmitReport
   } = useUserInteractions(userId);
-  
-  // Message character limit based on user role (unlimited for admin)
-  const maxChars = isAdmin ? 999999 : (effectiveRole === 'vip' ? 200 : 140);
-  
-  // Load messages on component mount
+
+  const {
+    isTranslationEnabled,
+    selectedLanguage,
+    setSelectedLanguage,
+    translateMessage,
+    toggleTranslation
+  } = useMessageTranslation(userRole);
+
+  const {
+    isMediaGalleryOpen,
+    setIsMediaGalleryOpen,
+    mediaGalleryItems,
+    setMediaGalleryItems,
+    showMediaGallery,
+    isLinkMessage,
+    extractLink
+  } = useMediaGallery();
+
+  const {
+    isDeleteDialogOpen,
+    setIsDeleteDialogOpen,
+    deleteConversation,
+    confirmDeleteConversation,
+    cancelDeleteConversation
+  } = useConversationManagement();
+
+  const {
+    replyingTo,
+    replyToMessage: baseReplyToMessage,
+    sendReplyMessage,
+    unsendMessage: baseUnsendMessage,
+    clearReply
+  } = useVipMessageFeatures(userRole);
+
+  const {
+    autoScrollToBottom,
+    setAutoScrollToBottom,
+    isAtBottomRef,
+    updateScrollPosition
+  } = useScrollManagement();
+
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const previousUserIdRef = useRef<number | null>(null);
+
+  // Load chat history when user changes
   useEffect(() => {
-    console.log(`Loading chat history for user ${userId}`);
+    // Clear messages when switching users
+    if (previousUserIdRef.current !== null && previousUserIdRef.current !== userId) {
+      console.log(`Switching from user ${previousUserIdRef.current} to ${userId}, clearing messages`);
+      setMessages([]);
+    }
     
-    // Load existing messages from service
+    previousUserIdRef.current = userId;
+    
+    // Load messages for this user
     ChatMessageService.loadMessages(
       userId,
       isTranslationEnabled,
-      effectiveRole,
+      userRole,
       selectedLanguage,
       translateMessage,
       setMessages,
@@ -72,305 +135,132 @@ export const useChat = (userId: number, effectiveRole: string, isAdmin = false) 
       extractLink
     );
     
-    // Set up listeners for new messages
+    if (signalRService.isUserBlocked(userId)) {
+      setBlockedUsers(prev => [...prev, userId]);
+    }
+  }, [userId, userRole, isTranslationEnabled, selectedLanguage]);
+
+  // Set up message event handlers
+  useEffect(() => {
     const handleNewMessage = (msg: ChatMessage) => {
       ChatMessageService.processNewMessage(
         msg,
         userId,
         isTranslationEnabled,
-        effectiveRole,
+        userRole,
         selectedLanguage,
         translateMessage,
         setMessages,
         setMediaGalleryItems,
         isLinkMessage,
         extractLink,
-        isAtBottom,
+        isAtBottomRef.current,
         setAutoScrollToBottom
       );
     };
     
-    signalRService.onMessageReceived(handleNewMessage);
+    const handleUserTyping = (typingUserId: number) => {
+      if (typingUserId === userId && userRole === 'vip') {
+        setIsTyping(true);
+        
+        if (typingTimerRef.current) {
+          clearTimeout(typingTimerRef.current);
+        }
+        
+        typingTimerRef.current = setTimeout(() => {
+          setIsTyping(false);
+        }, 3000);
+      }
+    };
     
-    // Clean up event listener on unmount
+    const handleMessageDeleted = (messageId: string) => {
+      ChatMessageService.markAsDeleted(messageId, setMessages);
+    };
+    
+    signalRService.onMessageReceived(handleNewMessage);
+    signalRService.onUserTyping(handleUserTyping);
+    signalRService.onMessageDeleted(handleMessageDeleted);
+    
     return () => {
       signalRService.offMessageReceived(handleNewMessage);
+      signalRService.offUserTyping(handleUserTyping);
+      signalRService.offMessageDeleted(handleMessageDeleted);
+      
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+      }
     };
-  }, [userId, isTranslationEnabled, effectiveRole, selectedLanguage]);
-  
-  // Update scroll position
-  const updateScrollPosition = (atBottom: boolean) => {
-    setIsAtBottom(atBottom);
-  };
-  
-  // Handle sending messages
+  }, [userId, userRole, isTranslationEnabled, selectedLanguage]);
+
+  // Custom message sending handler to properly handle replies
   const handleSendMessage = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
     if (!message.trim()) return;
     
-    // Create a message with the correct username from currentUser
-    const username = currentUser?.username || 'Admin';
+    if (signalRService.isUserBlocked(userId)) {
+      return;
+    }
     
-    ChatMessageService.sendMessage(
-      userId,
-      message.trim(),
-      username,
-      setMessages
-    );
+    // Check if we're replying to a message
+    if (replyingTo && userRole === 'vip') {
+      const success = sendReplyMessage(message.trim(), userId, setMessages);
+      if (success) {
+        setMessage('');
+        return;
+      }
+    }
     
-    // Clear input field
+    // Regular message sending
+    const username = currentUser?.username || 'You';
+    ChatMessageService.sendMessage(userId, message.trim(), username, setMessages);
+    
+    // Clear input field and any reply state
     setMessage('');
-  };
-  
-  // Handle key down events in the input field
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+    if (replyingTo) {
+      clearReply(setMessages);
     }
   };
   
-  // Handle adding emoji to the message
-  const handleAddEmoji = (emoji: string) => {
-    if (isAdmin || message.length + emoji.length <= maxChars) {
-      setMessage(prev => prev + emoji);
-    }
-  };
-  
-  // Handle sending an image
-  const handleImageClick = () => {
-    fileInputRef.current?.click();
-  };
-  
-  // Handle image change in the file input
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    
-    if (file) {
-      // Preview the image
-      const reader = new FileReader();
-      reader.onload = () => {
-        setImagePreview(reader.result as string);
-        setIsImageDialogOpen(true);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-  
-  // Handle confirming sending the image
-  const handleSendImage = () => {
-    if (imagePreview) {
-      // In a real implementation, you would upload the image to a server here
-      // and get a URL. Here we'll just use the data URL for simplicity.
-      const username = currentUser?.username || 'Admin';
-      const imageUrl = imagePreview;
-      
-      const newMessage: ChatMessage = {
-        id: `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-        senderId: signalRService.currentUserId,
-        recipientId: userId,
-        sender: username,
-        content: 'Image message', // Add content property
-        timestamp: new Date(),
-        isImage: true,
-        imageUrl,
-        isBlurred: true, // Start with blurred image
-        isRead: true, // Mark as read since it's our own message
-      };
-      
-      setMessages(prev => [...prev, newMessage]);
-      
-      // Call SignalR service to send image message
-      // Use the correct method from the service
-      signalRService.sendImage(userId, imageUrl);
-      
-      // Update media gallery
-      setMediaGalleryItems(prev => [
-        ...prev,
-        {
-          type: 'image',
-          url: imageUrl,
-          timestamp: new Date()
-        }
-      ]);
-      
-      // Close dialog and clear preview
-      setIsImageDialogOpen(false);
-      setImagePreview(null);
-      
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-  
-  // Handle voice messages
-  const handleVoiceMessageClick = () => {
-    toast.info("Starting voice recording...");
-    setIsRecording(true);
-  };
-  
-  const sendVoiceMessage = (audioUrl: string) => {
-    // In a real implementation, would upload the audio and get a URL
-    const username = currentUser?.username || 'Admin';
-    
-    const newMessage: ChatMessage = {
-      id: `voice_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      senderId: signalRService.currentUserId,
-      recipientId: userId,
-      sender: username,
-      content: 'Voice message', // Add content property
-      timestamp: new Date(),
-      isVoiceMessage: true,
-      audioUrl,
-      isRead: true, // Mark as read since it's our own message
-    };
-    
-    setMessages(prev => [...prev, newMessage]);
-    
-    // Call SignalR service to send voice message
-    signalRService.sendVoiceMessage(userId, audioUrl);
-    
-    // Update media gallery
-    setMediaGalleryItems(prev => [
-      ...prev,
-      {
-        type: 'voice',
-        url: audioUrl,
-        timestamp: new Date()
-      }
-    ]);
-    
-    setIsRecording(false);
-    toast.success("Voice message sent!");
-  };
-  
-  // Toggle blur on images
   const toggleImageBlur = (messageId: string) => {
     ChatMessageService.toggleImageBlur(messageId, setMessages);
   };
   
-  // Open image preview
   const openImagePreview = (imageUrl: string) => {
     setPreviewImage(imageUrl);
   };
-  
-  // Show blocked users list
+
   const showBlockedUsersList = () => {
+    const blockedIds = signalRService.getBlockedUsers();
+    setBlockedUsers(blockedIds);
     setIsBlockedUsersDialogOpen(true);
     setShowOptions(false);
   };
   
-  // Toggle translation
-  const toggleTranslation = () => {
-    setIsTranslationEnabled(!isTranslationEnabled);
-    setShowOptions(false);
+  const handleConfirmDeleteConversation = () => {
+    confirmDeleteConversation(setMessages, setMediaGalleryItems);
   };
-  
-  // Show media gallery
-  const showMediaGallery = () => {
-    setIsMediaGalleryOpen(true);
-    setShowOptions(false);
-  };
-  
-  // Delete conversation
-  const deleteConversation = () => {
-    setIsDeleteDialogOpen(true);
-    setShowOptions(false);
-  };
-  
-  // Confirm delete conversation
-  const confirmDeleteConversation = () => {
-    // Delete all messages for this user one by one instead of using a non-existent bulk delete method
-    const messagesForUser = messages.filter(msg => 
-      (msg.senderId === userId && msg.recipientId === signalRService.currentUserId) ||
-      (msg.senderId === signalRService.currentUserId && msg.recipientId === userId)
+
+  const handleReplyToMessage = (messageId: string, messageText: string) => {
+    if (userRole !== 'vip') return;
+    
+    baseReplyToMessage(
+      messageId, 
+      messageText, 
+      message, 
+      setMessage, 
+      setMessages, 
+      userId, 
+      setAutoScrollToBottom
     );
-    
-    // Delete each message individually
-    messagesForUser.forEach(msg => {
-      if (msg.id) {
-        signalRService.deleteMessage(msg.id, userId);
-      }
-    });
-    
-    // Clear local messages
-    setMessages([]);
-    setMediaGalleryItems([]);
-    
-    // Close dialog
-    setIsDeleteDialogOpen(false);
-    
-    toast.success("Conversation deleted successfully");
   };
-  
-  // Cancel delete conversation
-  const cancelDeleteConversation = () => {
-    setIsDeleteDialogOpen(false);
-  };
-  
-  // Reply to a message
-  const replyToMessage = (messageId: string, messageText: string) => {
-    // Find the message to reply to
-    const messageToReply = messages.find(msg => msg.id === messageId);
+
+  const handleUnsendMessage = (messageId: string) => {
+    if (userRole !== 'vip') return;
     
-    if (messageToReply) {
-      // Mark all messages as not being replied to
-      setMessages(messages.map(msg => ({ ...msg, isBeingRepliedTo: false })));
-      
-      // Mark this message as being replied to
-      setMessages(messages.map(msg => 
-        msg.id === messageId ? { ...msg, isBeingRepliedTo: true } : msg
-      ));
-      
-      // Focus the input field
-      const messageInput = document.querySelector('input[name="message"]');
-      if (messageInput) {
-        (messageInput as HTMLInputElement).focus();
-      }
-      
-      toast.info(`Replying to: ${messageText.slice(0, 30)}${messageText.length > 30 ? '...' : ''}`);
-    }
+    baseUnsendMessage(messageId, userId, setMessages);
   };
-  
-  // Unsend (delete) a message
-  const unsendMessage = (messageId: string) => {
-    // Only allow unsending own messages
-    const messageToDelete = messages.find(msg => msg.id === messageId);
-    
-    if (!messageToDelete || messageToDelete.senderId !== signalRService.currentUserId) {
-      toast.error("You can only unsend your own messages");
-      return;
-    }
-    
-    // Call signalR service to mark as deleted
-    signalRService.deleteMessage(messageId, userId);
-    
-    // Update local message
-    ChatMessageService.markAsDeleted(messageId, setMessages);
-    
-    toast.success("Message unsent");
-  };
-  
-  // Helper functions
-  const isLinkMessage = (content: string) => {
-    return /https?:\/\/[^\s]+/.test(content);
-  };
-  
-  const extractLink = (content: string) => {
-    const match = content.match(/https?:\/\/[^\s]+/);
-    return match ? match[0] : '';
-  };
-  
-  const translateMessage = async (msg: ChatMessage): Promise<ChatMessage> => {
-    // Mock translation for demo purposes
-    return {
-      ...msg,
-      content: msg.content ? `[Translated to ${selectedLanguage}] ${msg.content}` : undefined
-    };
-  };
-  
+
   return {
     message,
     setMessage,
@@ -396,7 +286,6 @@ export const useChat = (userId: number, effectiveRole: string, isAdmin = false) 
     fileInputRef,
     maxChars,
     autoScrollToBottom,
-    updateScrollPosition,
     isTyping,
     isTranslationEnabled,
     selectedLanguage,
@@ -405,12 +294,9 @@ export const useChat = (userId: number, effectiveRole: string, isAdmin = false) 
     setIsMediaGalleryOpen,
     mediaGalleryItems,
     isRecording,
+    audioPreview,
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
-    isKickDialogOpen,
-    setIsKickDialogOpen,
-    isBanDialogOpen,
-    setIsBanDialogOpen,
     handleSendMessage,
     handleKeyDown,
     handleAddEmoji,
@@ -430,9 +316,10 @@ export const useChat = (userId: number, effectiveRole: string, isAdmin = false) 
     toggleTranslation,
     showMediaGallery,
     deleteConversation,
-    confirmDeleteConversation,
+    confirmDeleteConversation: handleConfirmDeleteConversation,
     cancelDeleteConversation,
-    replyToMessage,
-    unsendMessage
+    replyToMessage: handleReplyToMessage,
+    unsendMessage: handleUnsendMessage,
+    updateScrollPosition
   };
 };

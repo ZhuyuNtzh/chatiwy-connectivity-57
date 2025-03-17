@@ -9,20 +9,6 @@ export const userReporting = {
     if (savedReports) {
       try {
         reports = JSON.parse(savedReports);
-        
-        // Filter out reports older than 24 hours whenever we load
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        reports = reports.filter(report => {
-          // Check if timestamp is a string and convert if needed
-          const reportDate = report.timestamp instanceof Date 
-            ? report.timestamp 
-            : new Date(report.timestamp);
-          
-          return reportDate > twentyFourHoursAgo;
-        });
-        
-        // Save the filtered reports back to storage
-        localStorage.setItem('reports', JSON.stringify(reports));
       } catch (e) {
         console.error('Error parsing reports:', e);
         reports = [];
@@ -47,7 +33,7 @@ export const userReporting = {
       reason,
       details,
       timestamp: new Date(),
-      status: 'pending'  // Add the required status field
+      status: 'pending'
     };
     
     reports.push(newReport);
@@ -58,19 +44,9 @@ export const userReporting = {
   },
 
   getReports(): UserReport[] {
-    // Always load from storage first to make sure we have the latest data
-    this.loadFromStorage();
-    
     // Filter out reports older than 24 hours
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    reports = reports.filter(report => {
-      // Check if timestamp is a string and convert if needed
-      const reportDate = report.timestamp instanceof Date 
-        ? report.timestamp 
-        : new Date(report.timestamp);
-      
-      return reportDate > twentyFourHoursAgo;
-    });
+    reports = reports.filter(report => new Date(report.timestamp) > twentyFourHoursAgo);
     
     // Save updated reports to localStorage
     localStorage.setItem('reports', JSON.stringify(reports));

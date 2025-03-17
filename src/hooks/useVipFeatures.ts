@@ -24,33 +24,7 @@ export const useVipFeatures = () => {
       expiryDate: expiryDate.toISOString(),
     }));
 
-    // Update the VIP status so it takes effect immediately
-    localStorage.setItem(`vipStatus_${userId}`, JSON.stringify({
-      username,
-      isPermanent: false,
-      expiryDate: expiryDate.toISOString(),
-    }));
-
-    // Update mockUsers entry if it exists to reflect this change
-    const mockUsersJSON = localStorage.getItem('mockUsers');
-    if (mockUsersJSON) {
-      try {
-        const mockUsers = JSON.parse(mockUsersJSON);
-        const userIndex = mockUsers.findIndex((u: any) => u.id === userId);
-        if (userIndex !== -1) {
-          mockUsers[userIndex].isVip = true;
-          localStorage.setItem('mockUsers', JSON.stringify(mockUsers));
-        }
-      } catch (e) {
-        console.error('Error updating mock users:', e);
-      }
-    }
-
     toast.success(`${username} has been granted VIP status until ${expiryDate.toLocaleDateString()}`);
-    
-    // Close the dialog
-    setIsVipUpgradeDialogOpen(false);
-    setVipUpgradeUser(null);
   }, []);
 
   // Upgrade a user to VIP status
@@ -70,21 +44,6 @@ export const useVipFeatures = () => {
       isPermanent,
       expiryDate: expiryDate ? expiryDate.toISOString() : null,
     }));
-    
-    // Update mockUsers entry if it exists to reflect this change
-    const mockUsersJSON = localStorage.getItem('mockUsers');
-    if (mockUsersJSON) {
-      try {
-        const mockUsers = JSON.parse(mockUsersJSON);
-        const userIndex = mockUsers.findIndex((u: any) => u.id === userId);
-        if (userIndex !== -1) {
-          mockUsers[userIndex].isVip = true;
-          localStorage.setItem('mockUsers', JSON.stringify(mockUsers));
-        }
-      } catch (e) {
-        console.error('Error updating mock users:', e);
-      }
-    }
   }, []);
 
   return {

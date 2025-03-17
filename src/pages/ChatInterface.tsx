@@ -30,11 +30,7 @@ const mockUsers = [
   { id: 15, username: "ArtLover", gender: "Male", age: 27, location: "Mexico", interests: ["Art", "Photography", "Fashion"], isOnline: true },
 ];
 
-interface ChatInterfaceProps {
-  isAdminView?: boolean;
-}
-
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ isAdminView = false }) => {
+const ChatInterface = () => {
   const { isDarkMode, toggleDarkMode } = useTheme();
   const { currentUser } = useUser();
   const {
@@ -79,19 +75,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isAdminView = false }) =>
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-[#f2f7f9]'}`}>
-      {!isAdminView && (
-        <Header 
-          username={currentUser?.username || "Nickname"}
-          isDarkMode={isDarkMode}
-          toggleDarkMode={toggleDarkMode}
-          onLogout={handleLogoutClick}
-          onHistory={handleShowHistory}
-          onInbox={handleShowInbox}
-          unreadCount={unreadCount}
-        />
-      )}
+      <Header 
+        username={currentUser?.username || "Nickname"}
+        isDarkMode={isDarkMode}
+        toggleDarkMode={toggleDarkMode}
+        onLogout={handleLogoutClick}
+        onHistory={handleShowHistory}
+        onInbox={handleShowInbox}
+        unreadCount={unreadCount}
+      />
       
-      <div className={`${isAdminView ? 'top-0' : 'top-16'} fixed bottom-0 left-0 right-0 px-4 md:px-6 max-w-7xl mx-auto`}>
+      <div className="fixed top-16 bottom-0 left-0 right-0 px-4 md:px-6 max-w-7xl mx-auto">
         <div className="h-full relative flex">
           <ChatMobileSidebar 
             isSidebarOpen={isSidebarOpen}
@@ -119,22 +113,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isAdminView = false }) =>
         </div>
       </div>
       
-      {!isAdminView && (
-        <>
-          <RulesModal 
-            open={isRulesModalOpen} 
-            onOpenChange={setIsRulesModalOpen} 
-            onAccept={handleRulesAccepted}
-          />
+      <RulesModal 
+        open={isRulesModalOpen} 
+        onOpenChange={setIsRulesModalOpen} 
+        onAccept={handleRulesAccepted}
+      />
 
-          <LogoutDialog
-            isOpen={isLogoutDialogOpen}
-            onOpenChange={setIsLogoutDialogOpen}
-            onConfirm={handleConfirmLogout}
-            onCancel={handleCancelLogout}
-          />
-        </>
-      )}
+      <LogoutDialog
+        isOpen={isLogoutDialogOpen}
+        onOpenChange={setIsLogoutDialogOpen}
+        onConfirm={handleConfirmLogout}
+        onCancel={handleCancelLogout}
+      />
       
       <HistoryDialog 
         isOpen={isHistoryDialogOpen}

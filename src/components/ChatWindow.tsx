@@ -3,8 +3,6 @@ import React from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
 import { useChat } from '@/hooks/useChat';
-import { useUserManagement } from '@/hooks/useUserManagement';
-import { toast } from 'sonner';
 
 // Import refactored components
 import ChatHeader from '@/components/chat/ChatHeader';
@@ -27,16 +25,10 @@ interface ChatWindowProps {
   };
   countryFlags: Record<string, string>;
   onClose: () => void;
-  isAdmin?: boolean;
 }
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, isAdmin = false }) => {
+const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose }) => {
   const { userRole } = useUser();
-  const { kickUser } = useUserManagement();
-  
-  // Admins are treated as VIP users for chat purposes
-  const effectiveRole = isAdmin ? 'vip' : userRole;
-  
   const {
     message,
     setMessage,
@@ -73,10 +65,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
     isRecording,
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
-    isKickDialogOpen,
-    setIsKickDialogOpen,
-    isBanDialogOpen,
-    setIsBanDialogOpen,
     handleSendMessage,
     handleKeyDown,
     handleAddEmoji,
@@ -100,35 +88,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
     cancelDeleteConversation,
     replyToMessage,
     unsendMessage
-  } = useChat(user.id, effectiveRole, isAdmin);
-  
-  // Admin-specific actions
-  const handleKickUser = () => {
-    if (isAdmin) {
-      setIsKickDialogOpen(true);
-    }
-  };
-  
-  const confirmKickUser = () => {
-    kickUser(user.id);
-    toast.success(`${user.username} has been kicked from the chat`);
-    setIsKickDialogOpen(false);
-    onClose(); // Close the chat window after kicking
-  };
-  
-  const handleBanUser = () => {
-    if (isAdmin) {
-      setIsBanDialogOpen(true);
-    }
-  };
-  
-  const confirmBanUser = () => {
-    // In a real app, this would call an API to ban the user
-    console.log(`User ${user.username} has been banned`);
-    toast.success(`${user.username} has been banned`);
-    setIsBanDialogOpen(false);
-    onClose(); // Close the chat window after banning
-  };
+  } = useChat(user.id, userRole);
   
   return (
     <ChatWindowContainer>
@@ -142,15 +102,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
           onBlockUser={handleBlockUser}
           onReportUser={handleReportUser}
           onShowBlockedUsers={showBlockedUsersList}
-          onToggleTranslation={toggleTranslation}
+          onToggleTranslation={userRole === 'vip' ? toggleTranslation : undefined}
           isTranslationEnabled={isTranslationEnabled}
-          onSelectLanguage={setSelectedLanguage}
+          onSelectLanguage={userRole === 'vip' ? setSelectedLanguage : undefined}
           selectedLanguage={selectedLanguage}
-          onShowMediaGallery={showMediaGallery}
-          onDeleteConversation={deleteConversation}
-          onKickUser={isAdmin ? handleKickUser : undefined}
-          onBanUser={isAdmin ? handleBanUser : undefined}
-          isAdmin={isAdmin}
+          onShowMediaGallery={userRole === 'vip' ? showMediaGallery : undefined}
+          onDeleteConversation={userRole === 'vip' ? deleteConversation : undefined}
         />
       </div>
       
@@ -169,17 +126,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
       <ChatActions 
         message={message}
         setMessage={setMessage}
-        maxChars={isAdmin ? 999999 : maxChars} // Unlimited for admin
+        maxChars={maxChars}
         handleSendMessage={handleSendMessage}
         handleKeyDown={handleKeyDown}
         handleAddEmoji={handleAddEmoji}
         handleImageClick={handleImageClick}
-        isUserBlocked={false} // Admin can never be blocked
-        isVipUser={true} // Admin has all VIP features
+        isUserBlocked={signalRService.isUserBlocked(user.id)}
+        isVipUser={userRole === 'vip'}
         fileInputRef={fileInputRef}
-        handleVoiceMessageClick={handleVoiceMessageClick}
-        sendVoiceMessage={sendVoiceMessage}
-        isAdmin={isAdmin}
+        handleVoiceMessageClick={userRole === 'vip' ? handleVoiceMessageClick : undefined}
+        sendVoiceMessage={userRole === 'vip' ? sendVoiceMessage : undefined}
       />
       
       <ChatInputHandlers
@@ -209,25 +165,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
         handleUnblockUser={handleUnblockUser}
         previewImage={previewImage}
         setPreviewImage={setPreviewImage}
-        isKickDialogOpen={isKickDialogOpen}
-        setIsKickDialogOpen={setIsKickDialogOpen}
-        confirmKickUser={confirmKickUser}
-        isBanDialogOpen={isBanDialogOpen}
-        setIsBanDialogOpen={setIsBanDialogOpen}
-        confirmBanUser={confirmBanUser}
       />
       
-      {/* VIP Features (Admin has all VIP features) */}
-      <VipFeatures
-        isMediaGalleryOpen={isMediaGalleryOpen}
-        setIsMediaGalleryOpen={setIsMediaGalleryOpen}
-        mediaGalleryItems={mediaGalleryItems}
-        user={user}
-        isDeleteDialogOpen={isDeleteDialogOpen}
-        setIsDeleteDialogOpen={setIsDeleteDialogOpen}
-        onConfirmDelete={confirmDeleteConversation}
-        onCancelDelete={cancelDeleteConversation}
-      />
+      {/* VIP Feature Components */}
+      {userRole === 'vip' && (
+        <VipFeatures
+          isMediaGalleryOpen={isMediaGalleryOpen}
+          setIsMediaGalleryOpen={setIsMediaGalleryOpen}
+          mediaGalleryItems={mediaGalleryItems}
+          user={user}
+          isDeleteDialogOpen={isDeleteDialogOpen}
+          setIsDeleteDialogOpen={setIsDeleteDialogOpen}
+          onConfirmDelete={confirmDeleteConversation}
+          onCancelDelete={cancelDeleteConversation}
+        />
+      )}
     </ChatWindowContainer>
   );
 };

@@ -1,12 +1,9 @@
 
 import React from 'react';
-import {
-  MoreVertical, X,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import UserAvatar from './UserAvatar';
+import UserBrief from './UserBrief';
+import HeaderOptions from './HeaderOptions';
 import HeaderDropdownContent from './HeaderDropdownContent';
-import UserInfo from './UserInfo';
 
 interface ChatHeaderProps {
   user: {
@@ -31,9 +28,6 @@ interface ChatHeaderProps {
   selectedLanguage?: string;
   onShowMediaGallery?: () => void;
   onDeleteConversation?: () => void;
-  onKickUser?: () => void;
-  onBanUser?: () => void;
-  isAdmin?: boolean;
 }
 
 const ChatHeader: React.FC<ChatHeaderProps> = ({
@@ -51,47 +45,42 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
   selectedLanguage,
   onShowMediaGallery,
   onDeleteConversation,
-  onKickUser,
-  onBanUser,
-  isAdmin,
 }) => {
   return (
-    <div className="flex items-center justify-between p-3 border-b dark:border-gray-700">
-      <UserInfo user={user} countryFlags={countryFlags} />
-      
+    <div className="px-4 py-3 flex items-center justify-between">
       <div className="flex items-center">
-        <DropdownMenu open={showOptions} onOpenChange={onShowOptions}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreVertical className="h-5 w-5" />
-            </Button>
-          </DropdownMenuTrigger>
-          
-          <HeaderDropdownContent 
-            onBlockUser={onBlockUser}
-            onReportUser={onReportUser}
-            onShowBlockedUsers={onShowBlockedUsers}
-            onToggleTranslation={onToggleTranslation}
-            isTranslationEnabled={isTranslationEnabled}
-            onSelectLanguage={onSelectLanguage}
-            selectedLanguage={selectedLanguage}
-            onShowMediaGallery={onShowMediaGallery}
-            onDeleteConversation={onDeleteConversation}
-            onKickUser={onKickUser}
-            onBanUser={onBanUser}
-            isAdmin={isAdmin}
-          />
-        </DropdownMenu>
+        <UserAvatar 
+          username={user.username} 
+          isOnline={user.isOnline} 
+        />
         
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="ml-1" 
-          onClick={onClose}
-        >
-          <X className="h-5 w-5" />
-        </Button>
+        <UserBrief
+          username={user.username}
+          age={user.age}
+          gender={user.gender}
+          location={user.location}
+          interests={user.interests}
+          countryFlags={countryFlags}
+        />
       </div>
+      
+      <HeaderOptions
+        showOptions={showOptions}
+        onShowOptions={onShowOptions}
+        onClose={onClose}
+      >
+        <HeaderDropdownContent
+          onBlockUser={onBlockUser}
+          onReportUser={onReportUser}
+          onShowBlockedUsers={onShowBlockedUsers}
+          onToggleTranslation={onToggleTranslation}
+          isTranslationEnabled={isTranslationEnabled}
+          onSelectLanguage={onSelectLanguage}
+          selectedLanguage={selectedLanguage}
+          onShowMediaGallery={onShowMediaGallery}
+          onDeleteConversation={onDeleteConversation}
+        />
+      </HeaderOptions>
     </div>
   );
 };

@@ -32,12 +32,6 @@ interface UserModalsProps {
   handleUnblockUser: (userId: number, username: string) => void;
   previewImage: string | null;
   setPreviewImage: (url: string | null) => void;
-  isKickDialogOpen?: boolean;
-  setIsKickDialogOpen?: (open: boolean) => void;
-  confirmKickUser?: () => void;
-  isBanDialogOpen?: boolean;
-  setIsBanDialogOpen?: (open: boolean) => void;
-  confirmBanUser?: () => void;
 }
 
 const reportReasons = [
@@ -69,13 +63,7 @@ const UserModals: React.FC<UserModalsProps> = ({
   blockedUsers,
   handleUnblockUser,
   previewImage,
-  setPreviewImage,
-  isKickDialogOpen,
-  setIsKickDialogOpen,
-  confirmKickUser,
-  isBanDialogOpen,
-  setIsBanDialogOpen,
-  confirmBanUser
+  setPreviewImage
 }) => {
   return (
     <>
@@ -225,42 +213,6 @@ const UserModals: React.FC<UserModalsProps> = ({
           </div>
         </DialogContent>
       </Dialog>
-      
-      {/* Kick User Dialog */}
-      {isKickDialogOpen && setIsKickDialogOpen && confirmKickUser && (
-        <Dialog open={isKickDialogOpen} onOpenChange={setIsKickDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Kick User</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to kick {user.username} from the chat? They will be disconnected immediately.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setIsKickDialogOpen(false)}>Cancel</Button>
-              <Button variant="destructive" onClick={confirmKickUser}>Kick User</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-      
-      {/* Ban User Dialog */}
-      {isBanDialogOpen && setIsBanDialogOpen && confirmBanUser && (
-        <Dialog open={isBanDialogOpen} onOpenChange={setIsBanDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Ban User</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to ban {user.username}? This will permanently prevent them from using the platform.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setIsBanDialogOpen(false)}>Cancel</Button>
-              <Button variant="destructive" onClick={confirmBanUser}>Ban User</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </>
   );
 };

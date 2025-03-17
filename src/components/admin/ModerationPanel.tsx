@@ -2,15 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Flag, Trash2, RefreshCw } from 'lucide-react';
-import { userReporting } from '@/services/signalR/userReporting';
+import { Flag, Trash2 } from 'lucide-react';
+import { signalRService } from '@/services/signalRService';
 import { UserReport } from '@/services/signalR/types';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import UserTypeDisplay from '@/components/UserTypeDisplay';
 
 const ModerationPanel = () => {
   const [reports, setReports] = useState<UserReport[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     loadReports();
@@ -22,39 +22,25 @@ const ModerationPanel = () => {
   }, []);
 
   const loadReports = () => {
-    setIsLoading(true);
     console.log("Loading reports...");
     try {
-      // Use the userReporting service directly
-      const allReports = userReporting.getReports();
+      const allReports = signalRService.getReports();
       console.log("Got reports:", allReports);
       setReports(allReports);
     } catch (error) {
       console.error("Error loading reports:", error);
       toast.error("Failed to load reports");
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleDeleteReport = (reportId: string) => {
     try {
-      userReporting.deleteReport(reportId);
-      // Update the local state to remove the deleted report
-      setReports(prevReports => prevReports.filter(report => report.id !== reportId));
+      signalRService.deleteReport(reportId);
+      loadReports();
       toast.success('Report deleted successfully');
     } catch (error) {
       console.error("Error deleting report:", error);
       toast.error("Failed to delete report");
-    }
-  };
-
-  const formatDate = (dateInput: Date | string) => {
-    try {
-      const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
-      return date.toLocaleString();
-    } catch (e) {
-      return 'Invalid date';
     }
   };
 
@@ -73,11 +59,9 @@ const ModerationPanel = () => {
 
       <Button 
         variant="outline" 
-        className="mb-4 self-end flex items-center gap-2"
+        className="mb-4 self-end"
         onClick={loadReports}
-        disabled={isLoading}
       >
-        <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         Refresh Reports
       </Button>
 
@@ -97,7 +81,7 @@ const ModerationPanel = () => {
                         {report.reporterName} reported {report.reportedName}
                       </span>
                       <Badge variant="outline" className="ml-2">
-                        {formatDate(report.timestamp)}
+                        {new Date(report.timestamp).toLocaleString()}
                       </Badge>
                     </div>
                     <p className="text-gray-700 dark:text-gray-300 font-medium">

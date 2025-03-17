@@ -15,7 +15,6 @@ interface ChatActionsProps {
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleVoiceMessageClick?: () => void;
   sendVoiceMessage?: (audioUrl: string) => void;
-  isAdmin?: boolean;
 }
 
 const ChatActions: React.FC<ChatActionsProps> = ({
@@ -30,8 +29,7 @@ const ChatActions: React.FC<ChatActionsProps> = ({
   isVipUser,
   fileInputRef,
   handleVoiceMessageClick,
-  sendVoiceMessage,
-  isAdmin
+  sendVoiceMessage
 }) => {
   return (
     <MessageInput 
@@ -47,7 +45,6 @@ const ChatActions: React.FC<ChatActionsProps> = ({
       fileInputRef={fileInputRef}
       handleVoiceMessageClick={handleVoiceMessageClick}
       sendVoiceMessage={sendVoiceMessage}
-      isAdmin={isAdmin}
     />
   );
 };
