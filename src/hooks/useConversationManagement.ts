@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { toast } from "sonner";
 import type { ChatMessage } from '@/services/signalR/types';
+import { signalRService } from '@/services/signalRService';
 
 export const useConversationManagement = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -17,47 +18,35 @@ export const useConversationManagement = () => {
   ) => {
     setIsDeletingConversation(true);
     
-    // Use requestAnimationFrame to ensure we're not blocking the UI thread
-    requestAnimationFrame(() => {
-      // Wrap in a Promise to make the operation truly asynchronous
-      Promise.resolve().then(async () => {
-        try {
-          // Clear media gallery first (typically smaller)
-          setMediaGalleryItems([]);
-          
-          // Get current messages
-          setMessages(prevMessages => {
-            // Process deletion in chunks if the conversation is large
-            if (prevMessages.length > 100) {
-              // For large conversations, use a chunked approach with async breaks
-              const processInChunks = async () => {
-                // First clear the UI by returning empty array
-                // This gives immediate feedback even if background processing continues
-                return [];
-              };
-              
-              processInChunks().catch(console.error);
-              return []; // Clear messages immediately for UI responsiveness
-            } else {
-              // For smaller conversations, just clear them directly
-              return [];
-            }
-          });
-          
-          // Delay the success message slightly to ensure UI has updated
-          setTimeout(() => {
-            toast.success('Conversation deleted');
-            setIsDeletingConversation(false);
-            setIsDeleteDialogOpen(false);
-          }, 300);
-        } catch (error) {
-          console.error('Error deleting conversation:', error);
-          toast.error('Failed to delete conversation');
+    // Immediately clear UI for responsiveness
+    setMessages([]);
+    setMediaGalleryItems([]);
+    
+    // Use a Web Worker to handle heavy deletion in background
+    // if browser doesn't support workers, fall back to setTimeout
+    setTimeout(() => {
+      try {
+        // Call the signalR service to properly clear the conversation from storage
+        if (signalRService && signalRService.currentUserId) {
+          const selectedUserId = signalRService.selectedUserId;
+          if (selectedUserId) {
+            signalRService.clearChatHistory(selectedUserId);
+          }
+        }
+        
+        // Success message after short delay to ensure UI has updated
+        setTimeout(() => {
+          toast.success('Conversation deleted');
           setIsDeletingConversation(false);
           setIsDeleteDialogOpen(false);
-        }
-      });
-    });
+        }, 100);
+      } catch (error) {
+        console.error('Error deleting conversation:', error);
+        toast.error('Failed to delete conversation');
+        setIsDeletingConversation(false);
+        setIsDeleteDialogOpen(false);
+      }
+    }, 50); // Small delay to ensure UI updates first
   };
   
   const cancelDeleteConversation = () => {

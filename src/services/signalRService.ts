@@ -1,328 +1,217 @@
-
-import { MockHubConnection } from './signalR/mockConnection';
-import { ISignalRService, ChatMessage, ConnectionStatus, UserReport } from './signalR/types';
-import { messageHandler } from './signalR/messageHandler';
-import { userBlocking } from './signalR/userBlocking';
+import * as signalR from '@microsoft/signalr';
+import { ChatMessage } from './signalR/types';
 import { chatStorage } from './signalR/chatStorage';
-import { userReporting } from './signalR/userReporting';
-import { contentModeration } from './signalR/contentModeration';
 
-// Mock users data for generating realistic responses
-const mockUserNames: Record<number, string> = {
-  1: "Alice",
-  2: "Bob",
-  3: "Clara",
-  4: "David",
-  5: "Elena",
-  6: "Feng",
-  7: "Gabriela",
-  8: "Hiroshi",
-  9: "Isabella",
-  10: "Jamal",
-  11: "TravelBot",
-  12: "FitnessGuru",
-  13: "BookWorm",
-  14: "TechGeek",
-  15: "ArtLover"
-};
-
-// This is using the mock connection for now, but can be replaced with a real connection
-class SignalRService implements ISignalRService {
+class SignalRService {
   private connection: any = null;
-  private userId: number | null = null;
-  private username: string | null = null;
-  private connectedUsersCount = 0;
-  private messageCallbacks: ((message: ChatMessage) => void)[] = [];
-  private typingCallbacks: ((userId: number) => void)[] = [];
-  private deleteCallbacks: ((messageId: string) => void)[] = [];
+  private connectionPromise: Promise<void> | null = null;
+  private isConnecting = false;
+  private messageHandlers: ((message: any) => void)[] = [];
+  private typingHandlers: ((userId: number) => void)[] = [];
+  private messageDeletedHandlers: ((messageId: string) => void)[] = [];
   
-  public get currentUserId(): number {
-    return this.userId || 0;
+  // Add this property to track the currently selected user in the chat
+  public selectedUserId: number | null = null;
+
+  public currentUserId: number | null = null;
+
+  constructor() {
+    chatStorage.loadFromStorage();
   }
 
-  public async initialize(userId: number, username: string): Promise<void> {
-    // Clear any previous user data if there was a session
-    if (this.userId && this.userId !== userId) {
-      this.clearUserSession(this.userId);
+  public async startConnection(user: any): Promise<void> {
+    if (this.connectionPromise || this.isConnecting) {
+      return this.connectionPromise;
     }
-    
-    this.userId = userId;
-    this.username = username;
-    
-    // Load data from localStorage
-    userBlocking.loadFromStorage();
-    chatStorage.loadFromStorage();
-    userReporting.loadFromStorage();
-    contentModeration.loadFromStorage();
-    
-    this.connection = new MockHubConnection();
-    this.connectedUsersCount = Math.floor(Math.random() * 100) + 50; // Random number of users for mock
-    
-    console.log(`SignalR initialized for user ${username} (ID: ${userId})`);
-    return Promise.resolve();
-  }
-  
-  public async disconnect(): Promise<void> {
-    if (this.connection) {
-      if (this.userId) {
-        // Clear user session data on disconnect
-        this.clearUserSession(this.userId);
+
+    this.isConnecting = true;
+    this.currentUserId = user.id;
+
+    this.connectionPromise = new Promise(async (resolve, reject) => {
+      try {
+        this.connection = new signalR.HubConnectionBuilder()
+          .withUrl(`${process.env.NEXT_PUBLIC_API_URL}/chatHub`, {
+            accessTokenFactory: () => user.token
+          })
+          .withAutomaticReconnect()
+          .configureLogging(signalR.LogLevel.Information)
+          .build();
+
+        this.connection.on('ReceiveMessage', (message: ChatMessage) => {
+          this.messageHandlers.forEach(handler => handler(message));
+        });
+
+        this.connection.on('UserTyping', (userId: number) => {
+          this.typingHandlers.forEach(handler => handler(userId));
+        });
+
+        this.connection.on('MessageDeleted', (messageId: string) => {
+          this.messageDeletedHandlers.forEach(handler => handler(messageId));
+        });
+
+        this.connection.onreconnecting((error: any) => {
+          console.log('Attempting to reconnect to SignalR Hub...', error);
+        });
+
+        this.connection.onreconnected(() => {
+          console.log('Successfully reconnected to SignalR Hub.');
+        });
+
+        this.connection.onclose((error: any) => {
+          console.log('SignalR Hub connection closed.', error);
+          this.connectionPromise = null;
+          this.isConnecting = false;
+        });
+
+        await this.connection.start();
+        console.log('SignalR Hub Connected.');
+        resolve();
+      } catch (err) {
+        console.error('SignalR Connection Error: ', err);
+        this.connectionPromise = null;
+        this.isConnecting = false;
+        reject(err);
+      } finally {
+        this.isConnecting = false;
       }
-      
-      this.connection = null;
-      this.userId = null;
-      this.username = null;
-      console.log('SignalR disconnected');
-    }
-    return Promise.resolve();
-  }
-  
-  private clearUserSession(userId: number): void {
-    chatStorage.clearUserSession(userId);
-  }
-  
-  public onConnectedUsersCountChanged(callback: (count: number) => void): void {
-    // For mock purposes, just return the stored count
-    callback(this.connectedUsersCount);
-  }
-  
-  // Message handling
-  public onMessageReceived(callback: (message: ChatMessage) => void): void {
-    this.messageCallbacks.push(callback);
-  }
-  
-  public offMessageReceived(callback: (message: ChatMessage) => void): void {
-    this.messageCallbacks = this.messageCallbacks.filter(cb => cb !== callback);
-  }
-  
-  public onMessageDeleted(callback: (messageId: string) => void): void {
-    this.deleteCallbacks.push(callback);
-  }
-  
-  public offMessageDeleted(callback: (messageId: string) => void): void {
-    this.deleteCallbacks = this.deleteCallbacks.filter(cb => cb !== callback);
-  }
-  
-  public onUserTyping(callback: (userId: number) => void): void {
-    this.typingCallbacks.push(callback);
-  }
-  
-  public offUserTyping(callback: (userId: number) => void): void {
-    this.typingCallbacks = this.typingCallbacks.filter(cb => cb !== callback);
-  }
-  
-  public onConnectionStatusChanged(callback: (status: ConnectionStatus) => void): void {
-    callback('connected'); // Always connected in mock
-  }
-  
-  // Message sending
-  public async sendMessage(
-    recipientId: number, 
-    content: string, 
-    actualUsername?: string,
-    replyToId?: string,
-    replyText?: string
-  ): Promise<void> {
-    if (!this.userId) return Promise.resolve();
-    
-    if (userBlocking.isUserBlocked(recipientId)) {
-      console.log(`Cannot send message to blocked user ${recipientId}`);
-      return Promise.resolve();
-    }
-    
-    const newMessage = messageHandler.createMessage({
-      content,
-      sender: this.username || 'You',
-      actualUsername: actualUsername || this.username,
-      senderId: this.userId,
-      recipientId,
-      replyToId,
-      replyText,
-      isRead: true // Our own messages are always read
     });
-    
-    // Add to chat history with the current user ID
-    chatStorage.addMessageToHistory(this.userId, this.userId, newMessage);
-    
-    // Simulate a response - pass the actual username to create a proper response
-    setTimeout(() => {
-      this.simulateReceivedMessage(recipientId);
-    }, 1000 + Math.random() * 2000);
-    
-    return Promise.resolve();
+
+    return this.connectionPromise;
   }
-  
-  public async sendImage(recipientId: number, imageUrl: string, isBlurred: boolean = false): Promise<void> {
-    if (!this.userId) return Promise.resolve();
-    
-    if (userBlocking.isUserBlocked(recipientId)) {
-      return Promise.resolve();
+
+  public async stopConnection(): Promise<void> {
+    if (this.connection) {
+      try {
+        await this.connection.stop();
+        console.log('SignalR Hub Disconnected.');
+      } catch (err) {
+        console.error('SignalR Disconnection Error: ', err);
+      } finally {
+        this.connectionPromise = null;
+        this.isConnecting = false;
+      }
     }
-    
-    const newMessage = messageHandler.createImageMessage({
-      sender: this.username || 'You',
-      senderId: this.userId,
-      recipientId,
-      imageUrl,
-      isBlurred,
-      isRead: true // Our own messages are always read
-    });
-    
-    // Add to chat history with the current user ID
-    chatStorage.addMessageToHistory(this.userId, this.userId, newMessage);
-    
-    return Promise.resolve();
   }
-  
-  public async sendVoiceMessage(recipientId: number, audioUrl: string): Promise<void> {
-    if (!this.userId) return Promise.resolve();
-    
-    if (userBlocking.isUserBlocked(recipientId)) {
-      return Promise.resolve();
+
+  public onMessageReceived(handler: (message: ChatMessage) => void): void {
+    this.messageHandlers.push(handler);
+  }
+
+  public offMessageReceived(handler: (message: ChatMessage) => void): void {
+    this.messageHandlers = this.messageHandlers.filter(h => h !== handler);
+  }
+
+  public onUserTyping(handler: (userId: number) => void): void {
+    this.typingHandlers.push(handler);
+  }
+
+  public offUserTyping(handler: (userId: number) => void): void {
+    this.typingHandlers = this.typingHandlers.filter(h => h !== handler);
+  }
+
+  public onMessageDeleted(handler: (messageId: string) => void): void {
+    this.messageDeletedHandlers.push(handler);
+  }
+
+  public offMessageDeleted(handler: (messageId: string) => void): void {
+    this.messageDeletedHandlers = this.messageDeletedHandlers.filter(h => h !== handler);
+  }
+
+  public async sendMessage(userId: number, messageText: string, username: string): Promise<void> {
+    try {
+      await this.connection.invoke('SendMessage', userId, messageText, username);
+    } catch (err) {
+      console.error('Error sending message: ', err);
     }
-    
-    const newMessage = messageHandler.createVoiceMessage({
-      sender: this.username || 'You',
-      senderId: this.userId,
-      recipientId,
-      audioUrl,
-      isRead: true // Our own messages are always read
-    });
-    
-    // Add to chat history with the current user ID
-    chatStorage.addMessageToHistory(this.userId, this.userId, newMessage);
-    
-    return Promise.resolve();
   }
-  
-  public async deleteMessage(messageId: string, recipientId: number): Promise<void> {
-    if (!this.userId) return Promise.resolve();
-    
-    // Update chat history
-    chatStorage.markMessageAsDeleted(this.userId, recipientId, messageId);
-    
-    // Notify listeners
-    this.deleteCallbacks.forEach(callback => callback(messageId));
-    
-    return Promise.resolve();
+
+  public async deleteMessage(messageId: string): Promise<void> {
+    try {
+      await this.connection.invoke('DeleteMessage', messageId);
+    } catch (err) {
+      console.error('Error deleting message: ', err);
+    }
   }
-  
-  public sendTypingIndication(recipientId: number): void {
-    // Notify typing listeners
-    this.typingCallbacks.forEach(callback => callback(recipientId));
+
+  public async sendTyping(userId: number): Promise<void> {
+    try {
+      await this.connection.invoke('SendTyping', userId);
+    } catch (err) {
+      console.error('Error sending typing signal: ', err);
+    }
   }
-  
-  // Message read status
-  public markMessagesAsRead(senderId: number): void {
-    if (!this.userId) return;
-    
-    // Update message read status in chat storage
-    chatStorage.markMessagesAsRead(this.userId, senderId, this.userId);
+
+  public addMessageToChatHistory(currentUserId: number, userId: number, message: ChatMessage): void {
+    chatStorage.addMessageToHistory(currentUserId, userId, message);
   }
-  
-  // User blocking
-  public blockUser(userId: number): void {
-    userBlocking.blockUser(userId);
-  }
-  
-  public unblockUser(userId: number): void {
-    userBlocking.unblockUser(userId);
-  }
-  
-  public isUserBlocked(userId: number): boolean {
-    return userBlocking.isUserBlocked(userId);
-  }
-  
-  public isAdminUser(userId: number): boolean {
-    // Admin users have a special ID range (e.g., 999 as defined in useSignalRConnection.ts)
-    return userId === 999;
-  }
-  
-  public getBlockedUsers(): number[] {
-    return userBlocking.getBlockedUsers();
-  }
-  
-  // Chat history management
+
   public getChatHistory(userId: number): ChatMessage[] {
-    if (!this.userId) return [];
-    return chatStorage.getChatHistory(this.userId, userId);
+    return chatStorage.getChatHistory(this.currentUserId || 0, userId);
   }
-  
+
   public getAllChatHistory(): Record<number, ChatMessage[]> {
-    if (!this.userId) return {};
-    return chatStorage.getAllChatHistory(this.userId);
+    return chatStorage.getAllChatHistory(this.currentUserId || 0);
   }
-  
+
   public clearAllChatHistory(): void {
-    if (!this.userId) return;
-    chatStorage.clearAllChatHistory(this.userId);
+    chatStorage.clearAllChatHistory(this.currentUserId || 0);
   }
   
-  // Banned words management
-  public getBannedWords(): string[] {
-    return contentModeration.getBannedWords();
+  public clearChatHistory(userId: number): void {
+    chatStorage.clearChatHistory(this.currentUserId || 0, userId);
   }
-  
-  public addBannedWord(word: string): void {
-    contentModeration.addBannedWord(word);
+
+  public markMessageAsDeleted(messageId: string, userId: number): void {
+    chatStorage.markMessageAsDeleted(this.currentUserId || 0, userId, messageId);
   }
-  
-  public removeBannedWord(word: string): void {
-    contentModeration.removeBannedWord(word);
+
+  public markMessagesAsRead(senderId: number, recipientId: number): void {
+    chatStorage.markMessagesAsRead(this.currentUserId || 0, senderId, recipientId);
   }
-  
-  public setBannedWords(words: string[]): void {
-    contentModeration.setBannedWords(words);
+
+  public clearUserSession(): void {
+    chatStorage.clearUserSession(this.currentUserId || 0);
   }
-  
-  // Reporting functionality
-  public reportUser(
-    reporterId: number,
-    reporterName: string,
-    reportedId: number,
-    reportedName: string,
-    reason: string,
-    details?: string
-  ): void {
-    userReporting.reportUser(reporterId, reporterName, reportedId, reportedName, reason, details);
-  }
-  
-  public getReports(): UserReport[] {
-    return userReporting.getReports();
-  }
-  
-  public deleteReport(reportId: string): void {
-    userReporting.deleteReport(reportId);
-  }
-  
-  // Helper method to simulate received messages
-  private simulateReceivedMessage(recipientUserId: number): void {
-    if (!this.userId) return;
-    
-    // Skip for blocked users
-    if (userBlocking.isUserBlocked(recipientUserId)) {
-      return;
+
+  public async blockUser(targetUserId: number): Promise<void> {
+    try {
+      await this.connection.invoke('BlockUser', targetUserId);
+    } catch (err) {
+      console.error('Error blocking user: ', err);
     }
-    
-    // Get the mock username from recipientUserId
-    const senderName = mockUserNames[recipientUserId] || `User${recipientUserId}`;
-    
-    const newMessage = messageHandler.createSimulatedResponse({
-      // This is the ID of the user we're chatting with (they are sending the response)
-      senderId: recipientUserId,
-      // This is our user ID (we are receiving the message)
-      recipientId: this.userId,
-      // Use the actual username we determined
-      actualUsername: senderName,
-      // Mark as unread by default for incoming messages
-      isRead: false
-    });
-    
-    // Add to chat history - use the current user's ID as the key
-    chatStorage.addMessageToHistory(this.userId, this.userId, newMessage);
-    
-    // Notify message listeners
-    this.messageCallbacks.forEach(callback => callback(newMessage));
+  }
+
+  public async unblockUser(targetUserId: number): Promise<void> {
+    try {
+      await this.connection.invoke('UnblockUser', targetUserId);
+    } catch (err) {
+      console.error('Error unblocking user: ', err);
+    }
+  }
+
+  public isUserBlocked(userId: number): boolean {
+    // Check if the user is in the blocked list
+    const blockedUsers = this.getBlockedUsers();
+    return blockedUsers.includes(userId);
+  }
+
+  public getBlockedUsers(): number[] {
+    try {
+      // Assuming there's a method to get blocked users from the server
+      // Adjust the method name if it's different
+      return this.connection.invoke('GetBlockedUsers') || [];
+    } catch (error) {
+      console.error('Failed to get blocked users:', error);
+      return [];
+    }
+  }
+
+  public async reportUser(targetUserId: number, reason: string, otherReason: string): Promise<void> {
+    try {
+      await this.connection.invoke('ReportUser', targetUserId, reason, otherReason);
+    } catch (err) {
+      console.error('Error reporting user: ', err);
+    }
   }
 }
 

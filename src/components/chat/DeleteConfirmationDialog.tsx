@@ -31,10 +31,10 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   title = "Delete Conversation",
   description = "Are you sure you want to delete this entire conversation? This action cannot be undone."
 }) => {
-  // Prevent dialog from closing during deletion
+  // Enhanced version to completely prevent dialog from closing during deletion
   const handleOpenChange = (open: boolean) => {
-    if (isDeleting && !open) {
-      return; // Prevent closing during deletion
+    if (isDeleting) {
+      return; // Block any state changes during deletion
     }
     onOpenChange(open);
   };
