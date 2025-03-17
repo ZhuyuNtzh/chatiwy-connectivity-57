@@ -1,6 +1,5 @@
-
-import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useUser, BannedUser } from '@/contexts/UserContext';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -26,7 +25,9 @@ import {
   EyeOff,
   User,
   ChevronDown,
-  X
+  X,
+  Inbox,
+  History
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
@@ -38,7 +39,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import UserManagement from '@/components/admin/UserManagement';
-import SystemSettings from '@/components/admin/SystemSettings'; // Add this import
+import SystemSettings from '@/components/admin/SystemSettings';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,8 +48,11 @@ import Sidebar from '@/components/Sidebar';
 import ChatWindow from '@/components/ChatWindow';
 import { useTheme } from '@/contexts/ThemeContext';
 import { toast } from 'sonner';
+import ModerationPanel from '@/components/admin/ModerationPanel';
+import { signalRService } from '@/services/signalRService';
+import { userReporting } from '@/services/signalR/userReporting';
 
-const mockUsers = [
+const initialMockUsers = [
   { id: 1, username: "Alice", role: "standard", isOnline: true, location: "Canada", gender: "Female", age: 28, email: "alice@example.com", isBot: false, isBanned: false },
   { id: 2, username: "Bob", role: "standard", isOnline: true, location: "USA", gender: "Male", age: 32, email: "bob@example.com", isBot: false, isBanned: false },
   { id: 3, username: "Clara", role: "vip", isOnline: true, location: "France", gender: "Female", age: 25, email: "clara@example.com", isBot: false, isBanned: false },
@@ -104,12 +108,19 @@ const mockCountryFlags: Record<string, string> = {
 };
 
 const AdminDashboard = () => {
+  const getStoredUserStatus = () => {
+    const storedStatus = sessionStorage.getItem('adminLoggedIn');
+    return storedStatus === 'true';
+  };
+
   const { currentUser, userRole, bannedUsers, setBannedUsers, toggleAdminVisibility, adminSettings, setAdminSettings } = useUser();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isDarkMode } = useTheme();
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [showUserManagement, setShowUserManagement] = useState(false);
   const [showSystemSettings, setShowSystemSettings] = useState(false);
+  const [showModeration, setShowModeration] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showAdminSettings, setShowAdminSettings] = useState(false);
@@ -120,6 +131,19 @@ const AdminDashboard = () => {
     avatarUrl: adminSettings.avatarUrl || '',
   });
   const [fileInputRef, setFileInputRef] = useState<HTMLInputElement | null>(null);
+  const [isInboxDialogOpen, setIsInboxDialogOpen] = useState(false);
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  
+  const [mockUsers, setMockUsers] = useState(() => {
+    const storedUsers = localStorage.getItem('adminMockUsers');
+    return storedUsers ? JSON.parse(storedUsers) : initialMockUsers;
+  });
+  
+  const isInitialMount = useRef(true);
+  
+  useEffect(() => {
+    userReporting.loadFromStorage();
+  }, []);
   
   useEffect(() => {
     if (bannedUsers.length === 0) {
@@ -128,10 +152,21 @@ const AdminDashboard = () => {
   }, [bannedUsers.length, setBannedUsers]);
   
   useEffect(() => {
-    if (!currentUser || userRole !== 'admin') {
+    if (getStoredUserStatus()) {
+      sessionStorage.setItem('adminLoggedIn', 'true');
+      localStorage.setItem('adminLoggedIn', 'true');
+    } else if (!currentUser || userRole !== 'admin') {
       navigate('/');
     }
   }, [currentUser, userRole, navigate]);
+  
+  useEffect(() => {
+    if (!isInitialMount.current) {
+      localStorage.setItem('adminMockUsers', JSON.stringify(mockUsers));
+    } else {
+      isInitialMount.current = false;
+    }
+  }, [mockUsers]);
   
   const handleToggleVisibility = () => {
     toggleAdminVisibility();
@@ -174,8 +209,31 @@ const AdminDashboard = () => {
   };
   
   const handleChatModerationClick = () => {
-    navigate('/admin-moderation');
+    setShowModeration(true);
   };
+  
+  const handleAddBot = (newBot: any) => {
+    setMockUsers(prevUsers => [...prevUsers, newBot]);
+    toast.success(`Bot ${newBot.username} has been added to the system`);
+  };
+  
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      sessionStorage.setItem('adminLoggedIn', 'true');
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    window.addEventListener('popstate', (e) => {
+      if (location.pathname === '/admin-dashboard' && getStoredUserStatus()) {
+        navigate('/admin-dashboard', { replace: true });
+      }
+    });
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [navigate, location.pathname]);
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -205,6 +263,26 @@ const AdminDashboard = () => {
           </div>
           
           <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setIsInboxDialogOpen(true)}
+              className="gap-1"
+            >
+              <Inbox className="h-4 w-4" />
+              <span className="hidden sm:inline">Inbox</span>
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setIsHistoryDialogOpen(true)}
+              className="gap-1"
+            >
+              <History className="h-4 w-4" />
+              <span className="hidden sm:inline">History</span>
+            </Button>
+            
             <Button
               variant="outline"
               size="sm"
@@ -402,6 +480,7 @@ const AdminDashboard = () => {
             users={mockUsers} 
             bannedUsers={bannedUsers} 
             onClose={() => setShowUserManagement(false)} 
+            onAddBot={handleAddBot}
           />
         </DialogContent>
       </Dialog>
@@ -409,6 +488,23 @@ const AdminDashboard = () => {
       <Dialog open={showSystemSettings} onOpenChange={setShowSystemSettings}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden p-0">
           <SystemSettings />
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={showModeration} onOpenChange={setShowModeration}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Chat Moderation
+            </DialogTitle>
+            <DialogDescription>
+              Review and manage reported content
+            </DialogDescription>
+          </DialogHeader>
+          <div className="h-[calc(100vh-200px)]">
+            <ModerationPanel />
+          </div>
         </DialogContent>
       </Dialog>
       
@@ -491,7 +587,9 @@ const AdminDashboard = () => {
       <Sidebar isOpen={showSidebar} onClose={() => setShowSidebar(false)} />
       
       {selectedUser && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6 md:p-12">
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6 md:p-12" 
+             onClick={(e) => e.target === e.currentTarget ? null : null}
+        >
           <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-4xl h-[80vh] shadow-xl overflow-hidden">
             <div className="h-full flex flex-col">
               <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
@@ -516,12 +614,51 @@ const AdminDashboard = () => {
                   user={selectedUser} 
                   countryFlags={mockCountryFlags} 
                   onClose={handleCloseChat} 
+                  isAdminView={true}
                 />
               </div>
             </div>
           </div>
         </div>
       )}
+      
+      <Dialog open={isInboxDialogOpen} onOpenChange={setIsInboxDialogOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Inbox className="h-5 w-5" />
+              Admin Inbox
+            </DialogTitle>
+            <DialogDescription>
+              Review and manage all incoming messages
+            </DialogDescription>
+          </DialogHeader>
+          <div className="h-[calc(100vh-200px)] overflow-auto">
+            <p className="text-center text-muted-foreground py-12">
+              Admin inbox functionality will be connected here.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Chat History
+            </DialogTitle>
+            <DialogDescription>
+              View and manage all past conversations
+            </DialogDescription>
+          </DialogHeader>
+          <div className="h-[calc(100vh-200px)] overflow-auto">
+            <p className="text-center text-muted-foreground py-12">
+              Chat history functionality will be connected here.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+
+import { useState, useMemo, useRef } from 'react';
 import { BannedUser } from '@/contexts/UserContext';
 import { 
   Card, 
@@ -33,6 +34,24 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Label } from '@/components/ui/label';
 import { 
   MessageSquare, 
   MoreVertical, 
@@ -44,20 +63,24 @@ import {
   Clock,
   Check,
   Search,
-  UserX 
+  UserX,
+  BotIcon,
+  PlusCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUser } from '@/contexts/UserContext';
 import { useVipFeatures } from '@/hooks/useVipFeatures';
 import VipFeatures from '@/components/chat/VipFeatures';
+import { useForm } from 'react-hook-form';
 
 interface UserManagementProps {
   users: any[];
   bannedUsers: BannedUser[];
   onClose: () => void;
+  onAddBot?: (bot: any) => void;
 }
 
-const UserManagement = ({ users, bannedUsers, onClose }: UserManagementProps) => {
+const UserManagement = ({ users, bannedUsers, onClose, onAddBot }: UserManagementProps) => {
   const { addBannedUser, removeBannedUser, kickUser } = useUser();
   const { 
     setTempVipStatus, 
@@ -70,13 +93,32 @@ const UserManagement = ({ users, bannedUsers, onClose }: UserManagementProps) =>
   
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('standard');
+  const [isAddBotDialogOpen, setIsAddBotDialogOpen] = useState(false);
+  const [newBot, setNewBot] = useState({
+    username: '',
+    location: 'Global',
+    gender: 'Other',
+    age: 1,
+    email: '',
+  });
+  const nextBotId = useRef(Math.max(...users.map(u => u.id)) + 1);
+
+  const form = useForm({
+    defaultValues: {
+      username: '',
+      location: 'Global',
+      gender: 'Other',
+      age: 1,
+      email: '',
+    }
+  });
 
   // Filter to only show online standard users, all VIP users, and all bot users
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
       const matchesSearch = user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           user.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           user.email.toLowerCase().includes(searchTerm.toLowerCase());
+                           (user.location && user.location.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                           (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()));
                            
       if (!matchesSearch) return false;
       
@@ -125,6 +167,36 @@ const UserManagement = ({ users, bannedUsers, onClose }: UserManagementProps) =>
   
   const handleMakeVipTemporary = (userId: number, username: string) => {
     setTempVipStatus(userId, username);
+  };
+
+  const handleAddBot = () => {
+    const botId = nextBotId.current++;
+    const newBotUser = {
+      id: botId,
+      username: newBot.username,
+      role: "standard",
+      isOnline: true,
+      location: newBot.location,
+      gender: newBot.gender,
+      age: newBot.age,
+      email: newBot.email || `${newBot.username.toLowerCase()}@bots.com`,
+      isBot: true,
+      isBanned: false
+    };
+    
+    if (onAddBot) {
+      onAddBot(newBotUser);
+    }
+    
+    toast.success(`Bot ${newBot.username} added successfully`);
+    setNewBot({
+      username: '',
+      location: 'Global',
+      gender: 'Other',
+      age: 1,
+      email: '',
+    });
+    setIsAddBotDialogOpen(false);
   };
 
   return (
@@ -331,17 +403,26 @@ const UserManagement = ({ users, bannedUsers, onClose }: UserManagementProps) =>
         
         <TabsContent value="bots" className="mt-0">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Chat Bots</CardTitle>
-              <CardDescription>
-                Manage automated chat bots and their settings
-              </CardDescription>
+            <CardHeader className="pb-2 flex justify-between items-start">
+              <div>
+                <CardTitle>Chat Bots</CardTitle>
+                <CardDescription>
+                  Manage automated chat bots and their settings
+                </CardDescription>
+              </div>
+              <Button 
+                onClick={() => setIsAddBotDialogOpen(true)}
+                className="flex items-center gap-1"
+              >
+                <PlusCircle className="h-4 w-4" />
+                Add Bot
+              </Button>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>User</TableHead>
+                    <TableHead>Bot</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Gender/Age</TableHead>
@@ -358,7 +439,9 @@ const UserManagement = ({ users, bannedUsers, onClose }: UserManagementProps) =>
                               <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div>
-                              <div>{user.username}</div>
+                              <div className="flex items-center gap-1">
+                                {user.username} <BotIcon className="h-3 w-3 text-blue-500" />
+                              </div>
                               <div className="text-xs text-muted-foreground">{user.email}</div>
                             </div>
                           </div>
@@ -390,11 +473,11 @@ const UserManagement = ({ users, bannedUsers, onClose }: UserManagementProps) =>
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuItem onClick={() => handleKickUser(user.id, user.username)}>
                                 <CircleOff className="mr-2 h-4 w-4 text-orange-500" />
-                                <span>Kick User</span>
+                                <span>Disable Bot</span>
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleBanUser(user)}>
                                 <Ban className="mr-2 h-4 w-4 text-red-500" />
-                                <span>Ban User</span>
+                                <span>Remove Bot</span>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -516,6 +599,91 @@ const UserManagement = ({ users, bannedUsers, onClose }: UserManagementProps) =>
         vipUpgradeUser={vipUpgradeUser || undefined}
         onConfirmVipUpgrade={confirmTempVipStatus}
       />
+
+      {/* Add Bot Dialog */}
+      <Dialog open={isAddBotDialogOpen} onOpenChange={setIsAddBotDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BotIcon className="h-5 w-5 text-blue-500" />
+              Add New Bot
+            </DialogTitle>
+            <DialogDescription>
+              Create a new chat bot for your platform
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="bot-name">Bot Name</Label>
+              <Input
+                id="bot-name"
+                placeholder="e.g., TravelBot, FitnessGuru"
+                value={newBot.username}
+                onChange={(e) => setNewBot({...newBot, username: e.target.value})}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="bot-location">Location</Label>
+              <Input
+                id="bot-location"
+                placeholder="Global"
+                value={newBot.location}
+                onChange={(e) => setNewBot({...newBot, location: e.target.value})}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bot-gender">Gender</Label>
+                <Input
+                  id="bot-gender"
+                  placeholder="Other"
+                  value={newBot.gender}
+                  onChange={(e) => setNewBot({...newBot, gender: e.target.value})}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="bot-age">Age</Label>
+                <Input
+                  id="bot-age"
+                  type="number"
+                  placeholder="1"
+                  value={newBot.age}
+                  onChange={(e) => setNewBot({...newBot, age: parseInt(e.target.value) || 1})}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="bot-email">Email (Optional)</Label>
+              <Input
+                id="bot-email"
+                placeholder="botname@bots.com"
+                value={newBot.email}
+                onChange={(e) => setNewBot({...newBot, email: e.target.value})}
+              />
+              <p className="text-xs text-muted-foreground">
+                If left blank, an email will be auto-generated based on the bot name
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddBotDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAddBot}
+              disabled={!newBot.username}
+            >
+              Add Bot
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

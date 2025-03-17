@@ -1,17 +1,25 @@
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Label } from '@/components/ui/label';
-import { Crown } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { CalendarIcon, Crown } from "lucide-react";
+import { format, addDays, addWeeks, addMonths } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 interface VipUpgradeConfirmationProps {
   isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (isOpen: boolean) => void;
   user: {
     id: number;
     username: string;
@@ -25,45 +33,99 @@ const VipUpgradeConfirmation: React.FC<VipUpgradeConfirmationProps> = ({
   user,
   onConfirm,
 }) => {
-  const [expiryDate, setExpiryDate] = useState<Date | undefined>(
-    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Default to 30 days from now
-  );
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
-
-  const handleConfirm = () => {
-    if (expiryDate && user) {
-      onConfirm(user.id, user.username, expiryDate);
-      onOpenChange(false);
+  const today = new Date();
+  const [expiryDate, setExpiryDate] = useState<Date>(addMonths(today, 1));
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  
+  const handleQuickSelection = (option: 'day' | 'week' | 'month' | '3months') => {
+    let newDate: Date;
+    
+    switch (option) {
+      case 'day':
+        newDate = addDays(today, 1);
+        break;
+      case 'week':
+        newDate = addWeeks(today, 1);
+        break;
+      case 'month':
+        newDate = addMonths(today, 1);
+        break;
+      case '3months':
+        newDate = addMonths(today, 3);
+        break;
+      default:
+        newDate = addMonths(today, 1);
     }
+    
+    setExpiryDate(newDate);
+    setIsCalendarOpen(false);
+  };
+  
+  const handleConfirm = () => {
+    onConfirm(user.id, user.username, expiryDate);
+    onOpenChange(false);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Crown className="h-5 w-5 text-amber-500" />
-            Temporary VIP Upgrade
+            Confirm VIP Status Upgrade
           </DialogTitle>
           <DialogDescription>
-            Grant temporary VIP status to {user?.username}
+            Set the expiration date for {user.username}'s VIP status.
           </DialogDescription>
         </DialogHeader>
-
+        
         <div className="py-4 space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="date-picker">VIP Status Expiry Date</Label>
-            <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+            <div className="flex justify-between items-center">
+              <Label htmlFor="expiry-date">VIP Status Expires On</Label>
+              <div className="flex gap-1 flex-wrap justify-end">
+                <Badge 
+                  variant="outline" 
+                  className="cursor-pointer hover:bg-amber-50"
+                  onClick={() => handleQuickSelection('day')}
+                >
+                  1 Day
+                </Badge>
+                <Badge 
+                  variant="outline" 
+                  className="cursor-pointer hover:bg-amber-50"
+                  onClick={() => handleQuickSelection('week')}
+                >
+                  1 Week
+                </Badge>
+                <Badge 
+                  variant="outline" 
+                  className="cursor-pointer hover:bg-amber-50"
+                  onClick={() => handleQuickSelection('month')}
+                >
+                  1 Month
+                </Badge>
+                <Badge 
+                  variant="outline" 
+                  className="cursor-pointer hover:bg-amber-50"
+                  onClick={() => handleQuickSelection('3months')}
+                >
+                  3 Months
+                </Badge>
+              </div>
+            </div>
+            
+            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
               <PopoverTrigger asChild>
                 <Button
-                  id="date-picker"
                   variant="outline"
                   className={cn(
                     "w-full justify-start text-left font-normal",
                     !expiryDate && "text-muted-foreground"
                   )}
                 >
-                  {expiryDate ? format(expiryDate, "PPP") : "Select expiry date"}
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {expiryDate ? format(expiryDate, "PPP") : <span>Pick a date</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -71,26 +133,35 @@ const VipUpgradeConfirmation: React.FC<VipUpgradeConfirmationProps> = ({
                   mode="single"
                   selected={expiryDate}
                   onSelect={(date) => {
-                    setExpiryDate(date);
-                    setDatePickerOpen(false);
+                    if (date) {
+                      setExpiryDate(date);
+                      setIsCalendarOpen(false);
+                    }
                   }}
+                  disabled={(date) => date < today}
                   initialFocus
-                  disabled={(date) => date < new Date()}
                 />
               </PopoverContent>
             </Popover>
           </div>
+          
+          <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-md text-sm">
+            <p className="text-amber-800 dark:text-amber-300 flex items-center gap-1">
+              <Crown className="h-4 w-4" />
+              After confirmation, {user.username} will have VIP access until {format(expiryDate, "PPP")}.
+            </p>
+          </div>
         </div>
-
-        <DialogFooter className="flex sm:justify-between">
+        
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button 
+            className="bg-amber-500 hover:bg-amber-600 text-white"
             onClick={handleConfirm}
-            className="bg-gradient-to-r from-amber-400 to-amber-600 text-white"
           >
-            Confirm Upgrade
+            Confirm VIP Upgrade
           </Button>
         </DialogFooter>
       </DialogContent>

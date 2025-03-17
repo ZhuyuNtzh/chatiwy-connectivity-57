@@ -1,6 +1,7 @@
 
 import React from 'react';
 import MessageInput from './MessageInput';
+import { useUser } from '@/contexts/UserContext';
 
 interface ChatActionsProps {
   message: string;
@@ -15,6 +16,7 @@ interface ChatActionsProps {
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleVoiceMessageClick?: () => void;
   sendVoiceMessage?: (audioUrl: string) => void;
+  isAdminView?: boolean;
 }
 
 const ChatActions: React.FC<ChatActionsProps> = ({
@@ -29,22 +31,31 @@ const ChatActions: React.FC<ChatActionsProps> = ({
   isVipUser,
   fileInputRef,
   handleVoiceMessageClick,
-  sendVoiceMessage
+  sendVoiceMessage,
+  isAdminView = false
 }) => {
+  const { userRole } = useUser();
+  const isAdmin = userRole === 'admin' || isAdminView;
+  
+  // Admin users have unlimited characters and all features
+  const effectiveMaxChars = isAdmin ? Number.MAX_SAFE_INTEGER : maxChars;
+  const effectiveIsVip = isAdmin ? true : isVipUser;
+  
   return (
     <MessageInput 
       message={message}
       setMessage={setMessage}
-      maxChars={maxChars}
+      maxChars={effectiveMaxChars}
       handleSendMessage={handleSendMessage}
       handleKeyDown={handleKeyDown}
       handleAddEmoji={handleAddEmoji}
       handleImageClick={handleImageClick}
       isUserBlocked={isUserBlocked}
-      isVipUser={isVipUser}
+      isVipUser={effectiveIsVip}
       fileInputRef={fileInputRef}
       handleVoiceMessageClick={handleVoiceMessageClick}
       sendVoiceMessage={sendVoiceMessage}
+      isAdminView={isAdmin}
     />
   );
 };
