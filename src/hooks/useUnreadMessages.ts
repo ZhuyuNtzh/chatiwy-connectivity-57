@@ -1,158 +1,122 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { signalRService } from '@/services/signalRService';
-import type { ChatMessage } from '@/services/signalR/types';
 
 export const useUnreadMessages = () => {
-  const [unreadCount, setUnreadCount] = useState<number>(0);
-  const [unreadBySender, setUnreadBySender] = useState<Record<number, boolean>>({});
-  const isInboxViewedRef = useRef<boolean>(false);
-  
-  // Load the initial unread messages count
-  const loadUnreadCount = () => {
-    // Get all conversations
-    const allHistory = signalRService.getAllChatHistory();
-    const currentUserId = signalRService.currentUserId;
-    let count = 0;
-    const newUnreadBySender: Record<number, boolean> = {};
-    
-    // Go through all conversations
-    Object.entries(allHistory).forEach(([senderId, messages]) => {
-      const senderIdNum = parseInt(senderId);
-      
-      // Only count messages TO the current user
-      const unreadMessages = messages.filter(msg => 
-        msg.recipientId === currentUserId && 
-        msg.senderId === senderIdNum && 
-        !msg.isRead
-      );
-      
-      if (unreadMessages.length > 0) {
-        count += unreadMessages.length;
-        newUnreadBySender[senderIdNum] = true;
-      }
-    });
-    
-    setUnreadCount(count);
-    setUnreadBySender(newUnreadBySender);
-    
-    // Also save to localStorage to persist across page reloads
-    localStorage.setItem('unreadCount', count.toString());
-    localStorage.setItem('unreadBySender', JSON.stringify(newUnreadBySender));
-    
-    return { count, newUnreadBySender };
-  };
-  
-  // Reset unread count for specific users
-  const resetUnreadForUsers = (userIds: number[]) => {
-    if (!userIds.length) return;
-    
-    // Mark messages as read in signalR service
-    userIds.forEach(id => {
-      signalRService.markMessagesAsRead(id);
-    });
-    
-    // Update the unread by sender state
-    setUnreadBySender(prev => {
-      const newState = { ...prev };
-      userIds.forEach(id => {
-        delete newState[id];
-      });
-      
-      // Save updated state to localStorage
-      localStorage.setItem('unreadBySender', JSON.stringify(newState));
-      return newState;
-    });
-    
-    // Recalculate total unread count
-    const allHistory = signalRService.getAllChatHistory();
-    const currentUserId = signalRService.currentUserId;
-    let count = 0;
-    
-    // Count all unread messages
-    Object.entries(allHistory).forEach(([senderId, messages]) => {
-      const senderIdNum = parseInt(senderId);
-      // Skip users we just marked as read
-      if (userIds.includes(senderIdNum)) return;
-      
-      const unreadMessages = messages.filter(msg => 
-        msg.recipientId === currentUserId && 
-        msg.senderId === senderIdNum && 
-        !msg.isRead
-      );
-      
-      count += unreadMessages.length;
-    });
-    
-    setUnreadCount(count);
-    localStorage.setItem('unreadCount', count.toString());
-  };
-  
-  // Mark inbox as viewed (doesn't reset unread count)
-  const markInboxAsViewed = () => {
-    isInboxViewedRef.current = true;
-  };
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadBySender, setUnreadBySender] = useState<Record<number, number>>({});
 
-  // Effect to load data from localStorage on initial render
+  // Load unread messages from localStorage on component mount
   useEffect(() => {
-    const storedCount = localStorage.getItem('unreadCount');
-    const storedBySender = localStorage.getItem('unreadBySender');
-    
-    if (storedCount) {
-      setUnreadCount(parseInt(storedCount));
-    }
-    
-    if (storedBySender) {
-      try {
-        setUnreadBySender(JSON.parse(storedBySender));
-      } catch (e) {
-        console.error('Failed to parse unreadBySender from localStorage', e);
-      }
-    }
-    
-    // Then load fresh data
     loadUnreadCount();
   }, []);
 
-  // Effect to set up message listener for unread counts
-  useEffect(() => {
-    // Function to handle new messages
-    const handleMessageReceived = (msg: ChatMessage) => {
-      // Only count messages TO current user FROM others
-      if (msg.recipientId === signalRService.currentUserId && 
-          msg.senderId !== signalRService.currentUserId) {
-        
-        // Check if this is a conversation we're currently viewing
-        const isCurrentConversation = msg.senderId === signalRService.currentSelectedUserId;
-        
-        if (!isCurrentConversation) {
-          // Increment the unread count
-          setUnreadCount(prev => {
-            const newCount = prev + 1;
-            localStorage.setItem('unreadCount', newCount.toString());
-            return newCount;
+  // Function to load unread messages from localStorage
+  const loadUnreadCount = useCallback(() => {
+    try {
+      // Get all chat histories for current user
+      const userId = signalRService.currentUserId;
+      if (!userId) return { count: 0, newUnreadBySender: {} };
+
+      const allHistory = signalRService.getAllChatHistory();
+      let totalUnread = 0;
+      const newUnreadBySender: Record<number, number> = {};
+      
+      // Retrieve and parse unread messages data from localStorage
+      const unreadData = localStorage.getItem(`unread_${userId}`);
+      if (unreadData) {
+        try {
+          const parsed = JSON.parse(unreadData);
+          setUnreadBySender(parsed);
+          
+          // Calculate total unread count from all senders
+          Object.values(parsed).forEach((count: number) => {
+            totalUnread += count;
           });
           
-          // Mark this sender as having unread messages
-          setUnreadBySender(prev => {
-            const newState = {
-              ...prev,
-              [msg.senderId]: true
-            };
-            localStorage.setItem('unreadBySender', JSON.stringify(newState));
-            return newState;
-          });
+          setUnreadCount(totalUnread);
+          return { count: totalUnread, newUnreadBySender: parsed };
+        } catch (e) {
+          console.error('Error parsing unread data:', e);
         }
       }
-    };
+      
+      // If no stored data exists, calculate from message history
+      Object.keys(allHistory).forEach(senderId => {
+        const messages = allHistory[Number(senderId)] || [];
+        const unreadMessages = messages.filter(msg => 
+          msg.senderId !== userId && 
+          msg.recipientId === userId && 
+          !msg.isRead
+        );
+        
+        if (unreadMessages.length > 0) {
+          newUnreadBySender[Number(senderId)] = unreadMessages.length;
+          totalUnread += unreadMessages.length;
+        }
+      });
+      
+      // Update state
+      setUnreadCount(totalUnread);
+      setUnreadBySender(newUnreadBySender);
+      
+      // Store the calculated values in localStorage
+      localStorage.setItem(`unread_${userId}`, JSON.stringify(newUnreadBySender));
+      
+      return { count: totalUnread, newUnreadBySender };
+    } catch (error) {
+      console.error('Error loading unread counts:', error);
+      return { count: 0, newUnreadBySender: {} };
+    }
+  }, []);
 
-    // Add event listener
-    signalRService.onMessageReceived(handleMessageReceived);
-    
-    // Cleanup
-    return () => {
-      signalRService.offMessageReceived(handleMessageReceived);
-    };
+  // Mark messages from specific users as read
+  const resetUnreadForUsers = useCallback((userIds: number[]) => {
+    try {
+      const userId = signalRService.currentUserId;
+      if (!userId) return;
+      
+      // Get current unread data
+      const currentUnreadData = { ...unreadBySender };
+      let updatedCount = unreadCount;
+      
+      // Mark messages as read for each user
+      userIds.forEach(senderId => {
+        if (currentUnreadData[senderId]) {
+          updatedCount -= currentUnreadData[senderId];
+          delete currentUnreadData[senderId];
+          
+          // Also update in the SignalR service
+          signalRService.markMessagesAsRead(senderId);
+        }
+      });
+      
+      // Update state
+      setUnreadCount(updatedCount);
+      setUnreadBySender(currentUnreadData);
+      
+      // Save to localStorage
+      localStorage.setItem(`unread_${userId}`, JSON.stringify(currentUnreadData));
+    } catch (error) {
+      console.error('Error resetting unread counts:', error);
+    }
+  }, [unreadCount, unreadBySender]);
+
+  // Mark all messages as read (for inbox view)
+  const markInboxAsViewed = useCallback(() => {
+    try {
+      const userId = signalRService.currentUserId;
+      if (!userId) return;
+      
+      // Clear all unread counts
+      setUnreadCount(0);
+      setUnreadBySender({});
+      
+      // Remove from localStorage
+      localStorage.removeItem(`unread_${userId}`);
+    } catch (error) {
+      console.error('Error marking inbox as viewed:', error);
+    }
   }, []);
 
   return {
