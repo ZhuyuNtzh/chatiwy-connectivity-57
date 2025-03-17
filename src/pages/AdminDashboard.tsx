@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useUser, BannedUser } from '@/contexts/UserContext';
-import { UserRole } from '@/types/user';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { 
@@ -39,7 +38,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import UserManagement from '@/components/admin/UserManagement';
-import SystemSettings from '@/components/admin/SystemSettings';
+import SystemSettings from '@/components/admin/SystemSettings'; // Add this import
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,19 +49,19 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { toast } from 'sonner';
 
 const mockUsers = [
-  { id: 1, username: "Alice", role: "standard" as UserRole, isOnline: true, location: "Canada", gender: "Female", age: 28, email: "alice@example.com", isBot: false, isBanned: false, interests: [] },
-  { id: 2, username: "Bob", role: "standard" as UserRole, isOnline: true, location: "USA", gender: "Male", age: 32, email: "bob@example.com", isBot: false, isBanned: false, interests: [] },
-  { id: 3, username: "Clara", role: "vip" as UserRole, isOnline: true, location: "France", gender: "Female", age: 25, email: "clara@example.com", isBot: false, isBanned: false, interests: [] },
-  { id: 4, username: "David", role: "standard" as UserRole, isOnline: false, location: "UK", gender: "Male", age: 30, email: "david@example.com", isBot: false, isBanned: false, interests: [] },
-  { id: 5, username: "Elena", role: "vip" as UserRole, isOnline: true, location: "Italy", gender: "Female", age: 27, email: "elena@example.com", isBot: false, isBanned: false, interests: [] },
-  { id: 6, username: "Frank", role: "standard" as UserRole, isOnline: true, location: "Germany", gender: "Male", age: 35, email: "frank@example.com", isBot: false, isBanned: false, interests: [] },
-  { id: 7, username: "Gina", role: "standard" as UserRole, isOnline: true, location: "Spain", gender: "Female", age: 29, email: "gina@example.com", isBot: false, isBanned: false, interests: [] },
-  { id: 8, username: "Henry", role: "standard" as UserRole, isOnline: false, location: "Australia", gender: "Male", age: 31, email: "henry@example.com", isBot: false, isBanned: false, interests: [] },
-  { id: 9, username: "Irene", role: "vip" as UserRole, isOnline: true, location: "Japan", gender: "Female", age: 26, email: "irene@example.com", isBot: false, isBanned: false, interests: [] },
-  { id: 10, username: "Jack", role: "standard" as UserRole, isOnline: true, location: "Brazil", gender: "Male", age: 33, email: "jack@example.com", isBot: false, isBanned: false, interests: [] },
-  { id: 11, username: "TravelBot", role: "standard" as UserRole, isOnline: true, location: "Global", gender: "Other", age: 1, email: "travel@bots.com", isBot: true, isBanned: false, interests: [] },
-  { id: 12, username: "FitnessGuru", role: "standard" as UserRole, isOnline: true, location: "Global", gender: "Other", age: 1, email: "fitness@bots.com", isBot: true, isBanned: false, interests: [] },
-  { id: 13, username: "BookWorm", role: "standard" as UserRole, isOnline: true, location: "Global", gender: "Other", age: 1, email: "books@bots.com", isBot: true, isBanned: false, interests: [] },
+  { id: 1, username: "Alice", role: "standard", isOnline: true, location: "Canada", gender: "Female", age: 28, email: "alice@example.com", isBot: false, isBanned: false },
+  { id: 2, username: "Bob", role: "standard", isOnline: true, location: "USA", gender: "Male", age: 32, email: "bob@example.com", isBot: false, isBanned: false },
+  { id: 3, username: "Clara", role: "vip", isOnline: true, location: "France", gender: "Female", age: 25, email: "clara@example.com", isBot: false, isBanned: false },
+  { id: 4, username: "David", role: "standard", isOnline: false, location: "UK", gender: "Male", age: 30, email: "david@example.com", isBot: false, isBanned: false },
+  { id: 5, username: "Elena", role: "vip", isOnline: true, location: "Italy", gender: "Female", age: 27, email: "elena@example.com", isBot: false, isBanned: false },
+  { id: 6, username: "Frank", role: "standard", isOnline: true, location: "Germany", gender: "Male", age: 35, email: "frank@example.com", isBot: false, isBanned: false },
+  { id: 7, username: "Gina", role: "standard", isOnline: true, location: "Spain", gender: "Female", age: 29, email: "gina@example.com", isBot: false, isBanned: false },
+  { id: 8, username: "Henry", role: "standard", isOnline: false, location: "Australia", gender: "Male", age: 31, email: "henry@example.com", isBot: false, isBanned: false },
+  { id: 9, username: "Irene", role: "vip", isOnline: true, location: "Japan", gender: "Female", age: 26, email: "irene@example.com", isBot: false, isBanned: false },
+  { id: 10, username: "Jack", role: "standard", isOnline: true, location: "Brazil", gender: "Male", age: 33, email: "jack@example.com", isBot: false, isBanned: false },
+  { id: 11, username: "TravelBot", role: "standard", isOnline: true, location: "Global", gender: "Other", age: 1, email: "travel@bots.com", isBot: true, isBanned: false },
+  { id: 12, username: "FitnessGuru", role: "standard", isOnline: true, location: "Global", gender: "Other", age: 1, email: "fitness@bots.com", isBot: true, isBanned: false },
+  { id: 13, username: "BookWorm", role: "standard", isOnline: true, location: "Global", gender: "Other", age: 1, email: "books@bots.com", isBot: true, isBanned: false },
 ];
 
 const initialBannedUsers: BannedUser[] = [
@@ -125,23 +124,6 @@ const AdminDashboard = () => {
   useEffect(() => {
     if (bannedUsers.length === 0) {
       setBannedUsers(initialBannedUsers);
-    }
-    
-    const hasReports = localStorage.getItem('user_reports');
-    if (!hasReports) {
-      const initialReport = {
-        id: `report_${Date.now()}`,
-        reporterId: 123,
-        reporterName: "User123",
-        reportedId: 456,
-        reportedName: "ToxicUser456",
-        reason: "Inappropriate content",
-        details: "User sent offensive messages during our conversation",
-        timestamp: new Date(),
-        status: "pending"
-      };
-      
-      localStorage.setItem('user_reports', JSON.stringify([initialReport]));
     }
   }, [bannedUsers.length, setBannedUsers]);
   

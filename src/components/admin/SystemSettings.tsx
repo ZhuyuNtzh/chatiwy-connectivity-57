@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Save, X, Upload, ImagePlus, Search, Settings, Check } from 'lucide-react';
+import { Save, X, Upload, ImagePlus, Search, Settings } from 'lucide-react';
 import { signalRService } from '@/services/signalRService';
 import { toast } from 'sonner';
 
@@ -28,7 +28,6 @@ const SystemSettings = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     loadBannedWords();
@@ -211,14 +210,14 @@ const SystemSettings = () => {
   );
   
   return (
-    <div className="p-6 bg-white dark:bg-gray-800 h-full max-h-[80vh] overflow-hidden flex flex-col">
+    <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md h-full max-h-[80vh] overflow-hidden flex flex-col">
       <div className="flex items-center mb-6">
         <Settings className="w-6 h-6 mr-2 text-amber-600" />
         <h2 className="text-2xl font-bold">System Settings</h2>
       </div>
       
       <Tabs defaultValue="names" className="flex-1 flex flex-col" onValueChange={setActiveTab}>
-        <TabsList className="mb-6 sticky top-0 z-10">
+        <TabsList className="mb-6">
           <TabsTrigger value="names">
             Inappropriate Names
           </TabsTrigger>
@@ -230,221 +229,202 @@ const SystemSettings = () => {
           </TabsTrigger>
         </TabsList>
         
-        <ScrollArea className="flex-1">
-          <TabsContent value="names" className="flex-1 flex flex-col space-y-4">
-            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg mb-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Banned words will be filtered from nicknames and prevented during registration.
-              </p>
-            </div>
-            
-            <div className="flex mb-4">
-              <Input
-                placeholder="Add new banned word..."
-                value={newBannedWord}
-                onChange={(e) => setNewBannedWord(e.target.value)}
-                className="mr-2"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleAddBannedWord();
-                  }
-                }}
-              />
-              <Button onClick={handleAddBannedWord}>
-                Add
-              </Button>
-            </div>
-            
-            <div className="flex-1 mb-4">
-              <div className="flex flex-wrap gap-2">
-                {bannedWords.map((word) => (
-                  <Badge
-                    key={word}
-                    variant="secondary"
-                    className="px-3 py-1 flex items-center gap-1"
+        <TabsContent value="names" className="flex-1 flex flex-col">
+          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg mb-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Banned words will be filtered from nicknames and prevented during registration.
+            </p>
+          </div>
+          
+          <div className="flex mb-4">
+            <Input
+              placeholder="Add new banned word..."
+              value={newBannedWord}
+              onChange={(e) => setNewBannedWord(e.target.value)}
+              className="mr-2"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleAddBannedWord();
+                }
+              }}
+            />
+            <Button onClick={handleAddBannedWord}>
+              Add
+            </Button>
+          </div>
+          
+          <ScrollArea className="flex-1">
+            <div className="flex flex-wrap gap-2">
+              {bannedWords.map((word) => (
+                <Badge
+                  key={word}
+                  variant="secondary"
+                  className="px-3 py-1 flex items-center gap-1"
+                >
+                  {word}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-4 w-4 ml-1 p-0"
+                    onClick={() => handleRemoveBannedWord(word)}
                   >
-                    {word}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-4 w-4 ml-1 p-0"
-                      onClick={() => handleRemoveBannedWord(word)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </Badge>
-                ))}
-                {bannedWords.length === 0 && (
-                  <div className="text-center p-8 text-gray-500 dark:text-gray-400">
-                    <p>No banned words defined yet</p>
-                  </div>
-                )}
-              </div>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </Badge>
+              ))}
+              {bannedWords.length === 0 && (
+                <div className="text-center p-8 text-gray-500 dark:text-gray-400">
+                  <p>No banned words defined yet</p>
+                </div>
+              )}
             </div>
-            
-            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800 z-10 pb-2">
+          </ScrollArea>
+          
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <Button 
+              onClick={handleSaveBannedWords} 
+              className="w-full"
+              disabled={!hasChanges}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save Changes
+            </Button>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="photos" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Photo Sharing Limits</CardTitle>
+              <CardDescription>
+                Configure the maximum number of photos standard users can share in a day
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <Label htmlFor="photo-limit">Daily photo limit for standard users</Label>
+                  <span className="font-medium">{photoLimit}</span>
+                </div>
+                <Slider
+                  id="photo-limit"
+                  min={1}
+                  max={20}
+                  step={1}
+                  value={[photoLimit]}
+                  onValueChange={(value) => {
+                    setPhotoLimit(value[0]);
+                    setHasChanges(true);
+                  }}
+                />
+              </div>
               <Button 
-                onClick={handleSaveBannedWords} 
-                className="w-full"
+                onClick={handleSavePhotoLimit} 
                 disabled={!hasChanges}
               >
                 <Save className="h-4 w-4 mr-2" />
                 Save Changes
               </Button>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="photos" className="space-y-4 pb-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Photo Sharing Limits</CardTitle>
-                <CardDescription>
-                  Configure the maximum number of photos standard users can share in a day
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label htmlFor="photo-limit">Daily photo limit for standard users</Label>
-                    <span className="font-medium">{photoLimit}</span>
-                  </div>
-                  <Slider
-                    id="photo-limit"
-                    min={1}
-                    max={20}
-                    step={1}
-                    value={[photoLimit]}
-                    onValueChange={(value) => {
-                      setPhotoLimit(value[0]);
-                      setHasChanges(true);
-                    }}
-                  />
-                </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="avatars" className="flex flex-col flex-1">
+          <Card className="flex-1 flex flex-col">
+            <CardHeader>
+              <CardTitle>Manage Avatars</CardTitle>
+              <CardDescription>
+                Upload new avatars for VIP users to choose from
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col">
+              <div 
+                className={`border-2 border-dashed rounded-lg p-8 mb-4 text-center transition-colors ${
+                  isDragging 
+                    ? 'border-primary bg-primary/10' 
+                    : 'border-gray-300 dark:border-gray-600'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <ImagePlus className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-semibold">Upload avatars</h3>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Drag and drop image files or click to browse
+                </p>
                 <Button 
-                  onClick={handleSavePhotoLimit} 
-                  disabled={!hasChanges}
+                  variant="outline" 
+                  className="mt-4"
+                  onClick={() => document.getElementById('avatar-upload')?.click()}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Browse Files
+                </Button>
+                <input
+                  id="avatar-upload"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+              </div>
+              
+              <div className="mb-4 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search avatars..."
+                  className="pl-10"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              
+              <ScrollArea className="flex-1 mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {filteredAvatars.map((avatar) => (
+                    <div key={avatar.id} className="relative group">
+                      <img
+                        src={avatar.url}
+                        alt={avatar.name}
+                        className="w-full h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => handleRemoveAvatar(avatar.id)}
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Remove
+                        </Button>
+                      </div>
+                      <p className="mt-1 text-xs truncate">{avatar.name}</p>
+                    </div>
+                  ))}
+                  {filteredAvatars.length === 0 && (
+                    <div className="col-span-full text-center p-8 text-gray-500 dark:text-gray-400">
+                      <p>No avatars found</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+              
+              <div className="mt-auto pt-4 border-t border-gray-200 dark:border-gray-700">
+                <Button 
+                  onClick={handleSaveAvatars} 
                   className="w-full"
+                  disabled={!hasChanges}
                 >
                   <Save className="h-4 w-4 mr-2" />
-                  Save Changes
+                  Save Avatars
                 </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="avatars" className="flex flex-col flex-1 pb-10">
-            <Card className="flex-1 flex flex-col">
-              <CardHeader>
-                <CardTitle>Manage Avatars</CardTitle>
-                <CardDescription>
-                  Upload new avatars for VIP users to choose from
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
-                <div 
-                  className={`border-2 border-dashed rounded-lg p-8 mb-4 text-center transition-colors ${
-                    isDragging 
-                      ? 'border-primary bg-primary/10' 
-                      : 'border-gray-300 dark:border-gray-600'
-                  }`}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                >
-                  <ImagePlus className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-semibold">Upload avatars</h3>
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    Drag and drop image files or click to browse
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Browse Files
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                  />
-                </div>
-                
-                <div className="mb-4 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search avatars..."
-                    className="pl-10"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                
-                <div className="flex-1 mb-6">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {filteredAvatars.map((avatar) => (
-                      <div key={avatar.id} className="relative group">
-                        <img
-                          src={avatar.url}
-                          alt={avatar.name}
-                          className="w-full h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
-                        />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={() => handleRemoveAvatar(avatar.id)}
-                          >
-                            <X className="h-4 w-4 mr-1" />
-                            Remove
-                          </Button>
-                        </div>
-                        <p className="mt-1 text-xs truncate">{avatar.name}</p>
-                      </div>
-                    ))}
-                    {filteredAvatars.length === 0 && (
-                      <div className="col-span-full text-center p-8 text-gray-500 dark:text-gray-400">
-                        <p>No avatars found</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="mt-auto pt-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800 z-10 pb-2">
-                  <Button 
-                    onClick={handleSaveAvatars} 
-                    className="w-full"
-                    disabled={!hasChanges}
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Avatars
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </ScrollArea>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
-
-      {/* Floating save button that appears when changes are made */}
-      {hasChanges && (
-        <div className="fixed bottom-6 right-6 z-50">
-          <Button 
-            className="rounded-full h-14 w-14 shadow-lg"
-            onClick={() => {
-              if (activeTab === 'names') handleSaveBannedWords();
-              if (activeTab === 'photos') handleSavePhotoLimit();
-              if (activeTab === 'avatars') handleSaveAvatars();
-            }}
-          >
-            <Save className="h-6 w-6" />
-          </Button>
-        </div>
-      )}
     </div>
   );
 };

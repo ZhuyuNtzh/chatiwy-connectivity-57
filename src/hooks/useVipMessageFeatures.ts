@@ -13,11 +13,11 @@ export const useVipMessageFeatures = (userRole: string) => {
   const replyToMessage = (
     messageId: string,
     messageText: string,
-    currentMessage: string = '',
-    setCurrentMessage: (message: string) => void = () => {},
-    setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>> = () => {},
-    userId: number = 0,
-    setAutoScrollToBottom: (value: boolean) => void = () => {}
+    currentMessage: string,
+    setCurrentMessage: (message: string) => void,
+    setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
+    userId: number,
+    setAutoScrollToBottom: (value: boolean) => void
   ) => {
     // Only VIP users can reply to messages
     if (userRole !== 'vip') {
@@ -25,7 +25,6 @@ export const useVipMessageFeatures = (userRole: string) => {
       return;
     }
     
-    // Store message ID to reply to
     setReplyingTo(messageId);
     
     // Store the reply text for this specific message ID
@@ -46,8 +45,8 @@ export const useVipMessageFeatures = (userRole: string) => {
       );
     });
     
-    // Update the input field
-    const prefix = currentMessage?.trim() ? `${currentMessage} ` : '';
+    // Update the reply message in the UI
+    const prefix = currentMessage.trim() ? `${currentMessage} ` : '';
     setCurrentMessage(prefix);
     
     // Scroll to the bottom after a short delay
@@ -90,14 +89,11 @@ export const useVipMessageFeatures = (userRole: string) => {
       status: 'sent'
     };
     
-    // Add message to UI immediately
     setMessages(prev => [...prev, newReplyMessage]);
     
-    // Send the message with the reply information to the server
+    // Send the message with the reply information
     signalRService.sendMessage(userId, content, undefined, replyingTo, replyText || undefined)
       .then(() => {
-        console.log('Reply sent successfully with replyToId:', replyingTo);
-        
         // Clear the reply state
         setReplyingTo(null);
         

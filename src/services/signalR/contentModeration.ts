@@ -1,35 +1,46 @@
 
-// Check and filter message content for banned words
-export const checkAndFilterMessage = (content: string, bannedWords: string[]): { isAllowed: boolean; filteredMessage: string } => {
-  if (!content || !bannedWords || bannedWords.length === 0) {
-    return { isAllowed: true, filteredMessage: content };
+let bannedWords: string[] = [];
+
+export const contentModeration = {
+  loadFromStorage() {
+    const savedBannedWords = localStorage.getItem('bannedWords');
+    if (savedBannedWords) {
+      try {
+        bannedWords = JSON.parse(savedBannedWords);
+      } catch (e) {
+        console.error('Error parsing banned words:', e);
+        bannedWords = [];
+      }
+    }
+  },
+
+  getBannedWords(): string[] {
+    return [...bannedWords];
+  },
+
+  addBannedWord(word: string) {
+    if (!bannedWords.includes(word.toLowerCase())) {
+      bannedWords.push(word.toLowerCase());
+      // Save to localStorage
+      localStorage.setItem('bannedWords', JSON.stringify(bannedWords));
+    }
+  },
+
+  removeBannedWord(word: string) {
+    bannedWords = bannedWords.filter(w => w !== word.toLowerCase());
+    // Save to localStorage
+    localStorage.setItem('bannedWords', JSON.stringify(bannedWords));
+  },
+
+  setBannedWords(words: string[]) {
+    bannedWords = words.map(word => word.toLowerCase());
+    // Save to localStorage
+    localStorage.setItem('bannedWords', JSON.stringify(bannedWords));
+  },
+
+  containsBannedWords(text: string): boolean {
+    if (!text || !bannedWords.length) return false;
+    const lowercaseText = text.toLowerCase();
+    return bannedWords.some(word => lowercaseText.includes(word));
   }
-  
-  // Convert to lowercase for case-insensitive matching
-  const lowerContent = content.toLowerCase();
-  
-  // Check if message contains any banned words
-  const containsBannedWord = bannedWords.some(word => 
-    lowerContent.includes(word.toLowerCase())
-  );
-  
-  if (!containsBannedWord) {
-    return { isAllowed: true, filteredMessage: content };
-  }
-  
-  // Filter the content by replacing banned words with asterisks
-  let filteredMessage = content;
-  
-  bannedWords.forEach(word => {
-    const regex = new RegExp(word, 'gi');
-    filteredMessage = filteredMessage.replace(regex, '*'.repeat(word.length));
-  });
-  
-  // If the message only contains banned words, it's not allowed
-  const isOnlyBannedWords = filteredMessage.trim().replace(/\*/g, '').length === 0;
-  
-  return {
-    isAllowed: !isOnlyBannedWords,
-    filteredMessage
-  };
 };

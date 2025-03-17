@@ -1,3 +1,4 @@
+
 import { signalRService } from './signalRService';
 import type { ChatMessage } from './signalR/types';
 import { toast } from "sonner";
@@ -31,7 +32,7 @@ export class ChatMessageService {
     setMessages(prev => [...prev, newMessage]);
     
     // Then send to service - pass the actual username so it can be stored with the message
-    signalRService.sendMessage(userId, content.trim(), undefined, undefined, undefined);
+    signalRService.sendMessage(userId, content.trim(), username);
   }
   
   // Load messages for a user

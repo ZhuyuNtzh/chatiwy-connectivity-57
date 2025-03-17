@@ -12,7 +12,7 @@ interface InboxDialogProps {
   inboxMessages: Record<number, ChatMessage[]>;
   onOpenChat: (userId: number) => void;
   onDialogOpened?: () => void;
-  unreadBySender?: Record<number, number>; // Changed from boolean to number
+  unreadBySender?: Record<number, boolean>;
 }
 
 const InboxDialog: React.FC<InboxDialogProps> = ({
@@ -69,70 +69,26 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
   
   if (!isOpen) return null;
   
-  // Process inbox entries - Fix sender name display issue
-  const processedInboxEntries = Object.entries(inboxMessages).map(([senderId, messages]) => {
-    const userIdNum = parseInt(senderId);
-    const currentUserId = signalRService.currentUserId;
-    
-    // Only include messages sent TO the current user
-    const incomingMessages = messages.filter(msg => 
-      msg.recipientId === currentUserId && 
-      msg.senderId === userIdNum
-    );
-    
-    if (incomingMessages.length === 0) return null;
-    
-    // Sort messages by timestamp (newest first)
-    const sortedMessages = [...incomingMessages].sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-    
-    const lastMessage = sortedMessages[0];
-    if (!lastMessage) return null;
-    
-    // Get sender names from user lookups or use generic name
-    // FIX: Don't use recipient name (current user), use sender name
-    let senderName = lastMessage.senderId === currentUserId 
-      ? (lastMessage.actualUsername || lastMessage.sender || "You")
-      : (lastMessage.actualUsername || lastMessage.sender);
+  const sortedInboxEntries = Object.entries(inboxMessages)
+    .map(([senderId, messages]) => {
+      const userIdNum = parseInt(senderId);
       
-    if (!senderName || senderName === currentUserId.toString()) {
-      // Map known user IDs to names
-      const senderNames: Record<number, string> = {
-        1: "Alice",
-        2: "Bob",
-        3: "Clara",
-        4: "David", 
-        5: "Elena",
-        6: "Feng",
-        7: "Gabriela",
-        8: "Hiroshi",
-        9: "Isabella",
-        10: "Jamal",
-        11: "TravelBot",
-        12: "FitnessGuru",
-        13: "BookWorm",
-        14: "TechGeek",
-        15: "ArtLover"
+      // For each user, find their most recent message
+      const sortedMessages = [...messages].sort((a, b) => {
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      });
+      
+      const lastMessage = sortedMessages[0];
+      
+      return {
+        senderId: userIdNum,
+        lastMessage,
+        messages: sortedMessages,
+        timestamp: new Date(lastMessage.timestamp).getTime()
       };
-      
-      senderName = senderNames[userIdNum] || `User${userIdNum}`;
-    }
-    
-    return {
-      senderId: userIdNum,
-      senderName,
-      lastMessage,
-      messages: sortedMessages,
-      timestamp: new Date(lastMessage.timestamp).getTime(),
-      isUnread: unreadBySender[userIdNum] > 0 // Changed to check for count > 0 instead of boolean
-    };
-  }).filter(Boolean); // Remove null entries
-  
-  // Sort entries by timestamp (newest first)
-  const sortedInboxEntries = processedInboxEntries.sort((a, b) => 
-    b!.timestamp - a!.timestamp
-  );
+    })
+    .filter(entry => entry.lastMessage) // Filter out entries with no messages
+    .sort((a, b) => b.timestamp - a.timestamp); // Sort by most recent first
   
   const hasMessages = sortedInboxEntries.length > 0;
   
@@ -166,14 +122,13 @@ const InboxDialog: React.FC<InboxDialogProps> = ({
         <ScrollArea className="flex-1 p-4">
           {hasMessages ? (
             <div className="space-y-6">
-              {sortedInboxEntries.map((entry) => {
-                if (!entry) return null;
-                
-                const { senderId, senderName, lastMessage, isUnread } = entry;
+              {sortedInboxEntries.map(({ senderId, lastMessage, messages }) => {
+                const isUnread = unreadBySender[senderId] || false;
+                const senderName = lastMessage.actualUsername || lastMessage.sender;
                 
                 return (
                   <div 
-                    key={`inbox-entry-${senderId}-${lastMessage.id}`} 
+                    key={senderId} 
                     className={`p-3 rounded-lg border ${isUnread ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : 'border-gray-200 dark:border-gray-700'}`}
                   >
                     <div className="flex justify-between items-start mb-2">

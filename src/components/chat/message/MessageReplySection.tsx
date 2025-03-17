@@ -13,32 +13,19 @@ const MessageReplySection: React.FC<MessageReplySectionProps> = ({
   replyText,
   isFromCurrentUser
 }) => {
-  const [displayText, setDisplayText] = useState<string>("");
+  const [displayText, setDisplayText] = useState<string>(replyText || "Previous message");
   
   // Try to get stored reply text from localStorage as a fallback
   useEffect(() => {
-    if (!replyToId) {
-      return;
-    }
-    
-    if (!replyText || replyText === "undefined") {
+    if (!replyText) {
       const storedReplyText = localStorage.getItem(`replyText_${replyToId}`);
       if (storedReplyText) {
         setDisplayText(storedReplyText);
-      } else {
-        setDisplayText("Previous message");
       }
     } else {
-      // Store valid reply text for future reference
-      localStorage.setItem(`replyText_${replyToId}`, replyText);
       setDisplayText(replyText);
     }
   }, [replyToId, replyText]);
-
-  // Only show if we have a valid replyToId
-  if (!replyToId) {
-    return null;
-  }
 
   return (
     <div className={`mb-1 p-1 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg max-w-[80%] ${isFromCurrentUser ? 'ml-auto mr-6' : 'ml-6'}`}>
