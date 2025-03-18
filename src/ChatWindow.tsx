@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
@@ -71,9 +70,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
   // Force prefetch the user chat history to ensure connection is working
   useEffect(() => {
     if (!isLoading && USE_SUPABASE) {
+      console.log(`Prefetching chat history for user ${user.username} (ID: ${user.id})`);
       const result = service.getChatHistory(user.id);
       
-      // Check if result is a Promise, then handle accordingly
       if (result instanceof Promise) {
         result
           .then(messages => {
@@ -87,7 +86,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
         console.log(`Retrieved ${result.length} messages for conversation with ${user.username}`);
       }
     }
-  }, [isLoading, user.id, user.username]);
+  }, [isLoading, user.id, user.username, service]);
   
   const {
     message,

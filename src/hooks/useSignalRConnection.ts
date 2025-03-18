@@ -16,6 +16,7 @@ export const useSignalRConnection = (
   const isAdminRef = useRef(currentUser?.role === 'admin');
   const connectionCheckedRef = useRef(false);
   const [connectionAvailable, setConnectionAvailable] = useState<boolean | null>(null);
+  const [usernameValidated, setUsernameValidated] = useState(false);
   
   // Update admin ref when role changes
   useEffect(() => {
@@ -88,28 +89,37 @@ export const useSignalRConnection = (
     // Check if username exists before attempting to connect
     const checkUsernameAndConnect = async () => {
       if (USE_SUPABASE) {
-        // Generate a consistent user ID from username
-        const userId = currentUser.role === 'admin' 
-          ? '00000000-0000-0000-0000-000000000999' // Special admin ID
-          : `00000000-0000-0000-0000-${generateUserId(currentUser.username).toString().padStart(12, '0')}`;
-          
         try {
-          // Check if username is taken by another user
-          if (currentUser.role !== 'admin') {
-            const taken = await isUsernameTaken(currentUser.username);
-            if (taken) {
-              // Verify if this is actually our own user ID to avoid false positives
-              const { data } = await supabase.from('users').select('id').eq('username', currentUser.username).single();
+          // Check if username is taken by another user (first time only)
+          if (!usernameValidated && currentUser.role !== 'admin') {
+            console.log(`Checking if username "${currentUser.username}" is already taken...`);
+            const isTaken = await isUsernameTaken(currentUser.username);
+            
+            if (isTaken) {
+              toast.error(`Username "${currentUser.username}" is already taken. Please choose another username.`, {
+                duration: 8000,
+              });
+              console.error(`Username "${currentUser.username}" is already taken`);
               
-              // If user exists with this username but has a different ID, it's a conflict
-              if (data && data.id !== userId) {
-                toast.error(`Username "${currentUser.username}" is already taken. Please choose another.`);
-                return;
-              }
+              // Don't proceed with connection
+              return;
             }
+            
+            setUsernameValidated(true);
+            console.log(`Username "${currentUser.username}" is available`);
           }
           
+          // Generate a consistent user ID from username
+          const userId = currentUser.role === 'admin' 
+            ? '00000000-0000-0000-0000-000000000999' // Special admin ID
+            : `00000000-0000-0000-0000-${generateUserId(currentUser.username).toString().padStart(12, '0')}`;
+            
           console.log(`Initializing Supabase for user ${currentUser.username} (ID: ${userId})`);
+          
+          // Register user if needed (this creates or updates the user record)
+          await registerUser(userId, currentUser.username, currentUser.role || 'standard');
+          
+          // Initialize the Supabase service
           await supabaseService.initialize(userId, currentUser.username);
           
           // Set up connected users count updates
@@ -121,7 +131,10 @@ export const useSignalRConnection = (
           // Force refresh of connected users count
           setTimeout(() => {
             supabaseService.fetchConnectedUsersCount()
-              .then(count => console.log(`Initial connected users count: ${count}`))
+              .then(count => {
+                console.log(`Initial connected users count: ${count}`);
+                setConnectedUsersCount(count);
+              })
               .catch(err => console.error("Error fetching initial user count:", err));
           }, 1000);
           
@@ -163,7 +176,7 @@ export const useSignalRConnection = (
         }
       }
     };
-  }, [currentUser, setConnectedUsersCount, connectionAvailable]);
+  }, [currentUser, setConnectedUsersCount, connectionAvailable, usernameValidated]);
 };
 
 // Helper function to generate a numeric ID from a string

@@ -1,1123 +1,1007 @@
-import { supabase, isUsernameTaken, registerUser, updateUserOnlineStatus } from '@/lib/supabase';
-import type { ChatMessage, ConnectionStatus, UserReport } from './signalR/types';
-import { v4 as uuidv4 } from 'uuid';
-import { toast } from 'sonner';
+
+import { supabase } from '@/lib/supabase';
+import { updateUserOnlineStatus, getOnlineUsers } from '@/lib/supabase';
+
+// Use a typed interface for the ChatMessage
+export interface ChatMessage {
+  id: string;
+  senderId: number | string;
+  senderName: string;
+  receiverId: number | string;
+  content: string;
+  timestamp: Date;
+  isRead: boolean;
+  isImage?: boolean;
+  imageUrl?: string;
+  isBlurred?: boolean;
+  replyToId?: string;
+  replyText?: string;
+  isVoiceMessage?: boolean;
+  audioUrl?: string;
+  translatedContent?: string;
+  translatedLanguage?: string;
+}
+
+// Use a typed interface for the UserReport
+export interface UserReport {
+  id: string;
+  reporterId: number | string;
+  reporterName: string;
+  reportedId: number | string;
+  reportedName: string;
+  reason: string;
+  details?: string;
+  timestamp: Date;
+  status: "pending" | "reviewed" | "dismissed";
+}
+
+// Use typed interface for UserProfile
+export interface UserProfile {
+  id: string | number;
+  username: string;
+  isOnline: boolean;
+}
 
 class SupabaseService {
-  private userId: string | null = null;
-  private username: string | null = null;
-  private messageCallbacks: ((message: ChatMessage) => void)[] = [];
-  private deleteCallbacks: ((messageId: string) => void)[] = [];
-  private typingCallbacks: ((userId: number) => void)[] = [];
-  private connectionStatus: ConnectionStatus = 'disconnected';
-  private connectionStatusCallbacks: ((status: ConnectionStatus) => void)[] = [];
-  private connectedUsersCountCallbacks: ((count: number) => void)[] = [];
-  private subscriptions: { unsubscribe: () => void }[] = [];
-  private blockedUsersCache: Record<number, boolean> = {};
-  private presenceChannel: any = null;
+  private userId: string = '';
+  private username: string = '';
+  private presenceChannel: any | null = null;
+  private messageSubscriptions: any[] = [];
+  private userCountListeners: ((count: number) => void)[] = [];
+  private messageListeners: Map<number, ((message: ChatMessage) => void)[]> = new Map();
+  private statusChangeListeners: ((userId: number, isOnline: boolean) => void)[] = [];
+  private typingListeners: Map<number, ((isTyping: boolean) => void)[]> = new Map();
+  private blockedUsers: Set<number> = new Set();
+  private connectedUsersCache: UserProfile[] = [];
 
-  public get currentUserId(): string {
-    return this.userId || '';
-  }
-
-  // Convert string IDs to numbers for backward compatibility during transition
-  private toNumberId(id: string): number {
-    try {
-      // Try to parse as number if it's a numeric string
-      if (/^\d+$/.test(id)) {
-        return parseInt(id, 10);
-      }
-      // Otherwise use a hash function
-      let hash = 0;
-      for (let i = 0; i < id.length; i++) {
-        hash = ((hash << 5) - hash) + id.charCodeAt(i);
-        hash |= 0; // Convert to 32bit integer
-      }
-      return Math.abs(hash);
-    } catch (e) {
-      console.error("Error converting ID", e);
-      return 0;
-    }
-  }
-
-  public async initialize(userId: string, username: string): Promise<void> {
+  // Initialize Supabase connection
+  async initialize(userId: string, username: string): Promise<void> {
     console.log(`Initializing Supabase service for user ${username} (ID: ${userId})`);
-    
-    // Clear any previous user data if there was a session
-    if (this.userId && this.userId !== userId) {
-      await this.disconnect();
-    }
-    
     this.userId = userId;
     this.username = username;
     
-    // Update user online status in the database
-    const statusUpdated = await updateUserOnlineStatus(userId, true);
-    if (!statusUpdated) {
-      // If update failed, try to register the user first
-      console.log(`User ${userId} not found, attempting registration...`);
-      const registered = await registerUser(userId, username);
-      if (!registered) {
-        console.error(`Failed to register user ${username}`);
-        return Promise.reject(new Error('Failed to register user'));
-      }
-    }
+    // Set user as online
+    await this.setUserOnline(true);
     
-    // Set up real-time subscriptions after user is confirmed registered
-    console.log(`Setting up realtime subscriptions for user ${username}`);
-    this.setupRealtimeSubscriptions();
+    // Set up real-time presence channel
+    await this.setupPresenceChannel();
     
-    // Set up presence channel for online status
-    console.log(`Setting up presence channel for user ${username}`);
-    this.setupPresenceChannel(username);
+    // Set up listeners for messages
+    await this.setupMessageListeners();
     
-    // Get connected users count
-    await this.fetchConnectedUsersCount();
+    // Fetch any existing blocked users
+    await this.fetchBlockedUsers();
     
-    // Update connection status
-    this.updateConnectionStatus('connected');
-    
-    console.log(`Supabase service initialized for user ${username} (ID: ${userId})`);
-    return Promise.resolve();
+    console.log("Supabase service initialization completed");
   }
   
-  private setupPresenceChannel(username: string) {
-    if (this.presenceChannel) {
-      this.presenceChannel.unsubscribe();
-    }
-    
-    // Create a channel for tracking user presence
-    const channelName = 'online-users';
-    console.log(`Setting up presence channel: ${channelName}`);
-    
-    this.presenceChannel = supabase.channel(channelName, {
-      config: {
-        presence: {
-          key: this.userId,
-        },
-      },
-    });
-
-    // Track user's online status
-    this.presenceChannel.on('presence', { event: 'sync' }, () => {
-      const state = this.presenceChannel.presenceState();
-      console.log('Presence state updated:', state);
-      const onlineUsers = Object.keys(state).length;
+  private async setupPresenceChannel(): Promise<void> {
+    try {
+      console.log("Setting up presence channel...");
+      // Clean up any existing channel
+      if (this.presenceChannel) {
+        await supabase.removeChannel(this.presenceChannel);
+      }
       
-      // Notify listeners about updated user count
-      console.log(`Presence sync: ${onlineUsers} users online`);
-      this.connectedUsersCountCallbacks.forEach(callback => callback(onlineUsers));
-    });
-
-    this.presenceChannel.on('presence', { event: 'join' }, ({ key, newPresences }: any) => {
-      console.log(`User joined: ${key}`, newPresences);
-      // Notify about presence changes
-      this.fetchConnectedUsersCount();
-    });
-
-    this.presenceChannel.on('presence', { event: 'leave' }, ({ key, leftPresences }: any) => {
-      console.log(`User left: ${key}`, leftPresences);
-      // Notify about presence changes
-      this.fetchConnectedUsersCount();
-    });
-
-    // Subscribe to the channel and track presence
-    this.presenceChannel.subscribe(async (status: string) => {
-      console.log(`Presence channel subscription status: ${status}`);
-      if (status === 'SUBSCRIBED') {
-        // Start tracking presence
-        try {
-          await this.presenceChannel.track({
-            user_id: this.userId,
+      // Create a new presence channel for all users
+      this.presenceChannel = supabase.channel('online-users', {
+        config: {
+          presence: {
+            key: this.userId,
+          },
+        },
+      });
+      
+      // Track user state in presence channel
+      this.presenceChannel
+        .on('presence', { event: 'sync' }, () => {
+          const state = this.presenceChannel.presenceState();
+          console.log("Presence sync:", state);
+          this.updateConnectedUsers(state);
+        })
+        .on('presence', { event: 'join' }, ({ key, newPresences }: any) => {
+          console.log(`User joined: ${key}`, newPresences);
+          this.updateConnectedUsers(this.presenceChannel.presenceState());
+        })
+        .on('presence', { event: 'leave' }, ({ key, leftPresences }: any) => {
+          console.log(`User left: ${key}`, leftPresences);
+          this.updateConnectedUsers(this.presenceChannel.presenceState());
+        });
+      
+      // Subscribe to the channel and start tracking presence
+      const status = await this.presenceChannel.subscribe(async (status: string) => {
+        if (status === 'SUBSCRIBED') {
+          console.log("Successfully subscribed to presence channel");
+          // Track the user's presence
+          const trackResult = await this.presenceChannel.track({
             username: this.username,
             online_at: new Date().toISOString(),
           });
-          console.log('Presence tracking started');
-        } catch (error) {
-          console.error('Error tracking presence:', error);
+          console.log("Presence tracking result:", trackResult);
+        } else {
+          console.log(`Presence channel status: ${status}`);
         }
+      });
+      
+      console.log("Presence channel setup complete", status);
+    } catch (error) {
+      console.error("Error setting up presence channel:", error);
+    }
+  }
+  
+  private updateConnectedUsers(state: any): void {
+    try {
+      const users: UserProfile[] = [];
+      
+      // Process the presence state
+      Object.keys(state).forEach(userId => {
+        const userPresences = state[userId];
+        if (Array.isArray(userPresences) && userPresences.length > 0) {
+          // Get the most recent presence
+          const presence = userPresences[0];
+          if (presence && presence.username) {
+            users.push({
+              id: userId,
+              username: presence.username,
+              isOnline: true
+            });
+          }
+        }
+      });
+      
+      this.connectedUsersCache = users;
+      const count = users.length;
+      console.log(`Connected users updated: ${count} users online`);
+      
+      // Notify listeners about the updated count
+      this.userCountListeners.forEach(listener => {
+        listener(count);
+      });
+    } catch (error) {
+      console.error("Error updating connected users:", error);
+    }
+  }
+  
+  private async setupMessageListeners(): Promise<void> {
+    try {
+      console.log("Setting up message listeners...");
+      
+      // Clean up any existing subscriptions
+      this.messageSubscriptions.forEach(subscription => {
+        supabase.removeChannel(subscription);
+      });
+      this.messageSubscriptions = [];
+      
+      // Create a new subscription for messages
+      const channel = supabase.channel('db-messages-changes');
+      
+      // Listen for new messages in the messages table
+      channel.on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id=eq.${this.userId}`
+        },
+        (payload: any) => {
+          console.log('New message received:', payload);
+          if (payload.new) {
+            const message = this.mapDbMessageToChatMessage(payload.new);
+            this.notifyMessageListeners(Number(message.senderId), message);
+          }
+        }
+      );
+      
+      // Subscribe to the channel
+      const status = await channel.subscribe((status: string) => {
+        console.log(`Message listeners subscription status: ${status}`);
+      });
+      
+      // Save the subscription for cleanup
+      this.messageSubscriptions.push(channel);
+      
+      console.log("Message listeners setup complete", status);
+    } catch (error) {
+      console.error("Error setting up message listeners:", error);
+    }
+  }
+  
+  private mapDbMessageToChatMessage(dbMessage: any): ChatMessage {
+    return {
+      id: dbMessage.id || '',
+      senderId: dbMessage.sender_id || '',
+      senderName: dbMessage.sender_name || '',
+      receiverId: dbMessage.receiver_id || this.userId,
+      content: dbMessage.content || '',
+      timestamp: new Date(dbMessage.created_at || Date.now()),
+      isRead: dbMessage.is_read || false,
+      isImage: dbMessage.is_image || false,
+      imageUrl: dbMessage.image_url || undefined,
+      isBlurred: dbMessage.is_blurred || false,
+      replyToId: dbMessage.reply_to_id || undefined,
+      replyText: dbMessage.reply_text || undefined, 
+      isVoiceMessage: dbMessage.is_voice_message || false,
+      audioUrl: dbMessage.audio_url || undefined,
+      translatedContent: dbMessage.translated_content || undefined,
+      translatedLanguage: dbMessage.translated_language || undefined
+    };
+  }
+  
+  private notifyMessageListeners(senderId: number, message: ChatMessage): void {
+    const listeners = this.messageListeners.get(senderId) || [];
+    listeners.forEach(listener => {
+      try {
+        listener(message);
+      } catch (error) {
+        console.error(`Error notifying message listener for sender ${senderId}:`, error);
       }
     });
   }
   
-  private setupRealtimeSubscriptions(): void {
-    // Clean up existing subscriptions
-    this.subscriptions.forEach(sub => sub.unsubscribe());
-    this.subscriptions = [];
-    
-    // Subscribe to messages where this user is a participant
-    const messagesSubscription = supabase
-      .channel('public:messages')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages'
-      }, payload => {
-        console.log('New message received:', payload.new);
-        // Only process messages sent to this user
-        const message = payload.new;
-        const recipientId = message.recipient_id || this.convertConversationToRecipientId(message.conversation_id);
-        
-        if (message.sender_id !== this.userId) {
-          this.handleNewMessage(message);
-        }
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'messages',
-        filter: 'is_deleted=eq.true'
-      }, payload => {
-        this.handleMessageDeleted(payload.new.id);
-      })
-      .subscribe(status => {
-        console.log(`Messages subscription status: ${status}`);
-      });
-    
-    // Subscribe to connected users count changes
-    const usersSubscription = supabase
-      .channel('public:users')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'users'
-      }, payload => {
-        console.log('Users table change:', payload);
-        this.fetchConnectedUsersCount();
-      })
-      .subscribe(status => {
-        console.log(`Users subscription status: ${status}`);
-      });
-    
-    this.subscriptions.push(messagesSubscription, usersSubscription);
-    console.log('Realtime subscriptions set up');
-  }
-  
-  // Helper method to extract recipient from conversation
-  private async convertConversationToRecipientId(conversationId: string): Promise<string | null> {
-    if (!conversationId || !this.userId) return null;
-    
+  private async fetchBlockedUsers(): Promise<void> {
     try {
-      const { data, error } = await supabase
-        .from('conversation_participants')
-        .select('user_id')
-        .eq('conversation_id', conversationId)
-        .neq('user_id', this.userId)
-        .single();
-        
-      if (error || !data) return null;
-      return data.user_id;
-    } catch (err) {
-      console.error('Error getting recipient from conversation:', err);
-      return null;
-    }
-  }
-  
-  public async disconnect(): Promise<void> {
-    if (!this.userId) return Promise.resolve();
-    
-    console.log('Disconnecting Supabase service');
-    
-    // Update user online status
-    await updateUserOnlineStatus(this.userId, false);
-    
-    // Clean up presence tracking
-    if (this.presenceChannel) {
-      try {
-        await this.presenceChannel.untrack();
-        await this.presenceChannel.unsubscribe();
-        this.presenceChannel = null;
-        console.log('Presence tracking stopped');
-      } catch (error) {
-        console.error('Error stopping presence tracking:', error);
-      }
-    }
-    
-    // Clean up subscriptions
-    this.subscriptions.forEach(sub => sub.unsubscribe());
-    this.subscriptions = [];
-    
-    // Update connection status
-    this.updateConnectionStatus('disconnected');
-    
-    // Reset state
-    this.userId = null;
-    this.username = null;
-    this.blockedUsersCache = {};
-    
-    console.log('Supabase disconnected');
-    return Promise.resolve();
-  }
-  
-  public async fetchConnectedUsersCount(): Promise<number> {
-    try {
-      // First try to get count via presence
-      if (this.presenceChannel) {
-        const state = this.presenceChannel.presenceState();
-        console.log('Current presence state:', state);
-        const presenceCount = Object.keys(state).length;
-        console.log(`Presence channel shows ${presenceCount} users online`);
-        
-        if (presenceCount > 0) {
-          // Notify listeners
-          this.connectedUsersCountCallbacks.forEach(callback => 
-            callback(presenceCount)
-          );
-          return presenceCount;
-        }
-      }
+      console.log("Fetching blocked users...");
       
-      // Fall back to database query if presence shows zero
-      const { data, error, count } = await supabase
-        .from('users')
-        .select('*', { count: 'exact' })
-        .eq('is_online', true);
-        
-      if (error) throw error;
-      
-      // Log all online users for debugging
-      console.log('Online users from DB:', data);
-      
-      const onlineCount = count || (data?.length || 0);
-      console.log(`Database query shows ${onlineCount} users online`);
-      
-      // Notify listeners
-      this.connectedUsersCountCallbacks.forEach(callback => 
-        callback(onlineCount)
-      );
-      
-      return onlineCount;
-    } catch (error) {
-      console.error('Error fetching connected users count:', error);
-      return 0;
-    }
-  }
-  
-  private updateConnectionStatus(status: ConnectionStatus): void {
-    this.connectionStatus = status;
-    this.connectionStatusCallbacks.forEach(callback => callback(status));
-  }
-  
-  // Message handling
-  private handleNewMessage(messageData: any): void {
-    // Convert to the format expected by the application
-    const message: ChatMessage = {
-      id: messageData.id,
-      content: messageData.content,
-      sender: messageData.sender_name || 'Unknown',
-      actualUsername: messageData.sender_name,
-      senderId: this.toNumberId(messageData.sender_id),
-      recipientId: this.toNumberId(this.userId || ''),
-      timestamp: new Date(messageData.created_at),
-      isImage: messageData.is_image || false,
-      imageUrl: messageData.image_url,
-      isBlurred: messageData.is_blurred || false,
-      isVoiceMessage: messageData.is_voice_message || false,
-      audioUrl: messageData.audio_url,
-      isDeleted: messageData.is_deleted || false,
-      replyToId: messageData.reply_to_id,
-      translatedContent: messageData.translated_content,
-      translatedLanguage: messageData.translated_language,
-      isRead: messageData.is_read || false
-    };
-    
-    console.log('Processing new message:', message);
-    
-    // Notify listeners
-    this.messageCallbacks.forEach(callback => callback(message));
-  }
-  
-  private handleMessageDeleted(messageId: string): void {
-    // Notify listeners
-    this.deleteCallbacks.forEach(callback => callback(messageId));
-  }
-  
-  // Event Listeners
-  public onConnectionStatusChanged(callback: (status: ConnectionStatus) => void): void {
-    this.connectionStatusCallbacks.push(callback);
-    // Immediately call with current status
-    callback(this.connectionStatus);
-  }
-  
-  public onConnectedUsersCountChanged(callback: (count: number) => void): void {
-    this.connectedUsersCountCallbacks.push(callback);
-    this.fetchConnectedUsersCount();
-  }
-  
-  public onMessageReceived(callback: (message: ChatMessage) => void): void {
-    this.messageCallbacks.push(callback);
-  }
-  
-  public offMessageReceived(callback: (message: ChatMessage) => void): void {
-    this.messageCallbacks = this.messageCallbacks.filter(cb => cb !== callback);
-  }
-  
-  public onMessageDeleted(callback: (messageId: string) => void): void {
-    this.deleteCallbacks.push(callback);
-  }
-  
-  public offMessageDeleted(callback: (messageId: string) => void): void {
-    this.deleteCallbacks = this.deleteCallbacks.filter(cb => cb !== callback);
-  }
-  
-  public onUserTyping(callback: (userId: number) => void): void {
-    this.typingCallbacks.push(callback);
-  }
-  
-  public offUserTyping(callback: (userId: number) => void): void {
-    this.typingCallbacks = this.typingCallbacks.filter(cb => cb !== callback);
-  }
-  
-  // Message sending
-  public async sendMessage(
-    recipientId: number, 
-    content: string, 
-    actualUsername?: string,
-    replyToId?: string,
-    replyText?: string
-  ): Promise<void> {
-    if (!this.userId) {
-      console.error('Cannot send message: No active user');
-      return Promise.resolve();
-    }
-    
-    if (await this.isUserBlocked(recipientId)) {
-      console.log(`Cannot send message to blocked user ${recipientId}`);
-      return Promise.resolve();
-    }
-    
-    console.log(`Sending message to ${recipientId}: ${content}`);
-    
-    // First, ensure we have a conversation with this user
-    const conversationId = await this.getOrCreateConversation(recipientId);
-    if (!conversationId) {
-      console.error('Failed to get or create conversation');
-      return Promise.resolve();
-    }
-    
-    // Create the message
-    const messageId = uuidv4();
-    const newMessage = {
-      id: messageId,
-      conversation_id: conversationId,
-      sender_id: this.userId,
-      sender_name: this.username || actualUsername || 'Unknown',
-      content,
-      created_at: new Date().toISOString(),
-      is_read: false,
-      is_deleted: false,
-      reply_to_id: replyToId || null,
-      reply_text: replyText || null,
-      is_image: false,
-      is_voice_message: false
-    };
-    
-    try {
-      console.log(`Inserting message:`, newMessage);
-      const { error } = await supabase
-        .from('messages')
-        .insert(newMessage);
-        
-      if (error) {
-        console.error('Error sending message:', error);
-        throw error;
-      }
-      
-      console.log(`Message sent with ID: ${messageId}`);
-      
-      // Convert to ChatMessage format for local handling
-      const chatMessage: ChatMessage = {
-        id: messageId,
-        content,
-        sender: this.username || 'You',
-        actualUsername: this.username,
-        senderId: this.toNumberId(this.userId),
-        recipientId,
-        timestamp: new Date(),
-        isRead: true,
-        replyToId,
-        replyText
-      };
-      
-      // Simulate a synchronous response for the UI
-      this.handleNewMessage(chatMessage);
-      
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error('Failed to send message');
-    }
-    
-    return Promise.resolve();
-  }
-  
-  private async getOrCreateConversation(recipientId: number): Promise<string | null> {
-    if (!this.userId) return null;
-    
-    // Convert the numeric ID to string for Supabase
-    const recipientUuid = this.getUuidFromNumber(recipientId);
-    console.log(`Getting/creating conversation between ${this.userId} and ${recipientUuid}`);
-    
-    // First get the recipient's conversations
-    const { data: recipientConversations, error: recipientError } = await supabase
-      .from('conversation_participants')
-      .select('conversation_id')
-      .eq('user_id', recipientUuid);
-      
-    if (recipientError) {
-      console.error('Error fetching recipient conversations:', recipientError);
-      return null;
-    }
-    
-    if (!recipientConversations || recipientConversations.length === 0) {
-      // No conversations for recipient, create a new one
-      console.log(`No conversations found for recipient ${recipientUuid}, creating new one`);
-      return this.createNewConversation(recipientUuid);
-    }
-    
-    // Get conversation IDs as an array
-    const conversationIds = recipientConversations.map(c => c.conversation_id);
-    console.log(`Found ${conversationIds.length} conversations for recipient`, conversationIds);
-    
-    // Check if any of those conversations include the current user
-    const { data: existingConversations, error: fetchError } = await supabase
-      .from('conversation_participants')
-      .select('conversation_id')
-      .eq('user_id', this.userId)
-      .in('conversation_id', conversationIds);
-      
-    if (fetchError) {
-      console.error('Error fetching conversation:', fetchError);
-      return null;
-    }
-    
-    // If conversation exists, return it
-    if (existingConversations && existingConversations.length > 0) {
-      console.log(`Found existing conversation: ${existingConversations[0].conversation_id}`);
-      return existingConversations[0].conversation_id;
-    }
-    
-    // Create new conversation if none exists
-    console.log(`No existing conversation found, creating new one`);
-    return this.createNewConversation(recipientUuid);
-  }
-  
-  private async createNewConversation(recipientUuid: string): Promise<string | null> {
-    if (!this.userId) return null;
-    
-    // Create new conversation
-    const conversationId = uuidv4();
-    console.log(`Creating new conversation with ID: ${conversationId}`);
-    
-    // Insert conversation
-    const { error: conversationError } = await supabase
-      .from('conversations')
-      .insert({
-        id: conversationId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-      
-    if (conversationError) {
-      console.error('Error creating conversation:', conversationError);
-      return null;
-    }
-    
-    // Add participants
-    const { error: participantsError } = await supabase
-      .from('conversation_participants')
-      .insert([
-        {
-          conversation_id: conversationId,
-          user_id: this.userId,
-          created_at: new Date().toISOString()
-        },
-        {
-          conversation_id: conversationId,
-          user_id: recipientUuid,
-          created_at: new Date().toISOString()
-        }
-      ]);
-      
-    if (participantsError) {
-      console.error('Error adding conversation participants:', participantsError);
-      return null;
-    }
-    
-    console.log(`Conversation ${conversationId} created with participants ${this.userId} and ${recipientUuid}`);
-    return conversationId;
-  }
-  
-  // Helper to convert number IDs to UUIDs (temporary during migration)
-  private getUuidFromNumber(id: number): string {
-    // This is a simplified approach - in production you would map to real UUIDs
-    // For demo purposes, we'll create a deterministic UUID from the number
-    return `00000000-0000-0000-0000-${id.toString().padStart(12, '0')}`;
-  }
-
-  // Modified method with synchronous version for UI use
-  public isUserBlocked(userId: number): boolean {
-    // Use cached result if available
-    if (this.blockedUsersCache[userId] !== undefined) {
-      return this.blockedUsersCache[userId];
-    }
-    
-    // If no cache available, assume not blocked for UI responsiveness
-    // and update the cache asynchronously
-    this.updateBlockedUserCache(userId);
-    return false;
-  }
-  
-  // Asynchronous version for backend operations
-  public async checkIfUserBlocked(userId: number): Promise<boolean> {
-    if (!this.userId) return false;
-    
-    // Use cached result if available to avoid DB queries
-    if (this.blockedUsersCache[userId] !== undefined) {
-      return this.blockedUsersCache[userId];
-    }
-    
-    const blockedId = this.getUuidFromNumber(userId);
-    
-    try {
-      const { data, error } = await supabase
-        .from('blocked_users')
-        .select('*')
-        .eq('blocker_id', this.userId)
-        .eq('blocked_id', blockedId);
-        
-      if (error) throw error;
-      
-      // Update cache
-      const isBlocked = data && data.length > 0;
-      this.blockedUsersCache[userId] = isBlocked;
-      
-      return isBlocked;
-    } catch (error) {
-      console.error('Error checking blocked status:', error);
-      return false;
-    }
-  }
-  
-  // Helper method to update cache asynchronously
-  private async updateBlockedUserCache(userId: number): Promise<void> {
-    const isBlocked = await this.checkIfUserBlocked(userId);
-    this.blockedUsersCache[userId] = isBlocked;
-  }
-  
-  public async blockUser(userId: number): Promise<void> {
-    if (!this.userId) return;
-    
-    const blockedId = this.getUuidFromNumber(userId);
-    
-    try {
-      const { error } = await supabase
-        .from('blocked_users')
-        .insert({
-          blocker_id: this.userId,
-          blocked_id: blockedId,
-          created_at: new Date().toISOString()
-        });
-        
-      if (error) throw error;
-      
-      // Update cache
-      this.blockedUsersCache[userId] = true;
-    } catch (error) {
-      console.error('Error blocking user:', error);
-    }
-  }
-  
-  public async unblockUser(userId: number): Promise<void> {
-    if (!this.userId) return;
-    
-    const blockedId = this.getUuidFromNumber(userId);
-    
-    try {
-      const { error } = await supabase
-        .from('blocked_users')
-        .delete()
-        .eq('blocker_id', this.userId)
-        .eq('blocked_id', blockedId);
-        
-      if (error) throw error;
-      
-      // Update cache
-      this.blockedUsersCache[userId] = false;
-    } catch (error) {
-      console.error('Error unblocking user:', error);
-    }
-  }
-  
-  public async getBlockedUsers(): Promise<number[]> {
-    if (!this.userId) return [];
-    
-    try {
       const { data, error } = await supabase
         .from('blocked_users')
         .select('blocked_id')
         .eq('blocker_id', this.userId);
-        
-      if (error) throw error;
       
-      // Convert back to numbers for compatibility
-      const blockedUsers = (data || []).map(item => this.toNumberId(item.blocked_id));
+      if (error) {
+        console.error("Error fetching blocked users:", error);
+        return;
+      }
       
-      // Update cache for all blocked users
-      blockedUsers.forEach(id => {
-        this.blockedUsersCache[id] = true;
-      });
+      // Clear and update the blocked users set
+      this.blockedUsers.clear();
+      if (Array.isArray(data)) {
+        data.forEach(item => {
+          if (item && item.blocked_id) {
+            this.blockedUsers.add(Number(item.blocked_id));
+          }
+        });
+      }
       
-      return blockedUsers;
+      console.log(`Fetched ${this.blockedUsers.size} blocked users`);
     } catch (error) {
-      console.error('Error getting blocked users:', error);
-      return [];
+      console.error("Exception fetching blocked users:", error);
     }
   }
   
-  // Additional methods for user management
-  public isAdminUser(userId: number): boolean {
-    // This would need to check the user's role in the database
-    // For now, return a simple check for admin ID
-    return userId === 999; // Same logic as before for compatibility
+  // Disconnect and clean up
+  async disconnect(): Promise<void> {
+    console.log("Disconnecting from Supabase...");
+    
+    // Set user as offline
+    await this.setUserOnline(false);
+    
+    // Clean up the presence channel
+    if (this.presenceChannel) {
+      try {
+        await this.presenceChannel.untrack();
+        await supabase.removeChannel(this.presenceChannel);
+      } catch (error) {
+        console.error("Error removing presence channel:", error);
+      }
+      this.presenceChannel = null;
+    }
+    
+    // Clean up message subscriptions
+    this.messageSubscriptions.forEach(subscription => {
+      try {
+        supabase.removeChannel(subscription);
+      } catch (error) {
+        console.error("Error removing message subscription:", error);
+      }
+    });
+    this.messageSubscriptions = [];
+    
+    console.log("Disconnected from Supabase");
   }
   
-  // These are simpler implementations of the required methods
-  public async sendImage(recipientId: number, imageUrl: string, isBlurred: boolean = false): Promise<void> {
-    if (!this.userId) return Promise.resolve();
-    
-    // Get conversation
-    const conversationId = await this.getOrCreateConversation(recipientId);
-    if (!conversationId) return Promise.resolve();
-    
-    // Create message record
-    const messageId = uuidv4();
-    const newMessage = {
-      id: messageId,
-      conversation_id: conversationId,
-      sender_id: this.userId,
-      sender_name: this.username || 'Unknown',
-      content: 'Sent an image',
-      created_at: new Date().toISOString(),
-      is_read: false,
-      is_deleted: false,
-      is_image: true,
-      image_url: imageUrl,
-      is_blurred: isBlurred
-    };
-    
+  // Set user online status
+  async setUserOnline(isOnline: boolean): Promise<void> {
     try {
+      console.log(`Setting user ${this.username} (${this.userId}) online status to ${isOnline}`);
+      await updateUserOnlineStatus(this.userId, isOnline);
+    } catch (error) {
+      console.error("Error setting user online status:", error);
+    }
+  }
+  
+  // Fetch connected users count
+  async fetchConnectedUsersCount(): Promise<number> {
+    try {
+      // First check the presence cache
+      if (this.connectedUsersCache.length > 0) {
+        return this.connectedUsersCache.length;
+      }
+      
+      // Fall back to database query
+      const onlineUsers = await getOnlineUsers();
+      return onlineUsers.length;
+    } catch (error) {
+      console.error("Error fetching connected users count:", error);
+      return 0;
+    }
+  }
+  
+  // Listener for connected users count
+  onConnectedUsersCountChanged(listener: (count: number) => void): void {
+    this.userCountListeners.push(listener);
+    
+    // Immediately notify with current count
+    const currentCount = this.connectedUsersCache.length;
+    listener(currentCount);
+  }
+  
+  // Listener for user status changes
+  onUserStatusChanged(listener: (userId: number, isOnline: boolean) => void): void {
+    this.statusChangeListeners.push(listener);
+  }
+  
+  // Listener for new messages
+  onMessage(senderId: number, listener: (message: ChatMessage) => void): void {
+    if (!this.messageListeners.has(senderId)) {
+      this.messageListeners.set(senderId, []);
+    }
+    this.messageListeners.get(senderId)!.push(listener);
+  }
+  
+  // Listener for typing indicators
+  onTypingIndicator(userId: number, listener: (isTyping: boolean) => void): void {
+    if (!this.typingListeners.has(userId)) {
+      this.typingListeners.set(userId, []);
+    }
+    this.typingListeners.get(userId)!.push(listener);
+  }
+  
+  // Set typing indicator
+  async setTypingIndicator(receiverId: number, isTyping: boolean): Promise<void> {
+    try {
+      // Use a real-time broadcast for typing indicators
+      if (this.presenceChannel) {
+        await this.presenceChannel.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: {
+            senderId: this.userId,
+            receiverId: receiverId.toString(),
+            isTyping
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error setting typing indicator:", error);
+    }
+  }
+  
+  // Send a message
+  async sendMessage(receiverId: number, content: string): Promise<boolean> {
+    try {
+      console.log(`Sending message to user ${receiverId}: ${content}`);
+      
+      // Check if user is blocked
+      if (this.isUserBlocked(receiverId)) {
+        console.warn(`Cannot send message to blocked user ${receiverId}`);
+        return false;
+      }
+      
+      // Get or create conversation
+      const conversationId = await this.getOrCreateConversation(receiverId);
+      if (!conversationId) {
+        console.error(`Failed to get or create conversation with user ${receiverId}`);
+        return false;
+      }
+      
+      // Insert message into the messages table
       const { error } = await supabase
         .from('messages')
-        .insert(newMessage);
-        
-      if (error) throw error;
+        .insert({
+          sender_id: this.userId,
+          sender_name: this.username,
+          conversation_id: conversationId,
+          content: content,
+          is_read: false
+        });
       
-      // Handle for local UI
-      this.handleNewMessage(newMessage);
+      if (error) {
+        console.error("Error sending message:", error);
+        return false;
+      }
+      
+      console.log(`Message sent successfully to user ${receiverId}`);
+      return true;
     } catch (error) {
-      console.error('Error sending image:', error);
+      console.error("Exception sending message:", error);
+      return false;
     }
-    
-    return Promise.resolve();
   }
   
-  public async sendVoiceMessage(recipientId: number, audioUrl: string): Promise<void> {
-    if (!this.userId) return Promise.resolve();
-    
-    // Get conversation
-    const conversationId = await this.getOrCreateConversation(recipientId);
-    if (!conversationId) return Promise.resolve();
-    
-    // Create message record
-    const messageId = uuidv4();
-    const newMessage = {
-      id: messageId,
-      conversation_id: conversationId,
-      sender_id: this.userId,
-      sender_name: this.username || 'Unknown',
-      content: 'Sent a voice message',
-      created_at: new Date().toISOString(),
-      is_read: false,
-      is_deleted: false,
-      is_voice_message: true,
-      audio_url: audioUrl
-    };
-    
+  // Send an image message
+  async sendImageMessage(receiverId: number, imageUrl: string, isBlurred: boolean = false): Promise<boolean> {
     try {
+      console.log(`Sending image message to user ${receiverId}: ${imageUrl}`);
+      
+      // Check if user is blocked
+      if (this.isUserBlocked(receiverId)) {
+        console.warn(`Cannot send image to blocked user ${receiverId}`);
+        return false;
+      }
+      
+      // Get or create conversation
+      const conversationId = await this.getOrCreateConversation(receiverId);
+      if (!conversationId) {
+        console.error(`Failed to get or create conversation with user ${receiverId}`);
+        return false;
+      }
+      
+      // Insert message into the messages table
       const { error } = await supabase
         .from('messages')
-        .insert(newMessage);
-        
-      if (error) throw error;
+        .insert({
+          sender_id: this.userId,
+          sender_name: this.username,
+          conversation_id: conversationId,
+          is_image: true,
+          image_url: imageUrl,
+          is_blurred: isBlurred,
+          is_read: false
+        });
       
-      // Handle for local UI
-      this.handleNewMessage(newMessage);
+      if (error) {
+        console.error("Error sending image message:", error);
+        return false;
+      }
+      
+      console.log(`Image message sent successfully to user ${receiverId}`);
+      return true;
     } catch (error) {
-      console.error('Error sending voice message:', error);
+      console.error("Exception sending image message:", error);
+      return false;
     }
-    
-    return Promise.resolve();
   }
   
-  public async deleteMessage(messageId: string, recipientId: number): Promise<void> {
-    if (!this.userId) return Promise.resolve();
-    
+  // Send a voice message
+  async sendVoiceMessage(receiverId: number, audioUrl: string): Promise<boolean> {
     try {
+      console.log(`Sending voice message to user ${receiverId}: ${audioUrl}`);
+      
+      // Check if user is blocked
+      if (this.isUserBlocked(receiverId)) {
+        console.warn(`Cannot send voice message to blocked user ${receiverId}`);
+        return false;
+      }
+      
+      // Get or create conversation
+      const conversationId = await this.getOrCreateConversation(receiverId);
+      if (!conversationId) {
+        console.error(`Failed to get or create conversation with user ${receiverId}`);
+        return false;
+      }
+      
+      // Insert message into the messages table
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: this.userId,
+          sender_name: this.username,
+          conversation_id: conversationId,
+          is_voice_message: true,
+          audio_url: audioUrl,
+          is_read: false
+        });
+      
+      if (error) {
+        console.error("Error sending voice message:", error);
+        return false;
+      }
+      
+      console.log(`Voice message sent successfully to user ${receiverId}`);
+      return true;
+    } catch (error) {
+      console.error("Exception sending voice message:", error);
+      return false;
+    }
+  }
+  
+  // Reply to a message
+  async replyToMessage(receiverId: number, content: string, replyToId: string, replyText: string): Promise<boolean> {
+    try {
+      console.log(`Replying to message ${replyToId} for user ${receiverId}: ${content}`);
+      
+      // Check if user is blocked
+      if (this.isUserBlocked(receiverId)) {
+        console.warn(`Cannot reply to blocked user ${receiverId}`);
+        return false;
+      }
+      
+      // Get or create conversation
+      const conversationId = await this.getOrCreateConversation(receiverId);
+      if (!conversationId) {
+        console.error(`Failed to get or create conversation with user ${receiverId}`);
+        return false;
+      }
+      
+      // Insert reply message into the messages table
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: this.userId,
+          sender_name: this.username,
+          conversation_id: conversationId,
+          content: content,
+          reply_to_id: replyToId,
+          reply_text: replyText,
+          is_read: false
+        });
+      
+      if (error) {
+        console.error("Error sending reply message:", error);
+        return false;
+      }
+      
+      console.log(`Reply message sent successfully to user ${receiverId}`);
+      return true;
+    } catch (error) {
+      console.error("Exception sending reply message:", error);
+      return false;
+    }
+  }
+  
+  // Unsend/delete a message
+  async unsendMessage(messageId: string): Promise<boolean> {
+    try {
+      console.log(`Unsending message ${messageId}`);
+      
+      // Update the message as deleted
       const { error } = await supabase
         .from('messages')
         .update({ is_deleted: true })
         .eq('id', messageId)
         .eq('sender_id', this.userId);
-        
-      if (error) throw error;
       
-      // Notify about deletion
-      this.deleteCallbacks.forEach(callback => callback(messageId));
+      if (error) {
+        console.error("Error unsending message:", error);
+        return false;
+      }
+      
+      console.log(`Message ${messageId} unsent successfully`);
+      return true;
     } catch (error) {
-      console.error('Error deleting message:', error);
+      console.error("Exception unsending message:", error);
+      return false;
     }
-    
-    return Promise.resolve();
   }
   
-  public sendTypingIndication(recipientId: number): void {
-    // In a full implementation, this would send a typing event through real-time presence
-    this.typingCallbacks.forEach(callback => callback(recipientId));
-  }
-  
-  public async markMessagesAsRead(senderId: number): Promise<void> {
-    if (!this.userId) return Promise.resolve();
-    
+  // Get chat history for a specific user
+  async getChatHistory(userId: number): Promise<ChatMessage[]> {
     try {
-      // Convert senderId to UUID format
-      const senderUuid = this.getUuidFromNumber(senderId);
+      console.log(`Getting chat history for user ${userId}`);
       
-      // Find conversations with sender
-      const { data: conversations, error: convError } = await supabase
+      // Find conversation between the current user and the target user
+      const conversationId = await this.getConversationId(userId);
+      if (!conversationId) {
+        console.log(`No conversation found with user ${userId}`);
+        return [];
+      }
+      
+      // Get participants to verify this user has access to this conversation
+      const { data: participants, error: participantsError } = await supabase
         .from('conversation_participants')
-        .select('conversation_id')
-        .eq('user_id', this.userId);
-        
-      if (convError || !conversations) return Promise.resolve();
+        .select('user_id')
+        .eq('conversation_id', conversationId);
       
-      const conversationIds = conversations.map(c => c.conversation_id);
+      if (participantsError) {
+        console.error("Error fetching conversation participants:", participantsError);
+        return [];
+      }
       
-      // Update messages
-      const { error } = await supabase
-        .from('messages')
-        .update({ is_read: true })
-        .eq('sender_id', senderUuid)
-        .in('conversation_id', conversationIds)
-        .eq('is_read', false);
-        
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error marking messages as read:', error);
-    }
-    
-    return Promise.resolve();
-  }
-  
-  public async getChatHistory(userId: number): Promise<ChatMessage[]> {
-    if (!this.userId) return [];
-    
-    const recipientUuid = this.getUuidFromNumber(userId);
-    
-    try {
-      // Find conversations with recipient
-      const { data: conversations, error: convError } = await supabase
-        .from('conversation_participants')
-        .select('conversation_id')
-        .eq('user_id', recipientUuid);
-        
-      if (convError || !conversations || conversations.length === 0) return [];
+      // Check if current user is a participant
+      const isParticipant = participants.some(p => p.user_id === this.userId);
+      if (!isParticipant) {
+        console.warn(`User ${this.userId} is not a participant in conversation ${conversationId}`);
+        return [];
+      }
       
-      const conversationIds = conversations.map(c => c.conversation_id);
-      
-      // Find conversations the current user is also part of
-      const { data: myConversations, error: myConvError } = await supabase
-        .from('conversation_participants')
-        .select('conversation_id')
-        .eq('user_id', this.userId)
-        .in('conversation_id', conversationIds);
-        
-      if (myConvError || !myConversations || myConversations.length === 0) return [];
-      
-      const sharedConversationIds = myConversations.map(c => c.conversation_id);
-      
-      // Get messages from these conversations
-      const { data: messages, error: msgError } = await supabase
+      // Fetch messages for this conversation
+      const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .in('conversation_id', sharedConversationIds)
+        .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
-        
-      if (msgError || !messages) return [];
       
-      // Get participant information for determining recipientId
-      const { data: participantsData, error: partError } = await supabase
-        .from('conversation_participants')
-        .select('user_id, conversation_id')
-        .in('conversation_id', sharedConversationIds);
-        
-      if (partError || !participantsData) return [];
+      if (error) {
+        console.error("Error fetching chat history:", error);
+        return [];
+      }
       
-      // Convert to ChatMessage format
-      return messages.map(msg => {
-        // Find the other participant in this conversation
-        const otherParticipants = participantsData.filter(p => 
-          p.conversation_id === msg.conversation_id && p.user_id !== this.userId
-        );
-        
-        // Default to first participant or empty string if none found
-        const otherParticipantId = otherParticipants.length > 0 ? otherParticipants[0].user_id : '';
-        
-        return {
-          id: msg.id,
-          content: msg.content,
-          sender: msg.sender_name,
-          actualUsername: msg.sender_name,
-          senderId: this.toNumberId(msg.sender_id),
-          recipientId: this.toNumberId(this.userId === msg.sender_id ? otherParticipantId : this.userId || ''),
-          timestamp: new Date(msg.created_at),
-          isImage: msg.is_image || false,
-          imageUrl: msg.image_url,
-          isBlurred: msg.is_blurred || false,
-          isVoiceMessage: msg.is_voice_message || false,
-          audioUrl: msg.audio_url,
-          isDeleted: msg.is_deleted || false,
-          replyToId: msg.reply_to_id,
-          replyText: msg.reply_text,
-          translatedContent: msg.translated_content,
-          translatedLanguage: msg.translated_language,
-          isRead: msg.is_read || false
-        };
-      });
+      // Map database messages to ChatMessage format
+      const messages: ChatMessage[] = (data || []).map(message => this.mapDbMessageToChatMessage(message));
+      
+      console.log(`Retrieved ${messages.length} messages from conversation with user ${userId}`);
+      return messages;
     } catch (error) {
-      console.error('Error getting chat history:', error);
+      console.error(`Exception getting chat history for user ${userId}:`, error);
       return [];
     }
   }
   
-  public async getAllChatHistory(): Promise<Record<number, ChatMessage[]>> {
-    if (!this.userId) return {};
-    
+  // Get all chat histories
+  async getAllChatHistory(): Promise<Record<number, ChatMessage[]>> {
     try {
-      // Find all conversations for the current user
-      const { data: conversations, error: convError } = await supabase
+      console.log("Getting all chat histories");
+      
+      // Find all conversations the current user is part of
+      const { data: conversations, error: conversationsError } = await supabase
         .from('conversation_participants')
         .select('conversation_id')
         .eq('user_id', this.userId);
-        
-      if (convError || !conversations || conversations.length === 0) return {};
       
+      if (conversationsError) {
+        console.error("Error fetching user conversations:", conversationsError);
+        return {};
+      }
+      
+      if (!conversations || conversations.length === 0) {
+        console.log("No conversations found for the current user");
+        return {};
+      }
+      
+      // Get conversation IDs
       const conversationIds = conversations.map(c => c.conversation_id);
       
-      // Get all messages from these conversations
-      const { data: messages, error: msgError } = await supabase
+      // Fetch messages for these conversations
+      const { data: messages, error: messagesError } = await supabase
         .from('messages')
         .select('*')
         .in('conversation_id', conversationIds)
         .order('created_at', { ascending: true });
-        
-      if (msgError || !messages) return {};
       
-      // Get other participants for each conversation
-      const result: Record<number, ChatMessage[]> = {};
-      
-      for (const conversationId of conversationIds) {
-        const { data: participants, error: partError } = await supabase
-          .from('conversation_participants')
-          .select('user_id')
-          .eq('conversation_id', conversationId)
-          .neq('user_id', this.userId);
-          
-        if (partError || !participants || participants.length === 0) continue;
-        
-        // Get the other participant's ID
-        const otherUserId = this.toNumberId(participants[0].user_id);
-        
-        // Filter messages for this conversation
-        const conversationMessages = messages
-          .filter(msg => msg.conversation_id === conversationId)
-          .map(msg => ({
-            id: msg.id,
-            content: msg.content,
-            sender: msg.sender_name,
-            actualUsername: msg.sender_name,
-            senderId: this.toNumberId(msg.sender_id),
-            recipientId: this.toNumberId(this.userId === msg.sender_id ? participants[0].user_id : this.userId || ''),
-            timestamp: new Date(msg.created_at),
-            isImage: msg.is_image || false,
-            imageUrl: msg.image_url,
-            isBlurred: msg.is_blurred || false,
-            isVoiceMessage: msg.is_voice_message || false,
-            audioUrl: msg.audio_url,
-            isDeleted: msg.is_deleted || false,
-            replyToId: msg.reply_to_id,
-            replyText: msg.reply_text,
-            translatedContent: msg.translated_content,
-            translatedLanguage: msg.translated_language,
-            isRead: msg.is_read || false
-          }));
-          
-        result[otherUserId] = conversationMessages;
+      if (messagesError) {
+        console.error("Error fetching all messages:", messagesError);
+        return {};
       }
       
-      return result;
+      // Organize messages by sender/receiver
+      const history: Record<number, ChatMessage[]> = {};
+      
+      (messages || []).forEach(message => {
+        const chatMessage = this.mapDbMessageToChatMessage(message);
+        const otherUserId = chatMessage.senderId === this.userId ? chatMessage.receiverId : chatMessage.senderId;
+        
+        if (!history[Number(otherUserId)]) {
+          history[Number(otherUserId)] = [];
+        }
+        
+        history[Number(otherUserId)].push(chatMessage);
+      });
+      
+      console.log(`Retrieved chat histories for ${Object.keys(history).length} conversations`);
+      return history;
     } catch (error) {
-      console.error('Error getting all chat history:', error);
+      console.error("Exception getting all chat histories:", error);
       return {};
     }
   }
   
-  public async clearAllChatHistory(): Promise<void> {
-    // Implementation would delete all messages for this user
-    return Promise.resolve();
+  // Get or create a conversation with a user
+  private async getOrCreateConversation(userId: number): Promise<string | null> {
+    try {
+      // First check if a conversation already exists
+      const existingId = await this.getConversationId(userId);
+      if (existingId) {
+        return existingId;
+      }
+      
+      // Create a new conversation
+      const { data: conversation, error: conversationError } = await supabase
+        .from('conversations')
+        .insert({})
+        .select('id')
+        .single();
+      
+      if (conversationError || !conversation) {
+        console.error("Error creating new conversation:", conversationError);
+        return null;
+      }
+      
+      const conversationId = conversation.id;
+      
+      // Add both users as participants
+      const { error: participantsError } = await supabase
+        .from('conversation_participants')
+        .insert([
+          { conversation_id: conversationId, user_id: this.userId },
+          { conversation_id: conversationId, user_id: userId.toString() }
+        ]);
+      
+      if (participantsError) {
+        console.error("Error adding conversation participants:", participantsError);
+        // Clean up the created conversation
+        await supabase.from('conversations').delete().eq('id', conversationId);
+        return null;
+      }
+      
+      console.log(`Created new conversation ${conversationId} between users ${this.userId} and ${userId}`);
+      return conversationId;
+    } catch (error) {
+      console.error(`Exception getting or creating conversation with user ${userId}:`, error);
+      return null;
+    }
   }
   
-  public async reportUser(
-    reporterId: number,
-    reporterName: string,
-    reportedId: number,
-    reportedName: string,
-    reason: string,
-    details?: string
-  ): Promise<void> {
-    if (!this.userId) return Promise.resolve();
-    
+  // Get conversation ID between the current user and another user
+  private async getConversationId(userId: number): Promise<string | null> {
     try {
-      const reportData = {
-        id: uuidv4(),
-        reporter_id: this.getUuidFromNumber(reporterId),
-        reporter_name: reporterName,
-        reported_id: this.getUuidFromNumber(reportedId),
-        reported_name: reportedName,
-        reason,
-        details,
-        created_at: new Date().toISOString(),
-        status: 'pending'
-      };
+      // Find conversations where the current user is a participant
+      const { data: myConversations, error: myError } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', this.userId);
       
+      if (myError || !myConversations || myConversations.length === 0) {
+        console.log(`No conversations found for user ${this.userId}`);
+        return null;
+      }
+      
+      // Get conversation IDs
+      const conversationIds = myConversations.map(c => c.conversation_id);
+      
+      // Find conversations where the other user is also a participant
+      const { data: otherUserConversations, error: otherError } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', userId.toString())
+        .in('conversation_id', conversationIds);
+      
+      if (otherError || !otherUserConversations || otherUserConversations.length === 0) {
+        console.log(`No shared conversations found between users ${this.userId} and ${userId}`);
+        return null;
+      }
+      
+      // Return the first matching conversation ID
+      return otherUserConversations[0].conversation_id;
+    } catch (error) {
+      console.error(`Exception getting conversation ID with user ${userId}:`, error);
+      return null;
+    }
+  }
+  
+  // Block a user
+  async blockUser(userId: number): Promise<boolean> {
+    try {
+      console.log(`Blocking user ${userId}`);
+      
+      // Insert into blocked_users table
+      const { error } = await supabase
+        .from('blocked_users')
+        .insert({
+          blocker_id: this.userId,
+          blocked_id: userId.toString()
+        });
+      
+      if (error) {
+        console.error("Error blocking user:", error);
+        return false;
+      }
+      
+      // Update local cache
+      this.blockedUsers.add(userId);
+      
+      console.log(`User ${userId} blocked successfully`);
+      return true;
+    } catch (error) {
+      console.error(`Exception blocking user ${userId}:`, error);
+      return false;
+    }
+  }
+  
+  // Unblock a user
+  async unblockUser(userId: number): Promise<boolean> {
+    try {
+      console.log(`Unblocking user ${userId}`);
+      
+      // Remove from blocked_users table
+      const { error } = await supabase
+        .from('blocked_users')
+        .delete()
+        .eq('blocker_id', this.userId)
+        .eq('blocked_id', userId.toString());
+      
+      if (error) {
+        console.error("Error unblocking user:", error);
+        return false;
+      }
+      
+      // Update local cache
+      this.blockedUsers.delete(userId);
+      
+      console.log(`User ${userId} unblocked successfully`);
+      return true;
+    } catch (error) {
+      console.error(`Exception unblocking user ${userId}:`, error);
+      return false;
+    }
+  }
+  
+  // Check if a user is blocked
+  isUserBlocked(userId: number): boolean {
+    return this.blockedUsers.has(userId);
+  }
+  
+  // Get blocked users
+  async getBlockedUsers(): Promise<{ id: number; username: string }[]> {
+    try {
+      console.log("Getting blocked users");
+      
+      // Query blocked_users table
+      const { data, error } = await supabase
+        .from('blocked_users')
+        .select('blocked_id')
+        .eq('blocker_id', this.userId);
+      
+      if (error) {
+        console.error("Error getting blocked users:", error);
+        return [];
+      }
+      
+      // Get user details for each blocked user
+      const blockedUsers: { id: number; username: string }[] = [];
+      
+      for (const item of data || []) {
+        if (item && item.blocked_id) {
+          try {
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('username')
+              .eq('id', item.blocked_id)
+              .single();
+            
+            if (!userError && userData) {
+              blockedUsers.push({
+                id: Number(item.blocked_id),
+                username: userData.username
+              });
+            }
+          } catch (userError) {
+            console.error(`Error getting details for blocked user ${item.blocked_id}:`, userError);
+          }
+        }
+      }
+      
+      console.log(`Retrieved ${blockedUsers.length} blocked users`);
+      return blockedUsers;
+    } catch (error) {
+      console.error("Exception getting blocked users:", error);
+      return [];
+    }
+  }
+  
+  // Report a user
+  async reportUser(userId: number, username: string, reason: string, details?: string): Promise<boolean> {
+    try {
+      console.log(`Reporting user ${userId} (${username}) for reason: ${reason}`);
+      
+      // Insert into user_reports table
       const { error } = await supabase
         .from('user_reports')
-        .insert(reportData);
-        
-      if (error) throw error;
+        .insert({
+          reporter_id: this.userId,
+          reporter_name: this.username,
+          reported_id: userId.toString(),
+          reported_name: username,
+          reason: reason,
+          details: details || '',
+          status: 'pending'
+        });
+      
+      if (error) {
+        console.error("Error reporting user:", error);
+        return false;
+      }
+      
+      console.log(`User ${userId} (${username}) reported successfully`);
+      return true;
     } catch (error) {
-      console.error('Error reporting user:', error);
+      console.error(`Exception reporting user ${userId}:`, error);
+      return false;
     }
-    
-    return Promise.resolve();
   }
   
-  public async getReports(): Promise<UserReport[]> {
+  // Get reports (admin only)
+  async getReports(): Promise<UserReport[]> {
     try {
+      console.log("Getting user reports");
+      
+      // Query user_reports table
       const { data, error } = await supabase
         .from('user_reports')
         .select('*')
         .order('created_at', { ascending: false });
-        
-      if (error) throw error;
       
-      return (data || []).map(report => ({
+      if (error) {
+        console.error("Error getting user reports:", error);
+        return [];
+      }
+      
+      // Map to UserReport interface
+      const reports: UserReport[] = (data || []).map(report => ({
         id: report.id,
-        reporterId: this.toNumberId(report.reporter_id),
+        reporterId: report.reporter_id,
         reporterName: report.reporter_name,
-        reportedId: this.toNumberId(report.reported_id),
+        reportedId: report.reported_id,
         reportedName: report.reported_name,
         reason: report.reason,
-        details: report.details || '',
+        details: report.details,
         timestamp: new Date(report.created_at),
         status: report.status as "pending" | "reviewed" | "dismissed"
       }));
+      
+      console.log(`Retrieved ${reports.length} user reports`);
+      return reports;
     } catch (error) {
-      console.error('Error getting reports:', error);
+      console.error("Exception getting user reports:", error);
       return [];
     }
   }
   
-  public async deleteReport(reportId: string): Promise<void> {
+  // Update report status (admin only)
+  async updateReportStatus(reportId: string, status: "pending" | "reviewed" | "dismissed"): Promise<boolean> {
     try {
+      console.log(`Updating report ${reportId} status to ${status}`);
+      
+      // Update user_reports table
       const { error } = await supabase
         .from('user_reports')
-        .delete()
+        .update({ status })
         .eq('id', reportId);
-        
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error deleting report:', error);
-    }
-    
-    return Promise.resolve();
-  }
-  
-  // Other stub methods from the original
-  public async getBannedWords(): Promise<string[]> {
-    try {
-      const { data, error } = await supabase
-        .from('banned_words')
-        .select('word');
-        
-      if (error) throw error;
       
-      return (data || []).map(row => row.word);
-    } catch (error) {
-      console.error('Error getting banned words:', error);
-      return [];
-    }
-  }
-  
-  public async addBannedWord(word: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('banned_words')
-        .insert({ word });
-        
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error adding banned word:', error);
-    }
-    
-    return Promise.resolve();
-  }
-  
-  public async removeBannedWord(word: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('banned_words')
-        .delete()
-        .eq('word', word);
-        
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error removing banned word:', error);
-    }
-    
-    return Promise.resolve();
-  }
-  
-  public async setBannedWords(words: string[]): Promise<void> {
-    try {
-      // Delete all existing words
-      await supabase
-        .from('banned_words')
-        .delete()
-        .not('id', 'is', null); // Delete all records
-        
-      // Add new words
-      if (words.length > 0) {
-        const wordObjects = words.map(word => ({ word }));
-        await supabase
-          .from('banned_words')
-          .insert(wordObjects);
+      if (error) {
+        console.error("Error updating report status:", error);
+        return false;
       }
+      
+      console.log(`Report ${reportId} status updated to ${status} successfully`);
+      return true;
     } catch (error) {
-      console.error('Error setting banned words:', error);
+      console.error(`Exception updating report ${reportId} status:`, error);
+      return false;
     }
-    
-    return Promise.resolve();
+  }
+  
+  // Delete a conversation (for VIPs)
+  async deleteConversation(userId: number): Promise<boolean> {
+    try {
+      console.log(`Deleting conversation with user ${userId}`);
+      
+      // Get conversation ID
+      const conversationId = await this.getConversationId(userId);
+      if (!conversationId) {
+        console.log(`No conversation found with user ${userId}`);
+        return false;
+      }
+      
+      // Mark all messages as deleted
+      const { error: messagesError } = await supabase
+        .from('messages')
+        .update({ is_deleted: true })
+        .eq('conversation_id', conversationId);
+      
+      if (messagesError) {
+        console.error("Error marking conversation messages as deleted:", messagesError);
+        return false;
+      }
+      
+      console.log(`Conversation with user ${userId} deleted successfully`);
+      return true;
+    } catch (error) {
+      console.error(`Exception deleting conversation with user ${userId}:`, error);
+      return false;
+    }
   }
 }
 
+// Export a singleton instance
 export const supabaseService = new SupabaseService();
