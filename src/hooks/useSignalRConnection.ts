@@ -28,8 +28,8 @@ export const useSignalRConnection = (
       const checkConnection = async () => {
         const isConnected = await checkSupabaseConnection();
         if (!isConnected) {
-          toast.error("Couldn't connect to Supabase. Please check your configuration.", {
-            duration: 6000,
+          toast.error("Couldn't connect to Supabase. Please check your configuration and make sure you've set up your database.", {
+            duration: 10000,
           });
         }
       };
