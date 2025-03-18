@@ -28,6 +28,22 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   title = "Delete Conversation",
   description = "Are you sure you want to delete this entire conversation? This action cannot be undone."
 }) => {
+  // Create a separate handler for cancel to prevent freezing
+  const handleCancel = () => {
+    // First call onCancel to handle any state updates
+    onCancel();
+    // Then ensure the dialog closes properly
+    onOpenChange(false);
+  };
+
+  // Create a separate handler for confirm
+  const handleConfirm = () => {
+    // First call onConfirm to handle any deletion logic
+    onConfirm();
+    // Then ensure the dialog closes properly
+    onOpenChange(false);
+  };
+
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent className="dark:bg-gray-800">
@@ -38,9 +54,9 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
           <AlertDialogAction 
-            onClick={onConfirm}
+            onClick={handleConfirm}
             className="bg-red-600 hover:bg-red-700 text-white"
           >
             Delete

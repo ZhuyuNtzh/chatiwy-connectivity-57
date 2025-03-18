@@ -49,6 +49,16 @@ const VipFeatures: React.FC<VipFeaturesProps> = ({
   vipUpgradeUser,
   onConfirmVipUpgrade
 }) => {
+  // Handle dialog state changes safely
+  const handleOpenChangeDeleteDialog = (open: boolean) => {
+    // If closing the dialog, call the cancel handler
+    if (!open && isDeleteDialogOpen) {
+      onCancelDelete();
+    }
+    // Update the dialog open state
+    setIsDeleteDialogOpen(open);
+  };
+
   return (
     <>
       <MediaGalleryDialog
@@ -60,7 +70,7 @@ const VipFeatures: React.FC<VipFeaturesProps> = ({
       
       <DeleteConfirmationDialog
         isOpen={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
+        onOpenChange={handleOpenChangeDeleteDialog}
         onConfirm={onConfirmDelete}
         onCancel={onCancelDelete}
       />
