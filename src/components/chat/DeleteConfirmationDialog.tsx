@@ -28,7 +28,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   title = "Delete Conversation",
   description = "Are you sure you want to delete this entire conversation? This action cannot be undone."
 }) => {
-  // Create a separate handler for cancel to prevent freezing
+  // Handle cancel action properly
   const handleCancel = () => {
     // First call onCancel to handle any state updates
     onCancel();
@@ -36,12 +36,11 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
     onOpenChange(false);
   };
 
-  // Create a separate handler for confirm
+  // Handle confirm action properly
   const handleConfirm = () => {
-    // First call onConfirm to handle any deletion logic
+    // Call onConfirm first to handle deletion logic
     onConfirm();
-    // Then ensure the dialog closes properly
-    onOpenChange(false);
+    // No need to manually close the dialog here as the operation itself should handle this
   };
 
   return (

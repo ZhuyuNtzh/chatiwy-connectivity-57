@@ -49,13 +49,13 @@ const VipFeatures: React.FC<VipFeaturesProps> = ({
   vipUpgradeUser,
   onConfirmVipUpgrade
 }) => {
-  // Handle dialog state changes safely
+  // Improved handler for dialog state changes
   const handleOpenChangeDeleteDialog = (open: boolean) => {
-    // If closing the dialog, call the cancel handler
     if (!open && isDeleteDialogOpen) {
+      // Only call onCancelDelete when dialog is closing while it was open
       onCancelDelete();
     }
-    // Update the dialog open state
+    // Always update the dialog state
     setIsDeleteDialogOpen(open);
   };
 
