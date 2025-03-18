@@ -1,7 +1,11 @@
 
 import { useEffect, useRef } from 'react';
 import { signalRService } from '../services/signalRService';
+import { supabaseService } from '../services/supabaseService';
 import { UserProfile } from '@/types/user';
+
+// Flag to use Supabase instead of SignalR
+const USE_SUPABASE = true;
 
 export const useSignalRConnection = (
   currentUser: UserProfile | null,
@@ -25,15 +29,35 @@ export const useSignalRConnection = (
       ? 999 // Special admin ID
       : generateUserId(username);
       
-    signalRService.initialize(userId, username);
-    console.log(`SignalR initialized for user ${username} (ID: ${userId})`);
-    
-    // Set up connected users count updates
-    signalRService.onConnectedUsersCountChanged(count => {
-      // Ensure count is within a reasonable range for demo (8-15)
-      const adjustedCount = count > 0 ? Math.min(count, 15) : Math.floor(Math.random() * 8) + 8;
-      setConnectedUsersCount(adjustedCount);
-    });
+    // Use either Supabase or SignalR based on the flag
+    if (USE_SUPABASE) {
+      // Convert to string for Supabase
+      supabaseService.initialize(userId.toString(), username)
+        .then(() => {
+          console.log(`Supabase initialized for user ${username} (ID: ${userId})`);
+        })
+        .catch(err => {
+          console.error("Supabase initialization error:", err);
+        });
+      
+      // Set up connected users count updates
+      supabaseService.onConnectedUsersCountChanged(count => {
+        // Ensure count is within a reasonable range for demo (8-15)
+        const adjustedCount = count > 0 ? Math.min(count, 15) : Math.floor(Math.random() * 8) + 8;
+        setConnectedUsersCount(adjustedCount);
+      });
+    } else {
+      // Original SignalR implementation
+      signalRService.initialize(userId, username);
+      console.log(`SignalR initialized for user ${username} (ID: ${userId})`);
+      
+      // Set up connected users count updates
+      signalRService.onConnectedUsersCountChanged(count => {
+        // Ensure count is within a reasonable range for demo (8-15)
+        const adjustedCount = count > 0 ? Math.min(count, 15) : Math.floor(Math.random() * 8) + 8;
+        setConnectedUsersCount(adjustedCount);
+      });
+    }
     
     // Simulate connected users count update
     setTimeout(() => {
@@ -44,8 +68,14 @@ export const useSignalRConnection = (
     return () => {
       // Never disconnect admin users, even when component unmounts
       if (!isAdminRef.current) {
-        signalRService.disconnect();
-        console.log('SignalR disconnected');
+        if (USE_SUPABASE) {
+          supabaseService.disconnect()
+            .then(() => console.log('Supabase disconnected'))
+            .catch(err => console.error("Supabase disconnect error:", err));
+        } else {
+          signalRService.disconnect();
+          console.log('SignalR disconnected');
+        }
       }
     };
   }, [currentUser, setConnectedUsersCount]);
