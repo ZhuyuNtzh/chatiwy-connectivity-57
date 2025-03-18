@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
@@ -70,13 +71,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
   // Force prefetch the user chat history to ensure connection is working
   useEffect(() => {
     if (!isLoading && USE_SUPABASE) {
-      service.getChatHistory(user.id)
-        .then(messages => {
-          console.log(`Retrieved ${messages.length} messages for conversation with ${user.username}`);
-        })
-        .catch(err => {
-          console.error(`Error fetching chat history for ${user.username}:`, err);
-        });
+      const result = service.getChatHistory(user.id);
+      
+      // Check if result is a Promise, then handle accordingly
+      if (result instanceof Promise) {
+        result
+          .then(messages => {
+            console.log(`Retrieved ${messages.length} messages for conversation with ${user.username}`);
+          })
+          .catch(err => {
+            console.error(`Error fetching chat history for ${user.username}:`, err);
+          });
+      } else {
+        // Handle synchronous result
+        console.log(`Retrieved ${result.length} messages for conversation with ${user.username}`);
+      }
     }
   }, [isLoading, user.id, user.username]);
   

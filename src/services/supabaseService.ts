@@ -854,27 +854,45 @@ class SupabaseService {
         
       if (msgError || !messages) return [];
       
+      // Get participant information for determining recipientId
+      const { data: participantsData, error: partError } = await supabase
+        .from('conversation_participants')
+        .select('user_id, conversation_id')
+        .in('conversation_id', sharedConversationIds);
+        
+      if (partError || !participantsData) return [];
+      
       // Convert to ChatMessage format
-      return messages.map(msg => ({
-        id: msg.id,
-        content: msg.content,
-        sender: msg.sender_name,
-        actualUsername: msg.sender_name,
-        senderId: this.toNumberId(msg.sender_id),
-        recipientId: this.toNumberId(this.userId === msg.sender_id ? participants[0].user_id : this.userId || ''),
-        timestamp: new Date(msg.created_at),
-        isImage: msg.is_image || false,
-        imageUrl: msg.image_url,
-        isBlurred: msg.is_blurred || false,
-        isVoiceMessage: msg.is_voice_message || false,
-        audioUrl: msg.audio_url,
-        isDeleted: msg.is_deleted || false,
-        replyToId: msg.reply_to_id,
-        replyText: msg.reply_text,
-        translatedContent: msg.translated_content,
-        translatedLanguage: msg.translated_language,
-        isRead: msg.is_read || false
-      }));
+      return messages.map(msg => {
+        // Find the other participant in this conversation
+        const otherParticipants = participantsData.filter(p => 
+          p.conversation_id === msg.conversation_id && p.user_id !== this.userId
+        );
+        
+        // Default to first participant or empty string if none found
+        const otherParticipantId = otherParticipants.length > 0 ? otherParticipants[0].user_id : '';
+        
+        return {
+          id: msg.id,
+          content: msg.content,
+          sender: msg.sender_name,
+          actualUsername: msg.sender_name,
+          senderId: this.toNumberId(msg.sender_id),
+          recipientId: this.toNumberId(this.userId === msg.sender_id ? otherParticipantId : this.userId || ''),
+          timestamp: new Date(msg.created_at),
+          isImage: msg.is_image || false,
+          imageUrl: msg.image_url,
+          isBlurred: msg.is_blurred || false,
+          isVoiceMessage: msg.is_voice_message || false,
+          audioUrl: msg.audio_url,
+          isDeleted: msg.is_deleted || false,
+          replyToId: msg.reply_to_id,
+          replyText: msg.reply_text,
+          translatedContent: msg.translated_content,
+          translatedLanguage: msg.translated_language,
+          isRead: msg.is_read || false
+        };
+      });
     } catch (error) {
       console.error('Error getting chat history:', error);
       return [];
@@ -1011,7 +1029,7 @@ class SupabaseService {
         reason: report.reason,
         details: report.details || '',
         timestamp: new Date(report.created_at),
-        status: report.status
+        status: report.status as "pending" | "reviewed" | "dismissed"
       }));
     } catch (error) {
       console.error('Error getting reports:', error);
