@@ -90,9 +90,9 @@ export const enableRealtimeForUsers = async () => {
   try {
     // Check if the function already exists
     // Fix type error by using explicit type casting for RPC
-    const { error: checkError } = await supabase.rpc(
-      'enable_realtime_for_users' as any, 
-      {} as any
+    const { error: checkError } = await (supabase.rpc as any)(
+      'enable_realtime_for_users', 
+      {}
     );
     
     if (checkError && checkError.message.includes('does not exist')) {
@@ -100,9 +100,9 @@ export const enableRealtimeForUsers = async () => {
       
       // Create the function to enable realtime for users table
       // Fix type error by using explicit type casting
-      const { error } = await supabase.rpc(
-        'create_enable_realtime_function' as any, 
-        {} as any
+      const { error } = await (supabase.rpc as any)(
+        'create_enable_realtime_function', 
+        {}
       );
       
       if (error) {
@@ -112,9 +112,9 @@ export const enableRealtimeForUsers = async () => {
       
       // Now execute the function
       // Fix type error by using explicit type casting
-      const { error: execError } = await supabase.rpc(
-        'enable_realtime_for_users' as any, 
-        {} as any
+      const { error: execError } = await (supabase.rpc as any)(
+        'enable_realtime_for_users', 
+        {}
       );
       
       if (execError) {

@@ -1,3 +1,4 @@
+
 // Re-export from the new modular structure
 export { supabase } from './supabase/client';
 export { checkSupabaseConnection } from './supabase/connection';

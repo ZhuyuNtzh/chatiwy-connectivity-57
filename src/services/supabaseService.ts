@@ -649,7 +649,7 @@ class SupabaseService {
     }
   }
   
-  getBlockedUsers(): number[] {
+  getBlockedUserIds(): number[] {
     return Array.from(this.blockedUsers);
   }
   
