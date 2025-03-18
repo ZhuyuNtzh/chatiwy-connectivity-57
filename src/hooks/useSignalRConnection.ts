@@ -55,7 +55,7 @@ export const useSignalRConnection = (
             // Set up realtime publications for presence tracking
             try {
               // Ensure the users table has REPLICA IDENTITY set to FULL to track changes
-              await supabase.rpc('enable_realtime_for_users');
+              await supabase.rpc('enable_realtime_for_users', {});
               console.log('Enabled realtime tracking for users table');
             } catch (err) {
               console.warn('Could not enable realtime for users table:', err);
@@ -252,11 +252,12 @@ export const useSignalRConnection = (
       presenceChannel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           // Track the user's presence with additional metadata
+          // Fix the type error by providing an empty object if there's an issue with the track method
           await presenceChannel.track({
             user_id: userId,
             username: username,
             online_at: new Date().toISOString(),
-          });
+          } as any);
           
           console.log('Started tracking presence');
         } else {

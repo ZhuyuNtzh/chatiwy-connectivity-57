@@ -13,7 +13,7 @@ import VipFeatures from '@/components/chat/VipFeatures';
 import ChatWindowContainer from '@/components/chat/ChatWindowContainer';
 import ChatInputHandlers from '@/components/chat/ChatInputHandlers';
 import ChatLoading from '@/components/chat/ChatLoading';
-import { ChatMessage } from '@/services/signalR/types';
+import { checkSupabaseConnection } from '@/lib/supabase';
 
 // Flag to use Supabase instead of SignalR
 const USE_SUPABASE = true;
@@ -48,6 +48,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
       if (USE_SUPABASE) {
         setIsLoading(true);
         try {
+          // Use the imported checkSupabaseConnection function instead
           const isConnected = await checkSupabaseConnection();
           if (!isConnected) {
             console.error("Failed to connect to Supabase");
@@ -95,19 +96,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
       }
     }
   }, [isLoading, connectionReady, user.id, user.username, service]);
-  
-  // Import functions from checkSupabaseConnection
-  const checkSupabaseConnection = async () => {
-    try {
-      // Make a test query to check connection
-      console.log("Checking Supabase connection...");
-      const { data, error } = await service.testConnection();
-      return !error;
-    } catch (err) {
-      console.error("Error in connection check:", err);
-      return false;
-    }
-  };
   
   const {
     message,
