@@ -311,7 +311,26 @@ class SupabaseService {
     // Convert the numeric ID to string for Supabase
     const recipientUuid = this.getUuidFromNumber(recipientId);
     
-    // Check if conversation exists
+    // First get the recipient's conversations
+    const { data: recipientConversations, error: recipientError } = await supabase
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('user_id', recipientUuid);
+      
+    if (recipientError) {
+      console.error('Error fetching recipient conversations:', recipientError);
+      return null;
+    }
+    
+    if (!recipientConversations || recipientConversations.length === 0) {
+      // No conversations for recipient, create a new one
+      return this.createNewConversation(recipientUuid);
+    }
+    
+    // Get conversation IDs as an array
+    const conversationIds = recipientConversations.map(c => c.conversation_id);
+    
+    // Check if any of those conversations include the current user
     const { data: existingConversations, error: fetchError } = await supabase
       .from('conversation_participants')
       .select(`
@@ -319,11 +338,7 @@ class SupabaseService {
         conversations!inner(*)
       `)
       .eq('user_id', this.userId)
-      .in('conversation_id', supabase
-        .from('conversation_participants')
-        .select('conversation_id')
-        .eq('user_id', recipientUuid)
-      );
+      .in('conversation_id', conversationIds);
       
     if (fetchError) {
       console.error('Error fetching conversation:', fetchError);
@@ -334,6 +349,13 @@ class SupabaseService {
     if (existingConversations && existingConversations.length > 0) {
       return existingConversations[0].conversation_id;
     }
+    
+    // Create new conversation if none exists
+    return this.createNewConversation(recipientUuid);
+  }
+  
+  private async createNewConversation(recipientUuid: string): Promise<string | null> {
+    if (!this.userId) return null;
     
     // Create new conversation
     const conversationId = uuidv4();
