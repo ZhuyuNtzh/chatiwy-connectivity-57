@@ -10,213 +10,470 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      users: {
+      banned_ip: {
         Row: {
-          id: string
-          username: string
-          email?: string
-          role: string
-          gender?: string
-          age?: number
-          location?: string
-          interests?: string[]
-          is_online: boolean
-          last_active?: string
+          id: number
           created_at: string
+          ip_address: string | null
+          reason: string | null
+          banned_until: string | null
         }
         Insert: {
-          id?: string
-          username: string
-          email?: string
-          role?: string
-          gender?: string
-          age?: number
-          location?: string
-          interests?: string[]
-          is_online?: boolean
-          last_active?: string
+          id?: never
           created_at?: string
+          ip_address?: string | null
+          reason?: string | null
+          banned_until?: string | null
         }
         Update: {
-          id?: string
-          username?: string
-          email?: string
-          role?: string
-          gender?: string
-          age?: number
-          location?: string
-          interests?: string[]
-          is_online?: boolean
-          last_active?: string
+          id?: never
           created_at?: string
+          ip_address?: string | null
+          reason?: string | null
+          banned_until?: string | null
         }
       }
-      messages: {
+      banned_nickname: {
         Row: {
-          id: string
-          conversation_id: string
-          sender_id: string
-          sender_name: string
-          content: string
+          id: number
           created_at: string
-          is_read: boolean
-          is_deleted: boolean
-          reply_to_id?: string
-          reply_text?: string
-          is_image: boolean
-          image_url?: string
-          is_blurred?: boolean
-          is_voice_message: boolean
-          audio_url?: string
-          translated_content?: string
-          translated_language?: string
+          banned_pattern: string | null
         }
         Insert: {
-          id?: string
-          conversation_id: string
-          sender_id: string
-          sender_name: string
-          content: string
+          id?: never
           created_at?: string
-          is_read?: boolean
-          is_deleted?: boolean
-          reply_to_id?: string
-          reply_text?: string
-          is_image?: boolean
-          image_url?: string
-          is_blurred?: boolean
-          is_voice_message?: boolean
-          audio_url?: string
-          translated_content?: string
-          translated_language?: string
+          banned_pattern?: string | null
         }
         Update: {
-          id?: string
-          conversation_id?: string
-          sender_id?: string
-          sender_name?: string
-          content?: string
+          id?: never
           created_at?: string
-          is_read?: boolean
-          is_deleted?: boolean
-          reply_to_id?: string
-          reply_text?: string
-          is_image?: boolean
-          image_url?: string
-          is_blurred?: boolean
-          is_voice_message?: boolean
-          audio_url?: string
-          translated_content?: string
-          translated_language?: string
+          banned_pattern?: string | null
         }
       }
-      conversations: {
+      bot: {
         Row: {
-          id: string
+          id: number
           created_at: string
-          updated_at: string
+          bot_name: string | null
+          description: string | null
+          created_by: number | null
         }
         Insert: {
-          id?: string
+          id?: never
           created_at?: string
-          updated_at?: string
+          bot_name?: string | null
+          description?: string | null
+          created_by?: number | null
         }
         Update: {
-          id?: string
+          id?: never
           created_at?: string
-          updated_at?: string
+          bot_name?: string | null
+          description?: string | null
+          created_by?: number | null
         }
       }
-      conversation_participants: {
+      daily_image_upload: {
         Row: {
-          id: string
-          conversation_id: string
-          user_id: string
+          id: number
           created_at: string
+          ip_address: string | null
+          count: number | null
+          date: string | null
         }
         Insert: {
-          id?: string
-          conversation_id: string
-          user_id: string
+          id?: never
           created_at?: string
+          ip_address?: string | null
+          count?: number | null
+          date?: string | null
         }
         Update: {
-          id?: string
-          conversation_id?: string
-          user_id?: string
+          id?: never
           created_at?: string
+          ip_address?: string | null
+          count?: number | null
+          date?: string | null
         }
       }
-      blocked_users: {
+      image: {
         Row: {
-          id: string
-          blocker_id: string
-          blocked_id: string
+          id: number
           created_at: string
+          blob_url: string | null
+          ip_address: string | null
+          uploaded_at: string | null
+          message_id: number | null
+          uploaded_by: number | null
         }
         Insert: {
-          id?: string
-          blocker_id: string
-          blocked_id: string
+          id?: never
           created_at?: string
+          blob_url?: string | null
+          ip_address?: string | null
+          uploaded_at?: string | null
+          message_id?: number | null
+          uploaded_by?: number | null
         }
         Update: {
-          id?: string
-          blocker_id?: string
-          blocked_id?: string
+          id?: never
           created_at?: string
+          blob_url?: string | null
+          ip_address?: string | null
+          uploaded_at?: string | null
+          message_id?: number | null
+          uploaded_by?: number | null
         }
       }
-      user_reports: {
+      interest: {
         Row: {
-          id: string
-          reporter_id: string
-          reporter_name: string
-          reported_id: string
-          reported_name: string
-          reason: string
-          details?: string
-          status: string
+          id: number
           created_at: string
+          name: string | null
         }
         Insert: {
-          id?: string
-          reporter_id: string
-          reporter_name: string
-          reported_id: string
-          reported_name: string
-          reason: string
-          details?: string
-          status?: string
+          id?: never
           created_at?: string
+          name?: string | null
         }
         Update: {
-          id?: string
-          reporter_id?: string
-          reporter_name?: string
-          reported_id?: string
-          reported_name?: string
-          reason?: string
-          details?: string
-          status?: string
+          id?: never
           created_at?: string
+          name?: string | null
         }
       }
-      banned_words: {
+      login_attempt: {
         Row: {
-          id: string
-          word: string
+          id: number
           created_at: string
+          login_attempt: number | null
+          ip_address: string | null
+          timestamp: string | null
+          user_id: number | null
         }
         Insert: {
-          id?: string
-          word: string
+          id?: never
           created_at?: string
+          login_attempt?: number | null
+          ip_address?: string | null
+          timestamp?: string | null
+          user_id?: number | null
         }
         Update: {
-          id?: string
-          word?: string
+          id?: never
           created_at?: string
+          login_attempt?: number | null
+          ip_address?: string | null
+          timestamp?: string | null
+          user_id?: number | null
+        }
+      }
+      message: {
+        Row: {
+          id: number
+          created_at: string
+          content: string | null
+          content_type: string | null
+          sent_at: string | null
+          status: string | null
+          expires_at: string | null
+          is_link: boolean | null
+          voice_duration: number | null
+          sender_id: number | null
+          receiver_id: number | null
+        }
+        Insert: {
+          id?: never
+          created_at?: string
+          content?: string | null
+          content_type?: string | null
+          sent_at?: string | null
+          status?: string | null
+          expires_at?: string | null
+          is_link?: boolean | null
+          voice_duration?: number | null
+          sender_id?: number | null
+          receiver_id?: number | null
+        }
+        Update: {
+          id?: never
+          created_at?: string
+          content?: string | null
+          content_type?: string | null
+          sent_at?: string | null
+          status?: string | null
+          expires_at?: string | null
+          is_link?: boolean | null
+          voice_duration?: number | null
+          sender_id?: number | null
+          receiver_id?: number | null
+        }
+      }
+      moderation_log: {
+        Row: {
+          id: number
+          created_at: string
+          target_ip: string | null
+          action: string | null
+          reason: string | null
+          timestamp: string | null
+          moderator_id: number | null
+          target_user_id: number | null
+        }
+        Insert: {
+          id?: never
+          created_at?: string
+          target_ip?: string | null
+          action?: string | null
+          reason?: string | null
+          timestamp?: string | null
+          moderator_id?: number | null
+          target_user_id?: number | null
+        }
+        Update: {
+          id?: never
+          created_at?: string
+          target_ip?: string | null
+          action?: string | null
+          reason?: string | null
+          timestamp?: string | null
+          moderator_id?: number | null
+          target_user_id?: number | null
+        }
+      }
+      profile: {
+        Row: {
+          id: number
+          created_at: string
+          bio: string | null
+          location: string | null
+          age: number | null
+          gender: string | null
+          user_id: number | null
+        }
+        Insert: {
+          id?: never
+          created_at?: string
+          bio?: string | null
+          location?: string | null
+          age?: number | null
+          gender?: string | null
+          user_id?: number | null
+        }
+        Update: {
+          id?: never
+          created_at?: string
+          bio?: string | null
+          location?: string | null
+          age?: number | null
+          gender?: string | null
+          user_id?: number | null
+        }
+      }
+      reaction: {
+        Row: {
+          id: number
+          created_at: string
+          emoji: string | null
+          timestamp: string | null
+          message_id: number | null
+          user_id: number | null
+        }
+        Insert: {
+          id?: never
+          created_at?: string
+          emoji?: string | null
+          timestamp?: string | null
+          message_id?: number | null
+          user_id?: number | null
+        }
+        Update: {
+          id?: never
+          created_at?: string
+          emoji?: string | null
+          timestamp?: string | null
+          message_id?: number | null
+          user_id?: number | null
+        }
+      }
+      reply: {
+        Row: {
+          id: number
+          created_at: string
+          original_message_id: number | null
+          reply_message_id: number | null
+        }
+        Insert: {
+          id?: never
+          created_at?: string
+          original_message_id?: number | null
+          reply_message_id?: number | null
+        }
+        Update: {
+          id?: never
+          created_at?: string
+          original_message_id?: number | null
+          reply_message_id?: number | null
+        }
+      }
+      report: {
+        Row: {
+          id: number
+          created_at: string
+          reason: string | null
+          timestamp: string | null
+          reporter_user_id: number | null
+          reported_user_id: number | null
+        }
+        Insert: {
+          id?: never
+          created_at?: string
+          reason?: string | null
+          timestamp?: string | null
+          reporter_user_id?: number | null
+          reported_user_id?: number | null
+        }
+        Update: {
+          id?: never
+          created_at?: string
+          reason?: string | null
+          timestamp?: string | null
+          reporter_user_id?: number | null
+          reported_user_id?: number | null
+        }
+      }
+      site_setting: {
+        Row: {
+          id: number
+          created_at: string
+          key: string | null
+          value: string | null
+        }
+        Insert: {
+          id?: never
+          created_at?: string
+          key?: string | null
+          value?: string | null
+        }
+        Update: {
+          id?: never
+          created_at?: string
+          key?: string | null
+          value?: string | null
+        }
+      }
+      subscription: {
+        Row: {
+          id: number
+          created_at: string
+          plan_name: string | null
+          price: number | null
+          duration_days: number | null
+          features: string | null
+          max_interests: number | null
+        }
+        Insert: {
+          id?: never
+          created_at?: string
+          plan_name?: string | null
+          price?: number | null
+          duration_days?: number | null
+          features?: string | null
+          max_interests?: number | null
+        }
+        Update: {
+          id?: never
+          created_at?: string
+          plan_name?: string | null
+          price?: number | null
+          duration_days?: number | null
+          features?: string | null
+          max_interests?: number | null
+        }
+      }
+      user: {
+        Row: {
+          id: number
+          created_at: string
+          name: string | null
+          email: string | null
+          password: string | null
+          user_type: string | null
+          nickname: string | null
+          password_hash: string | null
+          avatar_url: string | null
+          is_online: boolean | null
+          last_activity: string | null
+          ip_address: string | null
+          session_token: string | null
+          visibility: string | null
+          expires_at: string | null
+          voice_message_url: string | null
+          is_typing: boolean | null
+          active_connections: number | null
+          subscription_id: number | null
+        }
+        Insert: {
+          id?: never
+          created_at?: string
+          name?: string | null
+          email?: string | null
+          password?: string | null
+          user_type?: string | null
+          nickname?: string | null
+          password_hash?: string | null
+          avatar_url?: string | null
+          is_online?: boolean | null
+          last_activity?: string | null
+          ip_address?: string | null
+          session_token?: string | null
+          visibility?: string | null
+          expires_at?: string | null
+          voice_message_url?: string | null
+          is_typing?: boolean | null
+          active_connections?: number | null
+          subscription_id?: number | null
+        }
+        Update: {
+          id?: never
+          created_at?: string
+          name?: string | null
+          email?: string | null
+          password?: string | null
+          user_type?: string | null
+          nickname?: string | null
+          password_hash?: string | null
+          avatar_url?: string | null
+          is_online?: boolean | null
+          last_activity?: string | null
+          ip_address?: string | null
+          session_token?: string | null
+          visibility?: string | null
+          expires_at?: string | null
+          voice_message_url?: string | null
+          is_typing?: boolean | null
+          active_connections?: number | null
+          subscription_id?: number | null
+        }
+      }
+      user_interest: {
+        Row: {
+          id: number
+          created_at: string
+          user_id: number | null
+          interest_id: number | null
+        }
+        Insert: {
+          id?: never
+          created_at?: string
+          user_id?: number | null
+          interest_id?: number | null
+        }
+        Update: {
+          id?: never
+          created_at?: string
+          user_id?: number | null
+          interest_id?: number | null
         }
       }
     }

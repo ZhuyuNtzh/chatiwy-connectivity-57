@@ -29,12 +29,12 @@ export const checkSupabaseConnection = async () => {
     }
     
     // Using a simple query to check connection
-    const { error } = await supabase.from('users').select('count', { count: 'exact', head: true });
+    const { error } = await supabase.from('user').select('count', { count: 'exact', head: true });
     
     if (error) {
       if (error.code === '42P01') {
         // Table doesn't exist error - the database hasn't been initialized
-        console.error('Supabase table "users" not found. Please initialize your database with the SQL script.');
+        console.error('Supabase table "user" not found. Please initialize your database with the SQL script.');
         toast.error('Database tables not found. Please run the initialization SQL script.');
         return false;
       } else {
