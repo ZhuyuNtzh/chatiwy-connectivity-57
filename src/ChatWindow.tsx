@@ -12,7 +12,6 @@ import UserModals from '@/components/chat/UserModals';
 import VipFeatures from '@/components/chat/VipFeatures';
 import ChatWindowContainer from '@/components/chat/ChatWindowContainer';
 import ChatInputHandlers from '@/components/chat/ChatInputHandlers';
-import { checkSupabaseConnection } from '@/lib/supabase';
 import ChatLoading from '@/components/chat/ChatLoading';
 import { ChatMessage } from '@/services/signalR/types';
 
@@ -42,13 +41,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
   // Use correct service based on flag
   const service = USE_SUPABASE ? supabaseService : signalRService;
   
-  // Check Supabase connection on mount
+  // Check connection and set up service
   useEffect(() => {
-    if (USE_SUPABASE) {
-      setIsLoading(true);
-      
-      checkSupabaseConnection()
-        .then(isConnected => {
+    // Setup function
+    const setupConnection = async () => {
+      if (USE_SUPABASE) {
+        setIsLoading(true);
+        try {
+          const isConnected = await checkSupabaseConnection();
           if (!isConnected) {
             console.error("Failed to connect to Supabase");
             toast.error("Couldn't connect to chat backend. Please check your configuration.", {
@@ -58,29 +58,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
             console.log("Successfully connected to Supabase");
             setConnectionReady(true);
           }
-          setIsLoading(false);
-        })
-        .catch((err) => {
+        } catch (err) {
           console.error("Error connecting to chat service", err);
           toast.error("Error connecting to chat service", { 
             duration: 6000,
           });
+        } finally {
           setIsLoading(false);
-        });
-    } else {
-      setIsLoading(false);
-      setConnectionReady(true);
-    }
+        }
+      } else {
+        setIsLoading(false);
+        setConnectionReady(true);
+      }
+    };
+    
+    setupConnection();
   }, []);
   
-  // Force prefetch chat history to ensure connection works
+  // Prefetch chat history
   useEffect(() => {
     if (!isLoading && connectionReady && USE_SUPABASE) {
       console.log(`Prefetching chat history for user ${user.username} (ID: ${user.id})`);
-      
       const result = service.getChatHistory(user.id);
       
-      // Handle both synchronous and Promise return types
       if (result instanceof Promise) {
         result
           .then(messages => {
@@ -95,6 +95,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
       }
     }
   }, [isLoading, connectionReady, user.id, user.username, service]);
+  
+  // Import functions from checkSupabaseConnection
+  const checkSupabaseConnection = async () => {
+    try {
+      // Make a test query to check connection
+      console.log("Checking Supabase connection...");
+      const { data, error } = await service.testConnection();
+      return !error;
+    } catch (err) {
+      console.error("Error in connection check:", err);
+      return false;
+    }
+  };
   
   const {
     message,

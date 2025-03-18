@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../types/supabase';
 import { toast } from 'sonner';
@@ -89,10 +90,7 @@ export const checkSupabaseConnection = async () => {
   }
 };
 
-// Add Supabase import
-import { supabase } from '@/lib/supabase';
-
-// Add function to enable realtime for users table if it doesn't exist already
+// Function to enable realtime for users table if it doesn't exist already
 export const enableRealtimeForUsers = async () => {
   try {
     // Check if the function already exists
@@ -226,9 +224,6 @@ export const registerUser = async (userId: string, username: string, role: strin
         role,
         is_online: true,
         last_active: new Date().toISOString()
-      }, { 
-        onConflict: 'id',
-        ignoreDuplicates: false
       });
       
     if (error) {

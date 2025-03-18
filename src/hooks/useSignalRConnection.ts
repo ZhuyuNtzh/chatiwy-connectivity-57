@@ -252,13 +252,13 @@ export const useSignalRConnection = (
       presenceChannel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           // Track the user's presence with additional metadata
-          const presenceTrackStatus = await presenceChannel.track({
+          await presenceChannel.track({
             user_id: userId,
             username: username,
             online_at: new Date().toISOString(),
           });
           
-          console.log('Started tracking presence with status:', presenceTrackStatus);
+          console.log('Started tracking presence');
         } else {
           console.log('Presence channel subscription status:', status);
         }
