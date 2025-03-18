@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { ChatMessage } from "./signalR/types";
 import { setupUserPresence, subscribeToConversation } from "@/lib/supabase/realtime";
@@ -274,8 +273,11 @@ class SupabaseService {
           timestamp: new Date(message.created_at),
           isRead: message.is_read,
           status: 'delivered',
-          messageType: message.message_type || 'text',
-          mediaUrl: message.media_url || null,
+          // Use optional properties that exist in ChatMessage type
+          isImage: message.is_image,
+          isVoiceMessage: message.is_voice_message,
+          imageUrl: message.media_url || undefined,
+          audioUrl: message.media_url || undefined
         };
         
         // Notify all callbacks

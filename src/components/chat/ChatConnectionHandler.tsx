@@ -25,10 +25,10 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
     setIsLoading(true);
     
     // Test connection to Supabase
-    service.testConnection()
-      .then(({ error }) => {
-        if (error) {
-          console.error("Failed to connect to Supabase", error);
+    checkSupabaseConnection()
+      .then((isConnected) => {
+        if (!isConnected) {
+          console.error("Failed to connect to Supabase");
           toast.error("Couldn't connect to chat backend. Please check your configuration.", {
             duration: 6000,
           });

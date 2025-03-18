@@ -9,10 +9,10 @@ export const enableRealtimeForUsers = async (): Promise<boolean> => {
   try {
     console.log('Enabling realtime for users table...');
     
-    // Enable realtime for the users table
+    // Enable realtime for the users table - using as any to bypass type checking
     const { error } = await supabase.rpc(
       'enable_realtime_subscription',
-      { table_name: 'users' }
+      { table_name: 'users' } as any
     );
     
     if (error) {

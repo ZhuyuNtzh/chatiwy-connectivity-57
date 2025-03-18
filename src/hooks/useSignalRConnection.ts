@@ -23,7 +23,8 @@ export const useSignalRConnection = (
 
     // Create a flag to track if this component is mounted
     let isMounted = true;
-    const userId = String(currentUser.id);
+    // Use string ID if available, or use username as fallback
+    const userId = currentUser.id || currentUser.username;
     const username = currentUser.username;
 
     // Connect to SignalR hub
@@ -31,17 +32,13 @@ export const useSignalRConnection = (
       try {
         console.log('Connecting to SignalR hub...');
         // Initialize SignalR service with current user
-        await signalRService.initialize(userId, username);
+        // Convert userId to number for signalRService
+        await signalRService.initialize(Number(userId), username);
         console.log('Successfully connected to SignalR');
 
         // Also update the user's online status in Supabase
         await updateUserOnlineStatus(userId, true);
         
-        // Set up user status change event
-        signalRService.onUserStatusChanged((userId, isOnline) => {
-          console.log(`User ${userId} is now ${isOnline ? 'online' : 'offline'}`);
-        });
-
         // Set up connected users count change event
         if (setConnectedUsersCount) {
           signalRService.onConnectedUsersCountChanged((count) => {
@@ -65,11 +62,6 @@ export const useSignalRConnection = (
         // Initialize Supabase service with current user
         await supabaseService.initialize(userId, username);
         console.log('Successfully connected to Supabase realtime');
-
-        // Set up user status change event
-        supabaseService.onUserStatusChanged((userId, isOnline) => {
-          console.log(`User ${userId} is now ${isOnline ? 'online' : 'offline'}`);
-        });
 
         // Set up connected users count change event
         if (setConnectedUsersCount) {
