@@ -32,12 +32,15 @@ export const useSignalRConnection = (
       try {
         console.log('Connecting to SignalR hub...');
         // Initialize SignalR service with current user
-        // Convert userId to number for signalRService
-        await signalRService.initialize(Number(userId), username);
+        // Convert userId to number for signalRService if needed
+        await signalRService.initialize(
+          typeof userId === 'string' ? parseInt(userId) || 0 : userId, 
+          username
+        );
         console.log('Successfully connected to SignalR');
 
         // Also update the user's online status in Supabase
-        await updateUserOnlineStatus(userId, true);
+        await updateUserOnlineStatus(userId.toString(), true);
         
         // Set up connected users count change event
         if (setConnectedUsersCount) {
@@ -60,7 +63,7 @@ export const useSignalRConnection = (
       try {
         console.log('Connecting to Supabase realtime...');
         // Initialize Supabase service with current user
-        await supabaseService.initialize(userId, username);
+        await supabaseService.initialize(userId.toString(), username);
         console.log('Successfully connected to Supabase realtime');
 
         // Set up connected users count change event
@@ -87,7 +90,7 @@ export const useSignalRConnection = (
     const handleBeforeUnload = () => {
       signalRService.disconnect();
       supabaseService.disconnect();
-      updateUserOnlineStatus(userId, false);
+      updateUserOnlineStatus(userId.toString(), false);
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -105,7 +108,7 @@ export const useSignalRConnection = (
         .catch(err => console.error('Error disconnecting from Supabase:', err));
         
       // Update user status in database
-      updateUserOnlineStatus(userId, false)
+      updateUserOnlineStatus(userId.toString(), false)
         .catch(err => console.error('Error updating user offline status:', err));
         
       // Remove event listener

@@ -9,10 +9,11 @@ export const enableRealtimeForUsers = async (): Promise<boolean> => {
   try {
     console.log('Enabling realtime for users table...');
     
-    // Enable realtime for the users table - using proper type casting
+    // Enable realtime for the users table - using proper type casting with explicit any
+    // This addresses the "string is not assignable to parameter of type 'never'" error
     const { error } = await supabase.rpc(
-      'enable_realtime_subscription',
-      { table_name: 'users' } as Record<string, unknown>
+      'enable_realtime_subscription' as any,
+      { table_name: 'users' } as any
     );
     
     if (error) {

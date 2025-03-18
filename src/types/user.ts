@@ -3,6 +3,7 @@
 export type UserRole = 'standard' | 'vip' | 'admin';
 
 export interface UserProfile {
+  id?: string; // Add optional id property
   username: string;
   age?: number;
   gender?: string;

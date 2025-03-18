@@ -273,10 +273,10 @@ class SupabaseService {
           timestamp: new Date(message.created_at),
           isRead: message.is_read,
           status: 'delivered',
-          // Use properties that exist in ChatMessage type
+          // Fixed property mapping
           isImage: message.is_image,
-          imageUrl: message.media_url || undefined,
-          audioUrl: message.media_url || undefined
+          imageUrl: message.image_url || undefined,
+          audioUrl: message.audio_url || undefined
         };
         
         // Notify all callbacks
@@ -415,33 +415,6 @@ class SupabaseService {
     return this.blockedUsers.has(userId);
   }
   
-  async getBlockedUsers(): Promise<any[]> {
-    if (!this.userId) return [];
-    
-    try {
-      const { data, error } = await supabase
-        .from('blocked_users')
-        .select(`
-          blocked_id,
-          blocked_user:blocked_id(
-            username,
-            id
-          )
-        `)
-        .eq('blocker_id', this.userId);
-        
-      if (error) {
-        console.error('Error fetching blocked users:', error);
-        return [];
-      }
-      
-      return data || [];
-    } catch (err) {
-      console.error('Exception fetching blocked users:', err);
-      return [];
-    }
-  }
-  
   async reportUser(userId: number, reason: string): Promise<boolean> {
     if (!this.userId || !this.username) return false;
     
@@ -505,7 +478,7 @@ class SupabaseService {
           return [];
         }
         
-        // Convert to ChatMessage format
+        // Convert to ChatMessage format with proper property mapping
         const messages: ChatMessage[] = (data || []).map(msg => ({
           id: msg.id,
           senderId: parseInt(msg.sender_id),
@@ -515,11 +488,10 @@ class SupabaseService {
           timestamp: new Date(msg.created_at),
           isRead: msg.is_read,
           status: 'delivered',
-          // Use correctly typed properties from ChatMessage
+          // Fixed property mapping
           isImage: msg.is_image,
-          imageUrl: msg.media_url,
-          isVoiceMessage: msg.is_voice_message,
-          audioUrl: msg.media_url,
+          imageUrl: msg.image_url || undefined,
+          audioUrl: msg.audio_url || undefined,
           isDeleted: msg.is_deleted
         }));
         
@@ -627,7 +599,7 @@ class SupabaseService {
         return [];
       }
       
-      // Convert to ChatMessage format
+      // Convert to ChatMessage format with proper property mapping
       const allMessages: ChatMessage[] = (messages || []).map(msg => ({
         id: msg.id,
         senderId: parseInt(msg.sender_id),
@@ -637,13 +609,42 @@ class SupabaseService {
         timestamp: new Date(msg.created_at),
         isRead: msg.is_read,
         status: 'delivered',
-        messageType: msg.is_image ? 'image' : (msg.is_voice_message ? 'voice' : 'text'),
-        mediaUrl: msg.image_url || msg.audio_url || null,
+        isImage: msg.is_image,
+        imageUrl: msg.image_url || undefined,
+        audioUrl: msg.audio_url || undefined,
+        isDeleted: msg.is_deleted
       }));
       
       return allMessages;
     } catch (err) {
       console.error('Error fetching all chat history:', err);
+      return [];
+    }
+  }
+  
+  async getBlockedUsers(): Promise<any[]> {
+    if (!this.userId) return [];
+    
+    try {
+      const { data, error } = await supabase
+        .from('blocked_users')
+        .select(`
+          blocked_id,
+          blocked_user:blocked_id(
+            username,
+            id
+          )
+        `)
+        .eq('blocker_id', this.userId);
+        
+      if (error) {
+        console.error('Error fetching blocked users:', error);
+        return [];
+      }
+      
+      return data || [];
+    } catch (err) {
+      console.error('Exception fetching blocked users:', err);
       return [];
     }
   }
