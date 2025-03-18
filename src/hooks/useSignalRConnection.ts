@@ -5,6 +5,7 @@ import { supabaseService } from '../services/supabaseService';
 import { UserProfile } from '@/types/user';
 import { toast } from 'sonner';
 import { checkSupabaseConnection, isUsernameTaken, registerUser } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 // Flag to use Supabase instead of SignalR
 const USE_SUPABASE = true;
@@ -17,6 +18,7 @@ export const useSignalRConnection = (
   const connectionCheckedRef = useRef(false);
   const [connectionAvailable, setConnectionAvailable] = useState<boolean | null>(null);
   const [usernameValidated, setUsernameValidated] = useState(false);
+  const presenceChannelRef = useRef<any>(null);
   
   // Update admin ref when role changes
   useEffect(() => {
@@ -49,6 +51,17 @@ export const useSignalRConnection = (
               duration: 3000,
               id: 'supabase-connection-success'
             });
+            
+            // Set up realtime publications for presence tracking
+            try {
+              // Ensure the users table has REPLICA IDENTITY set to FULL to track changes
+              await supabase.rpc('enable_realtime_for_users');
+              console.log('Enabled realtime tracking for users table');
+            } catch (err) {
+              console.warn('Could not enable realtime for users table:', err);
+              // This might fail if the function doesn't exist or user doesn't have permission
+              // We'll continue anyway as the admin might have set this up already
+            }
           }
         } catch (error) {
           console.error("Error checking Supabase connection:", error);
@@ -128,6 +141,9 @@ export const useSignalRConnection = (
             setConnectedUsersCount(count);
           });
           
+          // Set up presence channel for real-time user status
+          setupPresenceChannel(userId, currentUser.username);
+          
           // Force refresh of connected users count
           setTimeout(() => {
             supabaseService.fetchConnectedUsersCount()
@@ -164,6 +180,13 @@ export const useSignalRConnection = (
     checkUsernameAndConnect();
     
     return () => {
+      // Cleanup presence channel
+      if (presenceChannelRef.current) {
+        console.log('Unsubscribing from presence channel');
+        presenceChannelRef.current.unsubscribe();
+        presenceChannelRef.current = null;
+      }
+      
       // Never disconnect admin users, even when component unmounts
       if (!isAdminRef.current) {
         if (USE_SUPABASE) {
@@ -177,6 +200,76 @@ export const useSignalRConnection = (
       }
     };
   }, [currentUser, setConnectedUsersCount, connectionAvailable, usernameValidated]);
+  
+  // Helper function to set up presence channel
+  const setupPresenceChannel = (userId: string, username: string) => {
+    try {
+      // Clean up existing channel if any
+      if (presenceChannelRef.current) {
+        presenceChannelRef.current.unsubscribe();
+      }
+      
+      // Set up a presence channel to track online users
+      const presenceChannel = supabase.channel('online-users', {
+        config: {
+          presence: {
+            key: userId,
+          },
+        },
+      });
+      
+      presenceChannel
+        .on('presence', { event: 'sync' }, () => {
+          const state = presenceChannel.presenceState();
+          console.log('Presence state synchronized:', state);
+          
+          // Count unique users who are online
+          const onlineCount = Object.keys(state).length;
+          console.log(`Presence sync: ${onlineCount} users online`);
+          
+          if (onlineCount > 0) {
+            setConnectedUsersCount(onlineCount);
+          }
+        })
+        .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+          console.log(`User ${key} joined with state:`, newPresences);
+          
+          // Refresh user count on joins
+          supabaseService.fetchConnectedUsersCount()
+            .then(count => setConnectedUsersCount(count))
+            .catch(err => console.error('Error fetching count on join:', err));
+        })
+        .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+          console.log(`User ${key} left with state:`, leftPresences);
+          
+          // Refresh user count on leaves
+          supabaseService.fetchConnectedUsersCount()
+            .then(count => setConnectedUsersCount(count))
+            .catch(err => console.error('Error fetching count on leave:', err));
+        });
+      
+      // Start tracking presence
+      presenceChannel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          // Track the user's presence with additional metadata
+          const presenceTrackStatus = await presenceChannel.track({
+            user_id: userId,
+            username: username,
+            online_at: new Date().toISOString(),
+          });
+          
+          console.log('Started tracking presence with status:', presenceTrackStatus);
+        } else {
+          console.log('Presence channel subscription status:', status);
+        }
+      });
+      
+      // Save reference to channel for cleanup
+      presenceChannelRef.current = presenceChannel;
+    } catch (err) {
+      console.error('Error setting up presence channel:', err);
+    }
+  };
 };
 
 // Helper function to generate a numeric ID from a string
@@ -193,6 +286,3 @@ function generateUserId(username: string): number {
   // Ensure it's always positive by using absolute value
   return Math.abs(hash);
 }
-
-// Add Supabase import
-import { supabase } from '@/lib/supabase';
