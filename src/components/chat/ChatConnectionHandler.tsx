@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { checkSupabaseConnection } from '@/lib/supabase';
+import { checkSupabaseConnection, initializeSupabase } from '@/lib/supabase';
 import ChatLoading from './ChatLoading';
 
 interface ChatConnectionHandlerProps {
@@ -19,17 +19,35 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [connectionReady, setConnectionReady] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
 
   // Check Supabase connection on mount
   useEffect(() => {
-    setIsLoading(true);
-    
-    // Test connection to Supabase
-    checkSupabaseConnection()
-      .then((isConnected) => {
+    const connectToSupabase = async () => {
+      setIsLoading(true);
+      
+      try {
+        // Initialize Supabase with all necessary features
+        const isConnected = await initializeSupabase();
+        
         if (!isConnected) {
-          console.error("Failed to connect to Supabase");
-          toast.error("Couldn't connect to chat backend. Please check your configuration.", {
+          console.error("Failed to initialize Supabase");
+          
+          if (retryCount < maxRetries) {
+            toast.error("Connection issue. Retrying...", {
+              duration: 3000,
+            });
+            
+            // Retry after a short delay, with backoff
+            setTimeout(() => {
+              setRetryCount(prev => prev + 1);
+            }, 1000 * Math.pow(2, retryCount));
+            
+            return;
+          }
+          
+          toast.error("Couldn't connect to chat backend. Please refresh the page.", {
             duration: 6000,
           });
           setConnectionReady(false);
@@ -37,17 +55,19 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
           console.log("Successfully connected to Supabase");
           setConnectionReady(true);
         }
-        setIsLoading(false);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Error testing connection:", err);
         toast.error("Error connecting to chat service", { 
           duration: 6000,
         });
-        setIsLoading(false);
         setConnectionReady(false);
-      });
-  }, [service]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    connectToSupabase();
+  }, [retryCount]);
   
   // Force prefetch chat history to ensure connection works
   useEffect(() => {
@@ -74,6 +94,23 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
 
   if (isLoading) {
     return <ChatLoading />;
+  }
+
+  if (!connectionReady) {
+    return (
+      <div className="flex flex-col items-center justify-center p-6 h-full">
+        <div className="text-red-500 text-xl mb-4">Connection Error</div>
+        <p className="text-center mb-4">
+          Unable to connect to the chat service. Please check your internet connection and try again.
+        </p>
+        <button 
+          onClick={() => setRetryCount(prev => prev + 1)}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Retry Connection
+        </button>
+      </div>
+    );
   }
 
   return <>{children}</>;

@@ -6,8 +6,11 @@ import { toast } from 'sonner';
 let connectionWarningShown = false;
 let connectionSuccessShown = false;
 
-// Add a simple health check function to verify connection
-export const checkSupabaseConnection = async () => {
+/**
+ * Check if Supabase connection is available
+ * @returns Promise resolving to boolean indicating if connection is successful
+ */
+export const checkSupabaseConnection = async (): Promise<boolean> => {
   try {
     console.log('Checking Supabase connection...');
     
@@ -85,11 +88,13 @@ export const checkSupabaseConnection = async () => {
   }
 };
 
-// Function to enable realtime for users table if it doesn't exist already
-export const enableRealtimeForUsers = async () => {
+/**
+ * Enable realtime for users table if it doesn't exist already
+ * @returns Promise resolving to boolean indicating if operation was successful
+ */
+export const enableRealtimeForUsers = async (): Promise<boolean> => {
   try {
     // Check if the function already exists
-    // Fix type error by using explicit type casting for RPC
     const { error: checkError } = await (supabase.rpc as any)(
       'enable_realtime_for_users', 
       {}
@@ -99,7 +104,6 @@ export const enableRealtimeForUsers = async () => {
       console.log('Creating enable_realtime_for_users function...');
       
       // Create the function to enable realtime for users table
-      // Fix type error by using explicit type casting
       const { error } = await (supabase.rpc as any)(
         'create_enable_realtime_function', 
         {}
@@ -111,7 +115,6 @@ export const enableRealtimeForUsers = async () => {
       }
       
       // Now execute the function
-      // Fix type error by using explicit type casting
       const { error: execError } = await (supabase.rpc as any)(
         'enable_realtime_for_users', 
         {}
@@ -133,6 +136,29 @@ export const enableRealtimeForUsers = async () => {
     return true;
   } catch (err) {
     console.error('Exception enabling realtime:', err);
+    return false;
+  }
+};
+
+/**
+ * Initialize Supabase connection and enable necessary features
+ * @returns Promise resolving to boolean indicating if initialization was successful
+ */
+export const initializeSupabase = async (): Promise<boolean> => {
+  try {
+    // First check connection
+    const isConnected = await checkSupabaseConnection();
+    if (!isConnected) {
+      return false;
+    }
+    
+    // Enable realtime for all required tables
+    const { enableRealtimeForChat } = await import('./realtime');
+    const isRealtimeEnabled = await enableRealtimeForChat();
+    
+    return isRealtimeEnabled;
+  } catch (err) {
+    console.error('Exception initializing Supabase:', err);
     return false;
   }
 };

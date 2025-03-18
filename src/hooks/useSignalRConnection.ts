@@ -5,6 +5,8 @@ import { signalRService } from '@/services/signalRService';
 import { supabaseService } from '@/services/supabaseService';
 import { toast } from 'sonner';
 import { updateUserOnlineStatus } from '@/lib/supabase';
+import { initializeSupabase } from '@/lib/supabase/connection';
+import { broadcastUserStatus } from '@/lib/supabase/realtime';
 
 /**
  * Hook to connect to SignalR and update user status
@@ -32,8 +34,8 @@ export const useSignalRConnection = (
       try {
         console.log('Connecting to SignalR hub...');
         // Initialize SignalR service with current user
-        // Convert userId to number for signalRService if needed
         await signalRService.initialize(
+          // Convert userId to number for signalRService if needed
           typeof userId === 'string' ? parseInt(userId) || 0 : userId, 
           username
         );
@@ -62,9 +64,19 @@ export const useSignalRConnection = (
     const connectToSupabase = async () => {
       try {
         console.log('Connecting to Supabase realtime...');
+        // Initialize Supabase
+        const initSuccess = await initializeSupabase();
+        if (!initSuccess) {
+          console.error('Failed to initialize Supabase');
+          return;
+        }
+        
         // Initialize Supabase service with current user
         await supabaseService.initialize(userId.toString(), username);
         console.log('Successfully connected to Supabase realtime');
+        
+        // Broadcast user status
+        await broadcastUserStatus(userId.toString(), true);
 
         // Set up connected users count change event
         if (setConnectedUsersCount) {
@@ -91,6 +103,7 @@ export const useSignalRConnection = (
       signalRService.disconnect();
       supabaseService.disconnect();
       updateUserOnlineStatus(userId.toString(), false);
+      broadcastUserStatus(userId.toString(), false);
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -110,6 +123,10 @@ export const useSignalRConnection = (
       // Update user status in database
       updateUserOnlineStatus(userId.toString(), false)
         .catch(err => console.error('Error updating user offline status:', err));
+      
+      // Broadcast user offline status
+      broadcastUserStatus(userId.toString(), false)
+        .catch(err => console.error('Error broadcasting offline status:', err));
         
       // Remove event listener
       window.removeEventListener('beforeunload', handleBeforeUnload);
