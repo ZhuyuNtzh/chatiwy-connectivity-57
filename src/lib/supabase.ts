@@ -14,15 +14,17 @@ let connectionSuccessShown = false;
 // Add a simple health check function to verify connection
 export const checkSupabaseConnection = async () => {
   try {
+    console.log('Checking Supabase connection...');
+    
     // Try to query for the presence of the users table first
-    const { error: userTableError } = await supabase
+    const { data, error: userTableError } = await supabase
       .from('users')
       .select('count', { count: 'exact', head: true })
       .limit(1);
     
     // If that fails, try another table
     if (userTableError) {
-      console.log('Could not query users table:', userTableError.message);
+      console.error('Could not query users table:', userTableError.message);
       console.log('Falling back to realtime presence test...');
       
       // Try to create a test channel to verify Supabase connection
@@ -31,7 +33,7 @@ export const checkSupabaseConnection = async () => {
       // Create a promise to wait for subscription
       const subscriptionPromise = new Promise<boolean>((resolve) => {
         const timeoutId = setTimeout(() => {
-          console.log('Supabase realtime subscription timed out');
+          console.error('Supabase realtime subscription timed out');
           resolve(false);
         }, 5000);
         
@@ -68,7 +70,7 @@ export const checkSupabaseConnection = async () => {
       return true;
     }
     
-    console.log('Successfully connected to Supabase');
+    console.log('Successfully connected to Supabase database');
     if (!connectionSuccessShown) {
       connectionSuccessShown = true;
       toast.success('Connected to Supabase successfully!', {
@@ -88,10 +90,117 @@ export const checkSupabaseConnection = async () => {
   }
 };
 
+// Check if a username is already taken
+export const isUsernameTaken = async (username: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('username', username)
+      .maybeSingle();
+      
+    if (error) {
+      console.error('Error checking username:', error);
+      return false; // Assume not taken on error to allow retry
+    }
+    
+    return !!data; // Return true if data exists (username is taken)
+  } catch (err) {
+    console.error('Exception checking username:', err);
+    return false;
+  }
+};
+
+// Register a new user in the database
+export const registerUser = async (userId: string, username: string, role: string = 'standard'): Promise<boolean> => {
+  try {
+    // First check if username is already taken
+    const isTaken = await isUsernameTaken(username);
+    if (isTaken) {
+      toast.error(`Username "${username}" is already taken. Please choose another.`);
+      return false;
+    }
+    
+    // Insert the new user
+    const { error } = await supabase
+      .from('users')
+      .insert({
+        id: userId,
+        username,
+        role,
+        is_online: true,
+        last_active: new Date().toISOString()
+      });
+      
+    if (error) {
+      if (error.code === '23505') { // Duplicate key error
+        toast.error(`Username "${username}" is already taken. Please choose another.`);
+      } else {
+        console.error('Error registering user:', error);
+        toast.error('Failed to register user. Please try again.');
+      }
+      return false;
+    }
+    
+    console.log(`User ${username} registered successfully with ID ${userId}`);
+    return true;
+  } catch (err) {
+    console.error('Exception registering user:', err);
+    toast.error('An unexpected error occurred during registration.');
+    return false;
+  }
+};
+
+// Update a user's online status
+export const updateUserOnlineStatus = async (userId: string, isOnline: boolean): Promise<boolean> => {
+  if (!userId) return false;
+  
+  try {
+    console.log(`Updating online status for user ${userId} to ${isOnline}`);
+    const { error } = await supabase
+      .from('users')
+      .update({ 
+        is_online: isOnline,
+        last_active: new Date().toISOString() 
+      })
+      .eq('id', userId);
+      
+    if (error) {
+      console.error('Error updating user online status:', error);
+      return false;
+    }
+    
+    console.log(`User ${userId} online status updated to ${isOnline}`);
+    return true;
+  } catch (err) {
+    console.error('Exception updating user online status:', err);
+    return false;
+  }
+};
+
+// Get all online users
+export const getOnlineUsers = async (): Promise<any[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('is_online', true);
+      
+    if (error) {
+      console.error('Error fetching online users:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (err) {
+    console.error('Exception fetching online users:', err);
+    return [];
+  }
+};
+
 // Check connection immediately to catch configuration issues early
 checkSupabaseConnection()
   .then(isConnected => {
-    // Connection status is now handled by the toast in the function
     console.log(`Initial Supabase connection check: ${isConnected ? 'Connected' : 'Failed'}`);
   })
   .catch(err => console.error('Connection check error:', err));

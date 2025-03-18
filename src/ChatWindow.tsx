@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
@@ -45,13 +44,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
       checkSupabaseConnection()
         .then(isConnected => {
           if (!isConnected) {
+            console.error("Failed to connect to Supabase");
             toast.error("Couldn't connect to chat backend. Please check your configuration.", {
               duration: 6000,
             });
+          } else {
+            console.log("Successfully connected to Supabase");
           }
           setIsLoading(false);
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error("Error connecting to chat service", err);
           toast.error("Error connecting to chat service", { 
             duration: 6000,
           });
@@ -63,6 +66,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
   }, []);
   
   const service = USE_SUPABASE ? supabaseService : signalRService;
+  
+  // Force prefetch the user chat history to ensure connection is working
+  useEffect(() => {
+    if (!isLoading && USE_SUPABASE) {
+      service.getChatHistory(user.id)
+        .then(messages => {
+          console.log(`Retrieved ${messages.length} messages for conversation with ${user.username}`);
+        })
+        .catch(err => {
+          console.error(`Error fetching chat history for ${user.username}:`, err);
+        });
+    }
+  }, [isLoading, user.id, user.username]);
   
   const {
     message,

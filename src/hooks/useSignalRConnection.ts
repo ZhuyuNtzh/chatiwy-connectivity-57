@@ -4,7 +4,7 @@ import { signalRService } from '../services/signalRService';
 import { supabaseService } from '../services/supabaseService';
 import { UserProfile } from '@/types/user';
 import { toast } from 'sonner';
-import { checkSupabaseConnection } from '@/lib/supabase';
+import { checkSupabaseConnection, isUsernameTaken, registerUser } from '@/lib/supabase';
 
 // Flag to use Supabase instead of SignalR
 const USE_SUPABASE = true;
@@ -85,32 +85,46 @@ export const useSignalRConnection = (
       return;
     }
 
-    // Use the actual username from the current user
-    const username = currentUser.username || 'Anonymous';
-    
-    // Generate a user ID from username or use a special ID for admin
-    const userId = currentUser.role === 'admin' 
-      ? '999' // Special admin ID - convert to string for Supabase
-      : username; // Use username as ID for consistent tracking
-      
-    console.log(`Setting up connection for user ${username} (ID: ${userId}), using Supabase: ${USE_SUPABASE}`);
-    
-    // Use either Supabase or SignalR based on the flag
-    if (USE_SUPABASE) {
-      const initializeSupabase = async () => {
-        try {
-          await supabaseService.initialize(userId, username);
-          console.log(`Supabase initialized for user ${username} (ID: ${userId})`);
+    // Check if username exists before attempting to connect
+    const checkUsernameAndConnect = async () => {
+      if (USE_SUPABASE) {
+        // Generate a consistent user ID from username
+        const userId = currentUser.role === 'admin' 
+          ? '00000000-0000-0000-0000-000000000999' // Special admin ID
+          : `00000000-0000-0000-0000-${generateUserId(currentUser.username).toString().padStart(12, '0')}`;
           
-          // Force refresh of connected users count after initialization
+        try {
+          // Check if username is taken by another user
+          if (currentUser.role !== 'admin') {
+            const taken = await isUsernameTaken(currentUser.username);
+            if (taken) {
+              // Verify if this is actually our own user ID to avoid false positives
+              const { data } = await supabase.from('users').select('id').eq('username', currentUser.username).single();
+              
+              // If user exists with this username but has a different ID, it's a conflict
+              if (data && data.id !== userId) {
+                toast.error(`Username "${currentUser.username}" is already taken. Please choose another.`);
+                return;
+              }
+            }
+          }
+          
+          console.log(`Initializing Supabase for user ${currentUser.username} (ID: ${userId})`);
+          await supabaseService.initialize(userId, currentUser.username);
+          
+          // Set up connected users count updates
+          supabaseService.onConnectedUsersCountChanged(count => {
+            console.log(`Connected users count updated: ${count}`);
+            setConnectedUsersCount(count);
+          });
+          
+          // Force refresh of connected users count
           setTimeout(() => {
             supabaseService.fetchConnectedUsersCount()
-              .then(count => {
-                console.log(`Initial connected users count: ${count}`);
-                setConnectedUsersCount(count);
-              })
+              .then(count => console.log(`Initial connected users count: ${count}`))
               .catch(err => console.error("Error fetching initial user count:", err));
           }, 1000);
+          
         } catch (err) {
           console.error("Supabase initialization error:", err);
           toast.error("Failed to connect to chat service. Please try again later.");
@@ -119,27 +133,22 @@ export const useSignalRConnection = (
           const randomCount = Math.floor(Math.random() * 8) + 8;
           setConnectedUsersCount(randomCount);
         }
-      };
-      
-      initializeSupabase();
-      
-      // Set up connected users count updates
-      supabaseService.onConnectedUsersCountChanged(count => {
-        console.log(`Connected users count updated: ${count}`);
-        setConnectedUsersCount(count);
-      });
-    } else {
-      // Original SignalR implementation
-      signalRService.initialize(parseInt(userId), username);
-      console.log(`SignalR initialized for user ${username} (ID: ${userId})`);
-      
-      // Set up connected users count updates
-      signalRService.onConnectedUsersCountChanged(count => {
-        // Ensure count is within a reasonable range for demo (8-15)
-        const adjustedCount = count > 0 ? Math.min(count, 15) : Math.floor(Math.random() * 8) + 8;
-        setConnectedUsersCount(adjustedCount);
-      });
-    }
+      } else {
+        // Original SignalR implementation
+        const userId = currentUser.role === 'admin' ? 999 : generateUserId(currentUser.username);
+        signalRService.initialize(userId, currentUser.username);
+        console.log(`SignalR initialized for user ${currentUser.username} (ID: ${userId})`);
+        
+        // Set up connected users count updates
+        signalRService.onConnectedUsersCountChanged(count => {
+          // Ensure count is within a reasonable range for demo (8-15)
+          const adjustedCount = count > 0 ? Math.min(count, 15) : Math.floor(Math.random() * 8) + 8;
+          setConnectedUsersCount(adjustedCount);
+        });
+      }
+    };
+    
+    checkUsernameAndConnect();
     
     return () => {
       // Never disconnect admin users, even when component unmounts
@@ -171,3 +180,6 @@ function generateUserId(username: string): number {
   // Ensure it's always positive by using absolute value
   return Math.abs(hash);
 }
+
+// Add Supabase import
+import { supabase } from '@/lib/supabase';

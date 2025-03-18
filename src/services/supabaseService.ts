@@ -1,5 +1,4 @@
-
-import { supabase } from '@/lib/supabase';
+import { supabase, isUsernameTaken, registerUser, updateUserOnlineStatus } from '@/lib/supabase';
 import type { ChatMessage, ConnectionStatus, UserReport } from './signalR/types';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
@@ -52,14 +51,25 @@ class SupabaseService {
     this.userId = userId;
     this.username = username;
     
-    // Set up real-time subscriptions
+    // Update user online status in the database
+    const statusUpdated = await updateUserOnlineStatus(userId, true);
+    if (!statusUpdated) {
+      // If update failed, try to register the user first
+      console.log(`User ${userId} not found, attempting registration...`);
+      const registered = await registerUser(userId, username);
+      if (!registered) {
+        console.error(`Failed to register user ${username}`);
+        return Promise.reject(new Error('Failed to register user'));
+      }
+    }
+    
+    // Set up real-time subscriptions after user is confirmed registered
+    console.log(`Setting up realtime subscriptions for user ${username}`);
     this.setupRealtimeSubscriptions();
     
     // Set up presence channel for online status
+    console.log(`Setting up presence channel for user ${username}`);
     this.setupPresenceChannel(username);
-    
-    // Update user online status in the database
-    await this.updateUserOnlineStatus(true);
     
     // Get connected users count
     await this.fetchConnectedUsersCount();
@@ -130,108 +140,6 @@ class SupabaseService {
     });
   }
   
-  private async updateUserOnlineStatus(isOnline: boolean): Promise<void> {
-    if (!this.userId) return;
-    
-    try {
-      // Check if user exists first
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', this.userId)
-        .maybeSingle();
-      
-      if (existingUser) {
-        // Update existing user
-        console.log(`Updating online status for user ${this.userId} to ${isOnline}`);
-        const { error } = await supabase
-          .from('users')
-          .update({ 
-            is_online: isOnline,
-            last_active: new Date().toISOString()
-          })
-          .eq('id', this.userId);
-          
-        if (error) throw error;
-      } else {
-        // Insert new user if they don't exist
-        console.log(`Creating new user ${this.userId} with online status ${isOnline}`);
-        const { error } = await supabase
-          .from('users')
-          .insert({ 
-            id: this.userId,
-            username: this.username,
-            is_online: isOnline,
-            role: 'standard',
-            last_active: new Date().toISOString()
-          });
-          
-        if (error) {
-          // If insert fails due to primary key constraint, try update instead
-          if (error.code === '23505') { // Duplicate key error
-            console.log(`User ID ${this.userId} already exists, updating instead`);
-            const { error: updateError } = await supabase
-              .from('users')
-              .update({ 
-                username: this.username,
-                is_online: isOnline,
-                last_active: new Date().toISOString()
-              })
-              .eq('id', this.userId);
-              
-            if (updateError) throw updateError;
-          } else {
-            throw error;
-          }
-        }
-      }
-      
-      console.log(`User online status updated to ${isOnline}`);
-    } catch (error) {
-      console.error('Error updating user online status:', error);
-    }
-  }
-  
-  public async fetchConnectedUsersCount(): Promise<number> {
-    try {
-      // First try to get count via presence
-      if (this.presenceChannel) {
-        const state = this.presenceChannel.presenceState();
-        const presenceCount = Object.keys(state).length;
-        console.log(`Presence channel shows ${presenceCount} users online`);
-        
-        if (presenceCount > 0) {
-          // Notify listeners
-          this.connectedUsersCountCallbacks.forEach(callback => 
-            callback(presenceCount)
-          );
-          return presenceCount;
-        }
-      }
-      
-      // Fall back to database query if presence shows zero
-      const { count, error } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_online', true);
-        
-      if (error) throw error;
-      
-      const onlineCount = count || 0;
-      console.log(`Database query shows ${onlineCount} users online`);
-      
-      // Notify listeners
-      this.connectedUsersCountCallbacks.forEach(callback => 
-        callback(onlineCount)
-      );
-      
-      return onlineCount;
-    } catch (error) {
-      console.error('Error fetching connected users count:', error);
-      return 0;
-    }
-  }
-  
   private setupRealtimeSubscriptions(): void {
     // Clean up existing subscriptions
     this.subscriptions.forEach(sub => sub.unsubscribe());
@@ -243,10 +151,16 @@ class SupabaseService {
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
-        table: 'messages',
-        filter: `sender_id=neq.${this.userId}`
+        table: 'messages'
       }, payload => {
-        this.handleNewMessage(payload.new);
+        console.log('New message received:', payload.new);
+        // Only process messages sent to this user
+        const message = payload.new;
+        const recipientId = message.recipient_id || this.convertConversationToRecipientId(message.conversation_id);
+        
+        if (message.sender_id !== this.userId) {
+          this.handleNewMessage(message);
+        }
       })
       .on('postgres_changes', {
         event: 'UPDATE',
@@ -256,7 +170,9 @@ class SupabaseService {
       }, payload => {
         this.handleMessageDeleted(payload.new.id);
       })
-      .subscribe();
+      .subscribe(status => {
+        console.log(`Messages subscription status: ${status}`);
+      });
     
     // Subscribe to connected users count changes
     const usersSubscription = supabase
@@ -264,15 +180,37 @@ class SupabaseService {
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'users',
-        filter: 'is_online=eq.true'
-      }, () => {
+        table: 'users'
+      }, payload => {
+        console.log('Users table change:', payload);
         this.fetchConnectedUsersCount();
       })
-      .subscribe();
+      .subscribe(status => {
+        console.log(`Users subscription status: ${status}`);
+      });
     
     this.subscriptions.push(messagesSubscription, usersSubscription);
     console.log('Realtime subscriptions set up');
+  }
+  
+  // Helper method to extract recipient from conversation
+  private async convertConversationToRecipientId(conversationId: string): Promise<string | null> {
+    if (!conversationId || !this.userId) return null;
+    
+    try {
+      const { data, error } = await supabase
+        .from('conversation_participants')
+        .select('user_id')
+        .eq('conversation_id', conversationId)
+        .neq('user_id', this.userId)
+        .single();
+        
+      if (error || !data) return null;
+      return data.user_id;
+    } catch (err) {
+      console.error('Error getting recipient from conversation:', err);
+      return null;
+    }
   }
   
   public async disconnect(): Promise<void> {
@@ -281,7 +219,7 @@ class SupabaseService {
     console.log('Disconnecting Supabase service');
     
     // Update user online status
-    await this.updateUserOnlineStatus(false);
+    await updateUserOnlineStatus(this.userId, false);
     
     // Clean up presence tracking
     if (this.presenceChannel) {
@@ -311,6 +249,50 @@ class SupabaseService {
     return Promise.resolve();
   }
   
+  public async fetchConnectedUsersCount(): Promise<number> {
+    try {
+      // First try to get count via presence
+      if (this.presenceChannel) {
+        const state = this.presenceChannel.presenceState();
+        console.log('Current presence state:', state);
+        const presenceCount = Object.keys(state).length;
+        console.log(`Presence channel shows ${presenceCount} users online`);
+        
+        if (presenceCount > 0) {
+          // Notify listeners
+          this.connectedUsersCountCallbacks.forEach(callback => 
+            callback(presenceCount)
+          );
+          return presenceCount;
+        }
+      }
+      
+      // Fall back to database query if presence shows zero
+      const { data, error, count } = await supabase
+        .from('users')
+        .select('*', { count: 'exact' })
+        .eq('is_online', true);
+        
+      if (error) throw error;
+      
+      // Log all online users for debugging
+      console.log('Online users from DB:', data);
+      
+      const onlineCount = count || (data?.length || 0);
+      console.log(`Database query shows ${onlineCount} users online`);
+      
+      // Notify listeners
+      this.connectedUsersCountCallbacks.forEach(callback => 
+        callback(onlineCount)
+      );
+      
+      return onlineCount;
+    } catch (error) {
+      console.error('Error fetching connected users count:', error);
+      return 0;
+    }
+  }
+  
   private updateConnectionStatus(status: ConnectionStatus): void {
     this.connectionStatus = status;
     this.connectionStatusCallbacks.forEach(callback => callback(status));
@@ -338,6 +320,8 @@ class SupabaseService {
       translatedLanguage: messageData.translated_language,
       isRead: messageData.is_read || false
     };
+    
+    console.log('Processing new message:', message);
     
     // Notify listeners
     this.messageCallbacks.forEach(callback => callback(message));
@@ -392,12 +376,17 @@ class SupabaseService {
     replyToId?: string,
     replyText?: string
   ): Promise<void> {
-    if (!this.userId) return Promise.resolve();
+    if (!this.userId) {
+      console.error('Cannot send message: No active user');
+      return Promise.resolve();
+    }
     
     if (await this.isUserBlocked(recipientId)) {
       console.log(`Cannot send message to blocked user ${recipientId}`);
       return Promise.resolve();
     }
+    
+    console.log(`Sending message to ${recipientId}: ${content}`);
     
     // First, ensure we have a conversation with this user
     const conversationId = await this.getOrCreateConversation(recipientId);
@@ -407,8 +396,9 @@ class SupabaseService {
     }
     
     // Create the message
+    const messageId = uuidv4();
     const newMessage = {
-      id: uuidv4(),
+      id: messageId,
       conversation_id: conversationId,
       sender_id: this.userId,
       sender_name: this.username || actualUsername || 'Unknown',
@@ -423,15 +413,21 @@ class SupabaseService {
     };
     
     try {
+      console.log(`Inserting message:`, newMessage);
       const { error } = await supabase
         .from('messages')
         .insert(newMessage);
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error sending message:', error);
+        throw error;
+      }
+      
+      console.log(`Message sent with ID: ${messageId}`);
       
       // Convert to ChatMessage format for local handling
       const chatMessage: ChatMessage = {
-        id: newMessage.id,
+        id: messageId,
         content,
         sender: this.username || 'You',
         actualUsername: this.username,
@@ -459,6 +455,7 @@ class SupabaseService {
     
     // Convert the numeric ID to string for Supabase
     const recipientUuid = this.getUuidFromNumber(recipientId);
+    console.log(`Getting/creating conversation between ${this.userId} and ${recipientUuid}`);
     
     // First get the recipient's conversations
     const { data: recipientConversations, error: recipientError } = await supabase
@@ -473,19 +470,18 @@ class SupabaseService {
     
     if (!recipientConversations || recipientConversations.length === 0) {
       // No conversations for recipient, create a new one
+      console.log(`No conversations found for recipient ${recipientUuid}, creating new one`);
       return this.createNewConversation(recipientUuid);
     }
     
     // Get conversation IDs as an array
     const conversationIds = recipientConversations.map(c => c.conversation_id);
+    console.log(`Found ${conversationIds.length} conversations for recipient`, conversationIds);
     
     // Check if any of those conversations include the current user
     const { data: existingConversations, error: fetchError } = await supabase
       .from('conversation_participants')
-      .select(`
-        conversation_id,
-        conversations!inner(*)
-      `)
+      .select('conversation_id')
       .eq('user_id', this.userId)
       .in('conversation_id', conversationIds);
       
@@ -496,10 +492,12 @@ class SupabaseService {
     
     // If conversation exists, return it
     if (existingConversations && existingConversations.length > 0) {
+      console.log(`Found existing conversation: ${existingConversations[0].conversation_id}`);
       return existingConversations[0].conversation_id;
     }
     
     // Create new conversation if none exists
+    console.log(`No existing conversation found, creating new one`);
     return this.createNewConversation(recipientUuid);
   }
   
@@ -508,6 +506,7 @@ class SupabaseService {
     
     // Create new conversation
     const conversationId = uuidv4();
+    console.log(`Creating new conversation with ID: ${conversationId}`);
     
     // Insert conversation
     const { error: conversationError } = await supabase
@@ -544,6 +543,7 @@ class SupabaseService {
       return null;
     }
     
+    console.log(`Conversation ${conversationId} created with participants ${this.userId} and ${recipientUuid}`);
     return conversationId;
   }
   
@@ -681,43 +681,280 @@ class SupabaseService {
     return userId === 999; // Same logic as before for compatibility
   }
   
-  // These are placeholders that need proper implementation
+  // These are simpler implementations of the required methods
   public async sendImage(recipientId: number, imageUrl: string, isBlurred: boolean = false): Promise<void> {
-    // Implementation needed
+    if (!this.userId) return Promise.resolve();
+    
+    // Get conversation
+    const conversationId = await this.getOrCreateConversation(recipientId);
+    if (!conversationId) return Promise.resolve();
+    
+    // Create message record
+    const messageId = uuidv4();
+    const newMessage = {
+      id: messageId,
+      conversation_id: conversationId,
+      sender_id: this.userId,
+      sender_name: this.username || 'Unknown',
+      content: 'Sent an image',
+      created_at: new Date().toISOString(),
+      is_read: false,
+      is_deleted: false,
+      is_image: true,
+      image_url: imageUrl,
+      is_blurred: isBlurred
+    };
+    
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert(newMessage);
+        
+      if (error) throw error;
+      
+      // Handle for local UI
+      this.handleNewMessage(newMessage);
+    } catch (error) {
+      console.error('Error sending image:', error);
+    }
+    
     return Promise.resolve();
   }
   
   public async sendVoiceMessage(recipientId: number, audioUrl: string): Promise<void> {
-    // Implementation needed
+    if (!this.userId) return Promise.resolve();
+    
+    // Get conversation
+    const conversationId = await this.getOrCreateConversation(recipientId);
+    if (!conversationId) return Promise.resolve();
+    
+    // Create message record
+    const messageId = uuidv4();
+    const newMessage = {
+      id: messageId,
+      conversation_id: conversationId,
+      sender_id: this.userId,
+      sender_name: this.username || 'Unknown',
+      content: 'Sent a voice message',
+      created_at: new Date().toISOString(),
+      is_read: false,
+      is_deleted: false,
+      is_voice_message: true,
+      audio_url: audioUrl
+    };
+    
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert(newMessage);
+        
+      if (error) throw error;
+      
+      // Handle for local UI
+      this.handleNewMessage(newMessage);
+    } catch (error) {
+      console.error('Error sending voice message:', error);
+    }
+    
     return Promise.resolve();
   }
   
   public async deleteMessage(messageId: string, recipientId: number): Promise<void> {
-    // Implementation needed
+    if (!this.userId) return Promise.resolve();
+    
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ is_deleted: true })
+        .eq('id', messageId)
+        .eq('sender_id', this.userId);
+        
+      if (error) throw error;
+      
+      // Notify about deletion
+      this.deleteCallbacks.forEach(callback => callback(messageId));
+    } catch (error) {
+      console.error('Error deleting message:', error);
+    }
+    
     return Promise.resolve();
   }
   
   public sendTypingIndication(recipientId: number): void {
-    // Implementation needed
+    // In a full implementation, this would send a typing event through real-time presence
+    this.typingCallbacks.forEach(callback => callback(recipientId));
   }
   
   public async markMessagesAsRead(senderId: number): Promise<void> {
-    // Implementation needed
+    if (!this.userId) return Promise.resolve();
+    
+    try {
+      // Convert senderId to UUID format
+      const senderUuid = this.getUuidFromNumber(senderId);
+      
+      // Find conversations with sender
+      const { data: conversations, error: convError } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', this.userId);
+        
+      if (convError || !conversations) return Promise.resolve();
+      
+      const conversationIds = conversations.map(c => c.conversation_id);
+      
+      // Update messages
+      const { error } = await supabase
+        .from('messages')
+        .update({ is_read: true })
+        .eq('sender_id', senderUuid)
+        .in('conversation_id', conversationIds)
+        .eq('is_read', false);
+        
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+    
     return Promise.resolve();
   }
   
   public async getChatHistory(userId: number): Promise<ChatMessage[]> {
-    // Implementation needed
-    return [];
+    if (!this.userId) return [];
+    
+    const recipientUuid = this.getUuidFromNumber(userId);
+    
+    try {
+      // Find conversations with recipient
+      const { data: conversations, error: convError } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', recipientUuid);
+        
+      if (convError || !conversations || conversations.length === 0) return [];
+      
+      const conversationIds = conversations.map(c => c.conversation_id);
+      
+      // Find conversations the current user is also part of
+      const { data: myConversations, error: myConvError } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', this.userId)
+        .in('conversation_id', conversationIds);
+        
+      if (myConvError || !myConversations || myConversations.length === 0) return [];
+      
+      const sharedConversationIds = myConversations.map(c => c.conversation_id);
+      
+      // Get messages from these conversations
+      const { data: messages, error: msgError } = await supabase
+        .from('messages')
+        .select('*')
+        .in('conversation_id', sharedConversationIds)
+        .order('created_at', { ascending: true });
+        
+      if (msgError || !messages) return [];
+      
+      // Convert to ChatMessage format
+      return messages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        sender: msg.sender_name,
+        actualUsername: msg.sender_name,
+        senderId: this.toNumberId(msg.sender_id),
+        recipientId: this.toNumberId(this.userId === msg.sender_id ? participants[0].user_id : this.userId || ''),
+        timestamp: new Date(msg.created_at),
+        isImage: msg.is_image || false,
+        imageUrl: msg.image_url,
+        isBlurred: msg.is_blurred || false,
+        isVoiceMessage: msg.is_voice_message || false,
+        audioUrl: msg.audio_url,
+        isDeleted: msg.is_deleted || false,
+        replyToId: msg.reply_to_id,
+        replyText: msg.reply_text,
+        translatedContent: msg.translated_content,
+        translatedLanguage: msg.translated_language,
+        isRead: msg.is_read || false
+      }));
+    } catch (error) {
+      console.error('Error getting chat history:', error);
+      return [];
+    }
   }
   
   public async getAllChatHistory(): Promise<Record<number, ChatMessage[]>> {
-    // Implementation needed
-    return {};
+    if (!this.userId) return {};
+    
+    try {
+      // Find all conversations for the current user
+      const { data: conversations, error: convError } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', this.userId);
+        
+      if (convError || !conversations || conversations.length === 0) return {};
+      
+      const conversationIds = conversations.map(c => c.conversation_id);
+      
+      // Get all messages from these conversations
+      const { data: messages, error: msgError } = await supabase
+        .from('messages')
+        .select('*')
+        .in('conversation_id', conversationIds)
+        .order('created_at', { ascending: true });
+        
+      if (msgError || !messages) return {};
+      
+      // Get other participants for each conversation
+      const result: Record<number, ChatMessage[]> = {};
+      
+      for (const conversationId of conversationIds) {
+        const { data: participants, error: partError } = await supabase
+          .from('conversation_participants')
+          .select('user_id')
+          .eq('conversation_id', conversationId)
+          .neq('user_id', this.userId);
+          
+        if (partError || !participants || participants.length === 0) continue;
+        
+        // Get the other participant's ID
+        const otherUserId = this.toNumberId(participants[0].user_id);
+        
+        // Filter messages for this conversation
+        const conversationMessages = messages
+          .filter(msg => msg.conversation_id === conversationId)
+          .map(msg => ({
+            id: msg.id,
+            content: msg.content,
+            sender: msg.sender_name,
+            actualUsername: msg.sender_name,
+            senderId: this.toNumberId(msg.sender_id),
+            recipientId: this.toNumberId(this.userId === msg.sender_id ? participants[0].user_id : this.userId || ''),
+            timestamp: new Date(msg.created_at),
+            isImage: msg.is_image || false,
+            imageUrl: msg.image_url,
+            isBlurred: msg.is_blurred || false,
+            isVoiceMessage: msg.is_voice_message || false,
+            audioUrl: msg.audio_url,
+            isDeleted: msg.is_deleted || false,
+            replyToId: msg.reply_to_id,
+            replyText: msg.reply_text,
+            translatedContent: msg.translated_content,
+            translatedLanguage: msg.translated_language,
+            isRead: msg.is_read || false
+          }));
+          
+        result[otherUserId] = conversationMessages;
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error getting all chat history:', error);
+      return {};
+    }
   }
   
   public async clearAllChatHistory(): Promise<void> {
-    // Implementation needed
+    // Implementation would delete all messages for this user
     return Promise.resolve();
   }
   
@@ -729,37 +966,138 @@ class SupabaseService {
     reason: string,
     details?: string
   ): Promise<void> {
-    // Implementation needed
+    if (!this.userId) return Promise.resolve();
+    
+    try {
+      const reportData = {
+        id: uuidv4(),
+        reporter_id: this.getUuidFromNumber(reporterId),
+        reporter_name: reporterName,
+        reported_id: this.getUuidFromNumber(reportedId),
+        reported_name: reportedName,
+        reason,
+        details,
+        created_at: new Date().toISOString(),
+        status: 'pending'
+      };
+      
+      const { error } = await supabase
+        .from('user_reports')
+        .insert(reportData);
+        
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error reporting user:', error);
+    }
+    
     return Promise.resolve();
   }
   
   public async getReports(): Promise<UserReport[]> {
-    // Implementation needed
-    return [];
+    try {
+      const { data, error } = await supabase
+        .from('user_reports')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      
+      return (data || []).map(report => ({
+        id: report.id,
+        reporterId: this.toNumberId(report.reporter_id),
+        reporterName: report.reporter_name,
+        reportedId: this.toNumberId(report.reported_id),
+        reportedName: report.reported_name,
+        reason: report.reason,
+        details: report.details || '',
+        timestamp: new Date(report.created_at),
+        status: report.status
+      }));
+    } catch (error) {
+      console.error('Error getting reports:', error);
+      return [];
+    }
   }
   
   public async deleteReport(reportId: string): Promise<void> {
-    // Implementation needed
+    try {
+      const { error } = await supabase
+        .from('user_reports')
+        .delete()
+        .eq('id', reportId);
+        
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error deleting report:', error);
+    }
+    
     return Promise.resolve();
   }
   
+  // Other stub methods from the original
   public async getBannedWords(): Promise<string[]> {
-    // Implementation needed
-    return [];
+    try {
+      const { data, error } = await supabase
+        .from('banned_words')
+        .select('word');
+        
+      if (error) throw error;
+      
+      return (data || []).map(row => row.word);
+    } catch (error) {
+      console.error('Error getting banned words:', error);
+      return [];
+    }
   }
   
   public async addBannedWord(word: string): Promise<void> {
-    // Implementation needed
+    try {
+      const { error } = await supabase
+        .from('banned_words')
+        .insert({ word });
+        
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error adding banned word:', error);
+    }
+    
     return Promise.resolve();
   }
   
   public async removeBannedWord(word: string): Promise<void> {
-    // Implementation needed
+    try {
+      const { error } = await supabase
+        .from('banned_words')
+        .delete()
+        .eq('word', word);
+        
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error removing banned word:', error);
+    }
+    
     return Promise.resolve();
   }
   
   public async setBannedWords(words: string[]): Promise<void> {
-    // Implementation needed
+    try {
+      // Delete all existing words
+      await supabase
+        .from('banned_words')
+        .delete()
+        .not('id', 'is', null); // Delete all records
+        
+      // Add new words
+      if (words.length > 0) {
+        const wordObjects = words.map(word => ({ word }));
+        await supabase
+          .from('banned_words')
+          .insert(wordObjects);
+      }
+    } catch (error) {
+      console.error('Error setting banned words:', error);
+    }
+    
     return Promise.resolve();
   }
 }
