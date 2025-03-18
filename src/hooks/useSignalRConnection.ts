@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 import { signalRService } from '../services/signalRService';
 import { supabaseService } from '../services/supabaseService';
@@ -32,9 +31,7 @@ export const useSignalRConnection = (
           setConnectionAvailable(isConnected);
           
           if (!isConnected) {
-            toast.error("Couldn't connect to Supabase. Please check your configuration and make sure you've set up your database.", {
-              duration: 10000,
-            });
+            console.log("Supabase connection failed, will try to continue with fallback...");
             
             // Still set a random connected users count for demo purposes
             const randomCount = Math.floor(Math.random() * 8) + 8;
