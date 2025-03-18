@@ -9,29 +9,81 @@ export const supabase = configuredSupabase;
 
 // Global connection state to prevent multiple warnings
 let connectionWarningShown = false;
+let connectionSuccessShown = false;
 
 // Add a simple health check function to verify connection
 export const checkSupabaseConnection = async () => {
   try {
-    // Using a simple query to check connection
-    const { error } = await supabase.from('user').select('count', { count: 'exact', head: true });
+    // Try to query for the presence of the users table first
+    const { error: userTableError } = await supabase
+      .from('users')
+      .select('count', { count: 'exact', head: true })
+      .limit(1);
     
-    if (error) {
-      if (error.code === '42P01') {
-        // Table doesn't exist error - the database hasn't been initialized
-        console.error('Supabase table "user" not found. Please check if your table exists in your database.');
-        toast.error('Database tables not found. Please check your Supabase tables.');
-        return false;
-      } else {
-        console.error('Failed to connect to Supabase:', error.message);
+    // If that fails, try another table
+    if (userTableError) {
+      console.log('Could not query users table:', userTableError.message);
+      console.log('Falling back to realtime presence test...');
+      
+      // Try to create a test channel to verify Supabase connection
+      const testChannel = supabase.channel('connection-test');
+      
+      // Create a promise to wait for subscription
+      const subscriptionPromise = new Promise<boolean>((resolve) => {
+        const timeoutId = setTimeout(() => {
+          console.log('Supabase realtime subscription timed out');
+          resolve(false);
+        }, 5000);
+        
+        testChannel.subscribe((status) => {
+          clearTimeout(timeoutId);
+          console.log('Supabase realtime subscription status:', status);
+          resolve(status === 'SUBSCRIBED');
+          // Clean up test channel
+          testChannel.unsubscribe();
+        });
+      });
+      
+      const isConnected = await subscriptionPromise;
+      
+      if (!isConnected) {
+        console.error('Failed to connect to Supabase realtime');
+        if (!connectionWarningShown) {
+          connectionWarningShown = true;
+          toast.error('Could not establish real-time connection to Supabase. Features may be limited.', {
+            duration: 6000
+          });
+        }
         return false;
       }
+      
+      // If we got here, at least realtime works
+      console.log('Successfully connected to Supabase realtime');
+      if (!connectionSuccessShown) {
+        connectionSuccessShown = true;
+        toast.success('Connected to Supabase successfully!', {
+          id: 'supabase-connection-success'
+        });
+      }
+      return true;
     }
     
     console.log('Successfully connected to Supabase');
+    if (!connectionSuccessShown) {
+      connectionSuccessShown = true;
+      toast.success('Connected to Supabase successfully!', {
+        id: 'supabase-connection-success'
+      });
+    }
     return true;
   } catch (err) {
     console.error('Failed to connect to Supabase:', err);
+    if (!connectionWarningShown) {
+      connectionWarningShown = true;
+      toast.error('Could not connect to Supabase. Check your console for details.', {
+        duration: 6000
+      });
+    }
     return false;
   }
 };
@@ -39,11 +91,7 @@ export const checkSupabaseConnection = async () => {
 // Check connection immediately to catch configuration issues early
 checkSupabaseConnection()
   .then(isConnected => {
-    if (!isConnected) {
-      // Show toast if connection failed
-      toast.error('Could not connect to Supabase. Check your console for details.');
-    } else {
-      toast.success('Connected to Supabase successfully!');
-    }
+    // Connection status is now handled by the toast in the function
+    console.log(`Initial Supabase connection check: ${isConnected ? 'Connected' : 'Failed'}`);
   })
   .catch(err => console.error('Connection check error:', err));

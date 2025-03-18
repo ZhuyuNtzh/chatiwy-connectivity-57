@@ -30,6 +30,7 @@ export const useSignalRConnection = (
         try {
           console.log("Checking Supabase connection...");
           const isConnected = await checkSupabaseConnection();
+          console.log("Supabase connection check result:", isConnected);
           setConnectionAvailable(isConnected);
           
           if (!isConnected) {
@@ -43,6 +44,10 @@ export const useSignalRConnection = (
             setConnectedUsersCount(randomCount);
           } else {
             console.log("Supabase connection successful!");
+            toast.success('Connected to Supabase successfully!', {
+              duration: 3000,
+              id: 'supabase-connection-success'
+            });
           }
         } catch (error) {
           console.error("Error checking Supabase connection:", error);
@@ -85,18 +90,27 @@ export const useSignalRConnection = (
     
     // Generate a user ID from username or use a special ID for admin
     const userId = currentUser.role === 'admin' 
-      ? 999 // Special admin ID
-      : generateUserId(username);
+      ? '999' // Special admin ID - convert to string for Supabase
+      : username; // Use username as ID for consistent tracking
       
     console.log(`Setting up connection for user ${username} (ID: ${userId}), using Supabase: ${USE_SUPABASE}`);
     
     // Use either Supabase or SignalR based on the flag
     if (USE_SUPABASE) {
-      // Convert to string for Supabase
       const initializeSupabase = async () => {
         try {
-          await supabaseService.initialize(userId.toString(), username);
+          await supabaseService.initialize(userId, username);
           console.log(`Supabase initialized for user ${username} (ID: ${userId})`);
+          
+          // Force refresh of connected users count after initialization
+          setTimeout(() => {
+            supabaseService.fetchConnectedUsersCount()
+              .then(count => {
+                console.log(`Initial connected users count: ${count}`);
+                setConnectedUsersCount(count);
+              })
+              .catch(err => console.error("Error fetching initial user count:", err));
+          }, 1000);
         } catch (err) {
           console.error("Supabase initialization error:", err);
           toast.error("Failed to connect to chat service. Please try again later.");
@@ -112,13 +126,11 @@ export const useSignalRConnection = (
       // Set up connected users count updates
       supabaseService.onConnectedUsersCountChanged(count => {
         console.log(`Connected users count updated: ${count}`);
-        // Ensure count is within a reasonable range for demo (8-15)
-        const adjustedCount = count > 0 ? Math.min(count, 15) : Math.floor(Math.random() * 8) + 8;
-        setConnectedUsersCount(adjustedCount);
+        setConnectedUsersCount(count);
       });
     } else {
       // Original SignalR implementation
-      signalRService.initialize(userId, username);
+      signalRService.initialize(parseInt(userId), username);
       console.log(`SignalR initialized for user ${username} (ID: ${userId})`);
       
       // Set up connected users count updates

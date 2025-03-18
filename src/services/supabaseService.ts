@@ -77,7 +77,10 @@ class SupabaseService {
     }
     
     // Create a channel for tracking user presence
-    this.presenceChannel = supabase.channel('online-users', {
+    const channelName = 'online-users';
+    console.log(`Setting up presence channel: ${channelName}`);
+    
+    this.presenceChannel = supabase.channel(channelName, {
       config: {
         presence: {
           key: this.userId,
@@ -88,6 +91,7 @@ class SupabaseService {
     // Track user's online status
     this.presenceChannel.on('presence', { event: 'sync' }, () => {
       const state = this.presenceChannel.presenceState();
+      console.log('Presence state updated:', state);
       const onlineUsers = Object.keys(state).length;
       
       // Notify listeners about updated user count
@@ -95,16 +99,33 @@ class SupabaseService {
       this.connectedUsersCountCallbacks.forEach(callback => callback(onlineUsers));
     });
 
+    this.presenceChannel.on('presence', { event: 'join' }, ({ key, newPresences }: any) => {
+      console.log(`User joined: ${key}`, newPresences);
+      // Notify about presence changes
+      this.fetchConnectedUsersCount();
+    });
+
+    this.presenceChannel.on('presence', { event: 'leave' }, ({ key, leftPresences }: any) => {
+      console.log(`User left: ${key}`, leftPresences);
+      // Notify about presence changes
+      this.fetchConnectedUsersCount();
+    });
+
     // Subscribe to the channel and track presence
     this.presenceChannel.subscribe(async (status: string) => {
+      console.log(`Presence channel subscription status: ${status}`);
       if (status === 'SUBSCRIBED') {
         // Start tracking presence
-        await this.presenceChannel.track({
-          user_id: this.userId,
-          username: this.username,
-          online_at: new Date().toISOString(),
-        });
-        console.log('Presence tracking started');
+        try {
+          await this.presenceChannel.track({
+            user_id: this.userId,
+            username: this.username,
+            online_at: new Date().toISOString(),
+          });
+          console.log('Presence tracking started');
+        } catch (error) {
+          console.error('Error tracking presence:', error);
+        }
       }
     });
   }
@@ -122,6 +143,7 @@ class SupabaseService {
       
       if (existingUser) {
         // Update existing user
+        console.log(`Updating online status for user ${this.userId} to ${isOnline}`);
         const { error } = await supabase
           .from('users')
           .update({ 
@@ -133,6 +155,7 @@ class SupabaseService {
         if (error) throw error;
       } else {
         // Insert new user if they don't exist
+        console.log(`Creating new user ${this.userId} with online status ${isOnline}`);
         const { error } = await supabase
           .from('users')
           .insert({ 
@@ -143,7 +166,24 @@ class SupabaseService {
             last_active: new Date().toISOString()
           });
           
-        if (error) throw error;
+        if (error) {
+          // If insert fails due to primary key constraint, try update instead
+          if (error.code === '23505') { // Duplicate key error
+            console.log(`User ID ${this.userId} already exists, updating instead`);
+            const { error: updateError } = await supabase
+              .from('users')
+              .update({ 
+                username: this.username,
+                is_online: isOnline,
+                last_active: new Date().toISOString()
+              })
+              .eq('id', this.userId);
+              
+            if (updateError) throw updateError;
+          } else {
+            throw error;
+          }
+        }
       }
       
       console.log(`User online status updated to ${isOnline}`);
@@ -152,8 +192,24 @@ class SupabaseService {
     }
   }
   
-  private async fetchConnectedUsersCount(): Promise<void> {
+  public async fetchConnectedUsersCount(): Promise<number> {
     try {
+      // First try to get count via presence
+      if (this.presenceChannel) {
+        const state = this.presenceChannel.presenceState();
+        const presenceCount = Object.keys(state).length;
+        console.log(`Presence channel shows ${presenceCount} users online`);
+        
+        if (presenceCount > 0) {
+          // Notify listeners
+          this.connectedUsersCountCallbacks.forEach(callback => 
+            callback(presenceCount)
+          );
+          return presenceCount;
+        }
+      }
+      
+      // Fall back to database query if presence shows zero
       const { count, error } = await supabase
         .from('users')
         .select('*', { count: 'exact', head: true })
@@ -162,14 +218,17 @@ class SupabaseService {
       if (error) throw error;
       
       const onlineCount = count || 0;
-      console.log(`Fetched connected users count: ${onlineCount}`);
+      console.log(`Database query shows ${onlineCount} users online`);
       
       // Notify listeners
       this.connectedUsersCountCallbacks.forEach(callback => 
         callback(onlineCount)
       );
+      
+      return onlineCount;
     } catch (error) {
       console.error('Error fetching connected users count:', error);
+      return 0;
     }
   }
   
