@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from 'react';
 import { signalRService } from '../services/signalRService';
 import { supabaseService } from '../services/supabaseService';
@@ -27,19 +28,28 @@ export const useSignalRConnection = (
       connectionCheckedRef.current = true;
       const checkConnection = async () => {
         try {
+          console.log("Checking Supabase connection...");
           const isConnected = await checkSupabaseConnection();
           setConnectionAvailable(isConnected);
           
           if (!isConnected) {
             console.log("Supabase connection failed, will try to continue with fallback...");
+            toast.error("Couldn't connect to Supabase. Please check your configuration.", {
+              duration: 6000
+            });
             
             // Still set a random connected users count for demo purposes
             const randomCount = Math.floor(Math.random() * 8) + 8;
             setConnectedUsersCount(randomCount);
+          } else {
+            console.log("Supabase connection successful!");
           }
         } catch (error) {
           console.error("Error checking Supabase connection:", error);
           setConnectionAvailable(false);
+          toast.error("Error connecting to Supabase", {
+            duration: 6000
+          });
           
           // Set random count even on error
           const randomCount = Math.floor(Math.random() * 8) + 8;
@@ -52,7 +62,10 @@ export const useSignalRConnection = (
   }, [setConnectedUsersCount]);
   
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      console.log("No current user, skipping connection setup");
+      return;
+    }
 
     // Skip real connection if we know it's unavailable
     if (connectionAvailable === false) {
@@ -75,6 +88,8 @@ export const useSignalRConnection = (
       ? 999 // Special admin ID
       : generateUserId(username);
       
+    console.log(`Setting up connection for user ${username} (ID: ${userId}), using Supabase: ${USE_SUPABASE}`);
+    
     // Use either Supabase or SignalR based on the flag
     if (USE_SUPABASE) {
       // Convert to string for Supabase
@@ -96,6 +111,7 @@ export const useSignalRConnection = (
       
       // Set up connected users count updates
       supabaseService.onConnectedUsersCountChanged(count => {
+        console.log(`Connected users count updated: ${count}`);
         // Ensure count is within a reasonable range for demo (8-15)
         const adjustedCount = count > 0 ? Math.min(count, 15) : Math.floor(Math.random() * 8) + 8;
         setConnectedUsersCount(adjustedCount);
@@ -112,12 +128,6 @@ export const useSignalRConnection = (
         setConnectedUsersCount(adjustedCount);
       });
     }
-    
-    // Simulate connected users count update
-    setTimeout(() => {
-      const randomCount = Math.floor(Math.random() * 8) + 8; // Between 8-15
-      setConnectedUsersCount(randomCount);
-    }, 2000);
     
     return () => {
       // Never disconnect admin users, even when component unmounts

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/lib/supabase';
 import type { ChatMessage, ConnectionStatus, UserReport } from './signalR/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -14,6 +15,7 @@ class SupabaseService {
   private connectedUsersCountCallbacks: ((count: number) => void)[] = [];
   private subscriptions: { unsubscribe: () => void }[] = [];
   private blockedUsersCache: Record<number, boolean> = {};
+  private presenceChannel: any = null;
 
   public get currentUserId(): string {
     return this.userId || '';
@@ -40,6 +42,8 @@ class SupabaseService {
   }
 
   public async initialize(userId: string, username: string): Promise<void> {
+    console.log(`Initializing Supabase service for user ${username} (ID: ${userId})`);
+    
     // Clear any previous user data if there was a session
     if (this.userId && this.userId !== userId) {
       await this.disconnect();
@@ -48,35 +52,101 @@ class SupabaseService {
     this.userId = userId;
     this.username = username;
     
-    // Update connection status
-    this.updateConnectionStatus('connected');
-    
     // Set up real-time subscriptions
     this.setupRealtimeSubscriptions();
     
-    // Update user online status
+    // Set up presence channel for online status
+    this.setupPresenceChannel(username);
+    
+    // Update user online status in the database
     await this.updateUserOnlineStatus(true);
     
     // Get connected users count
     await this.fetchConnectedUsersCount();
     
+    // Update connection status
+    this.updateConnectionStatus('connected');
+    
     console.log(`Supabase service initialized for user ${username} (ID: ${userId})`);
     return Promise.resolve();
+  }
+  
+  private setupPresenceChannel(username: string) {
+    if (this.presenceChannel) {
+      this.presenceChannel.unsubscribe();
+    }
+    
+    // Create a channel for tracking user presence
+    this.presenceChannel = supabase.channel('online-users', {
+      config: {
+        presence: {
+          key: this.userId,
+        },
+      },
+    });
+
+    // Track user's online status
+    this.presenceChannel.on('presence', { event: 'sync' }, () => {
+      const state = this.presenceChannel.presenceState();
+      const onlineUsers = Object.keys(state).length;
+      
+      // Notify listeners about updated user count
+      console.log(`Presence sync: ${onlineUsers} users online`);
+      this.connectedUsersCountCallbacks.forEach(callback => callback(onlineUsers));
+    });
+
+    // Subscribe to the channel and track presence
+    this.presenceChannel.subscribe(async (status: string) => {
+      if (status === 'SUBSCRIBED') {
+        // Start tracking presence
+        await this.presenceChannel.track({
+          user_id: this.userId,
+          username: this.username,
+          online_at: new Date().toISOString(),
+        });
+        console.log('Presence tracking started');
+      }
+    });
   }
   
   private async updateUserOnlineStatus(isOnline: boolean): Promise<void> {
     if (!this.userId) return;
     
     try {
-      const { error } = await supabase
+      // Check if user exists first
+      const { data: existingUser } = await supabase
         .from('users')
-        .update({ 
-          is_online: isOnline,
-          last_active: isOnline ? new Date().toISOString() : null
-        })
-        .eq('id', this.userId);
-        
-      if (error) throw error;
+        .select('id')
+        .eq('id', this.userId)
+        .maybeSingle();
+      
+      if (existingUser) {
+        // Update existing user
+        const { error } = await supabase
+          .from('users')
+          .update({ 
+            is_online: isOnline,
+            last_active: new Date().toISOString()
+          })
+          .eq('id', this.userId);
+          
+        if (error) throw error;
+      } else {
+        // Insert new user if they don't exist
+        const { error } = await supabase
+          .from('users')
+          .insert({ 
+            id: this.userId,
+            username: this.username,
+            is_online: isOnline,
+            role: 'standard',
+            last_active: new Date().toISOString()
+          });
+          
+        if (error) throw error;
+      }
+      
+      console.log(`User online status updated to ${isOnline}`);
     } catch (error) {
       console.error('Error updating user online status:', error);
     }
@@ -91,9 +161,12 @@ class SupabaseService {
         
       if (error) throw error;
       
+      const onlineCount = count || 0;
+      console.log(`Fetched connected users count: ${onlineCount}`);
+      
       // Notify listeners
       this.connectedUsersCountCallbacks.forEach(callback => 
-        callback(count || 0)
+        callback(onlineCount)
       );
     } catch (error) {
       console.error('Error fetching connected users count:', error);
@@ -140,13 +213,28 @@ class SupabaseService {
       .subscribe();
     
     this.subscriptions.push(messagesSubscription, usersSubscription);
+    console.log('Realtime subscriptions set up');
   }
   
   public async disconnect(): Promise<void> {
     if (!this.userId) return Promise.resolve();
     
+    console.log('Disconnecting Supabase service');
+    
     // Update user online status
     await this.updateUserOnlineStatus(false);
+    
+    // Clean up presence tracking
+    if (this.presenceChannel) {
+      try {
+        await this.presenceChannel.untrack();
+        await this.presenceChannel.unsubscribe();
+        this.presenceChannel = null;
+        console.log('Presence tracking stopped');
+      } catch (error) {
+        console.error('Error stopping presence tracking:', error);
+      }
+    }
     
     // Clean up subscriptions
     this.subscriptions.forEach(sub => sub.unsubscribe());
