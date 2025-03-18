@@ -1,8 +1,10 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
+import { supabaseService } from '@/services/supabaseService';
 import { useChat } from '@/hooks/useChat';
+import { toast } from 'sonner';
 
 // Import refactored components
 import ChatHeader from '@/components/chat/ChatHeader';
@@ -12,6 +14,10 @@ import UserModals from '@/components/chat/UserModals';
 import VipFeatures from '@/components/chat/VipFeatures';
 import ChatWindowContainer from '@/components/chat/ChatWindowContainer';
 import ChatInputHandlers from '@/components/chat/ChatInputHandlers';
+import { checkSupabaseConnection } from '@/lib/supabase';
+
+// Flag to use Supabase instead of SignalR
+const USE_SUPABASE = true;
 
 interface ChatWindowProps {
   user: {
@@ -30,6 +36,34 @@ interface ChatWindowProps {
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, isAdminView = false }) => {
   const { userRole } = useUser();
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Effect to check Supabase connection on mount
+  useEffect(() => {
+    if (USE_SUPABASE) {
+      setIsLoading(true);
+      checkSupabaseConnection()
+        .then(isConnected => {
+          if (!isConnected) {
+            toast.error("Couldn't connect to chat backend. Please check your configuration.", {
+              duration: 6000,
+            });
+          }
+          setIsLoading(false);
+        })
+        .catch(() => {
+          toast.error("Error connecting to chat service", { 
+            duration: 6000,
+          });
+          setIsLoading(false);
+        });
+    } else {
+      setIsLoading(false);
+    }
+  }, []);
+  
+  const service = USE_SUPABASE ? supabaseService : signalRService;
+  
   const {
     message,
     setMessage,
@@ -91,6 +125,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
     unsendMessage
   } = useChat(user.id, userRole);
   
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen w-full bg-white dark:bg-gray-800">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  
   return (
     <ChatWindowContainer>
       <div className="sticky top-0 z-[60] bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -132,7 +174,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
         handleKeyDown={handleKeyDown}
         handleAddEmoji={handleAddEmoji}
         handleImageClick={handleImageClick}
-        isUserBlocked={signalRService.isUserBlocked(user.id)}
+        isUserBlocked={service.isUserBlocked(user.id)}
         isVipUser={userRole === 'vip'}
         fileInputRef={fileInputRef}
         handleVoiceMessageClick={userRole === 'vip' || isAdminView ? handleVoiceMessageClick : undefined}
@@ -169,7 +211,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
         setPreviewImage={setPreviewImage}
       />
       
-      {/* VIP Feature Components */}
       {(userRole === 'vip' || isAdminView) && (
         <VipFeatures
           isMediaGalleryOpen={isMediaGalleryOpen}

@@ -3,6 +3,8 @@ import { useEffect, useRef } from 'react';
 import { signalRService } from '../services/signalRService';
 import { supabaseService } from '../services/supabaseService';
 import { UserProfile } from '@/types/user';
+import { toast } from 'sonner';
+import { checkSupabaseConnection } from '@/lib/supabase';
 
 // Flag to use Supabase instead of SignalR
 const USE_SUPABASE = true;
@@ -12,11 +14,26 @@ export const useSignalRConnection = (
   setConnectedUsersCount: (count: number) => void
 ) => {
   const isAdminRef = useRef(currentUser?.role === 'admin');
+  const connectionCheckedRef = useRef(false);
   
   // Update admin ref when role changes
   useEffect(() => {
     isAdminRef.current = currentUser?.role === 'admin';
   }, [currentUser?.role]);
+  
+  // Check Supabase connection on mount
+  useEffect(() => {
+    if (USE_SUPABASE && !connectionCheckedRef.current) {
+      connectionCheckedRef.current = true;
+      checkSupabaseConnection().then(isConnected => {
+        if (!isConnected) {
+          toast.error("Couldn't connect to Supabase. Please check your configuration.", {
+            duration: 6000,
+          });
+        }
+      });
+    }
+  }, []);
   
   useEffect(() => {
     if (!currentUser) return;
@@ -38,6 +55,7 @@ export const useSignalRConnection = (
         })
         .catch(err => {
           console.error("Supabase initialization error:", err);
+          toast.error("Failed to connect to chat service. Please try again later.");
         });
       
       // Set up connected users count updates
