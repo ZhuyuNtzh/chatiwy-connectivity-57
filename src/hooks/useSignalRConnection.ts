@@ -1,5 +1,5 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { signalRService } from '../services/signalRService';
 import { supabaseService } from '../services/supabaseService';
 import { UserProfile } from '@/types/user';
@@ -15,6 +15,7 @@ export const useSignalRConnection = (
 ) => {
   const isAdminRef = useRef(currentUser?.role === 'admin');
   const connectionCheckedRef = useRef(false);
+  const [connectionAvailable, setConnectionAvailable] = useState<boolean | null>(null);
   
   // Update admin ref when role changes
   useEffect(() => {
@@ -26,20 +27,48 @@ export const useSignalRConnection = (
     if (USE_SUPABASE && !connectionCheckedRef.current) {
       connectionCheckedRef.current = true;
       const checkConnection = async () => {
-        const isConnected = await checkSupabaseConnection();
-        if (!isConnected) {
-          toast.error("Couldn't connect to Supabase. Please check your configuration and make sure you've set up your database.", {
-            duration: 10000,
-          });
+        try {
+          const isConnected = await checkSupabaseConnection();
+          setConnectionAvailable(isConnected);
+          
+          if (!isConnected) {
+            toast.error("Couldn't connect to Supabase. Please check your configuration and make sure you've set up your database.", {
+              duration: 10000,
+            });
+            
+            // Still set a random connected users count for demo purposes
+            const randomCount = Math.floor(Math.random() * 8) + 8;
+            setConnectedUsersCount(randomCount);
+          }
+        } catch (error) {
+          console.error("Error checking Supabase connection:", error);
+          setConnectionAvailable(false);
+          
+          // Set random count even on error
+          const randomCount = Math.floor(Math.random() * 8) + 8;
+          setConnectedUsersCount(randomCount);
         }
       };
       
       checkConnection();
     }
-  }, []);
+  }, [setConnectedUsersCount]);
   
   useEffect(() => {
     if (!currentUser) return;
+
+    // Skip real connection if we know it's unavailable
+    if (connectionAvailable === false) {
+      console.log("Skipping real connection attempt as Supabase is unavailable");
+      
+      // Simulate connected users count
+      setTimeout(() => {
+        const randomCount = Math.floor(Math.random() * 8) + 8;
+        setConnectedUsersCount(randomCount);
+      }, 1000);
+      
+      return;
+    }
 
     // Use the actual username from the current user
     const username = currentUser.username || 'Anonymous';
@@ -59,6 +88,10 @@ export const useSignalRConnection = (
         } catch (err) {
           console.error("Supabase initialization error:", err);
           toast.error("Failed to connect to chat service. Please try again later.");
+          
+          // Set a random count even on error
+          const randomCount = Math.floor(Math.random() * 8) + 8;
+          setConnectedUsersCount(randomCount);
         }
       };
       
@@ -102,7 +135,7 @@ export const useSignalRConnection = (
         }
       }
     };
-  }, [currentUser, setConnectedUsersCount]);
+  }, [currentUser, setConnectedUsersCount, connectionAvailable]);
 };
 
 // Helper function to generate a numeric ID from a string
