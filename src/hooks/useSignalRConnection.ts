@@ -25,13 +25,16 @@ export const useSignalRConnection = (
   useEffect(() => {
     if (USE_SUPABASE && !connectionCheckedRef.current) {
       connectionCheckedRef.current = true;
-      checkSupabaseConnection().then(isConnected => {
+      const checkConnection = async () => {
+        const isConnected = await checkSupabaseConnection();
         if (!isConnected) {
           toast.error("Couldn't connect to Supabase. Please check your configuration.", {
             duration: 6000,
           });
         }
-      });
+      };
+      
+      checkConnection();
     }
   }, []);
   
@@ -49,14 +52,17 @@ export const useSignalRConnection = (
     // Use either Supabase or SignalR based on the flag
     if (USE_SUPABASE) {
       // Convert to string for Supabase
-      supabaseService.initialize(userId.toString(), username)
-        .then(() => {
+      const initializeSupabase = async () => {
+        try {
+          await supabaseService.initialize(userId.toString(), username);
           console.log(`Supabase initialized for user ${username} (ID: ${userId})`);
-        })
-        .catch(err => {
+        } catch (err) {
           console.error("Supabase initialization error:", err);
           toast.error("Failed to connect to chat service. Please try again later.");
-        });
+        }
+      };
+      
+      initializeSupabase();
       
       // Set up connected users count updates
       supabaseService.onConnectedUsersCountChanged(count => {

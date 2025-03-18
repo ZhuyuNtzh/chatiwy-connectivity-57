@@ -13,6 +13,7 @@ class SupabaseService {
   private connectionStatusCallbacks: ((status: ConnectionStatus) => void)[] = [];
   private connectedUsersCountCallbacks: ((count: number) => void)[] = [];
   private subscriptions: { unsubscribe: () => void }[] = [];
+  private blockedUsersCache: Record<number, boolean> = {};
 
   public get currentUserId(): string {
     return this.userId || '';
@@ -41,7 +42,7 @@ class SupabaseService {
   public async initialize(userId: string, username: string): Promise<void> {
     // Clear any previous user data if there was a session
     if (this.userId && this.userId !== userId) {
-      this.disconnect();
+      await this.disconnect();
     }
     
     this.userId = userId;
@@ -157,6 +158,7 @@ class SupabaseService {
     // Reset state
     this.userId = null;
     this.username = null;
+    this.blockedUsersCache = {};
     
     console.log('Supabase disconnected');
     return Promise.resolve();
@@ -405,7 +407,56 @@ class SupabaseService {
     return `00000000-0000-0000-0000-${id.toString().padStart(12, '0')}`;
   }
 
-  // Only implement a few key methods for now, more can be added as needed
+  // Modified method with synchronous version for UI use
+  public isUserBlocked(userId: number): boolean {
+    // Use cached result if available
+    if (this.blockedUsersCache[userId] !== undefined) {
+      return this.blockedUsersCache[userId];
+    }
+    
+    // If no cache available, assume not blocked for UI responsiveness
+    // and update the cache asynchronously
+    this.updateBlockedUserCache(userId);
+    return false;
+  }
+  
+  // Asynchronous version for backend operations
+  public async checkIfUserBlocked(userId: number): Promise<boolean> {
+    if (!this.userId) return false;
+    
+    // Use cached result if available to avoid DB queries
+    if (this.blockedUsersCache[userId] !== undefined) {
+      return this.blockedUsersCache[userId];
+    }
+    
+    const blockedId = this.getUuidFromNumber(userId);
+    
+    try {
+      const { data, error } = await supabase
+        .from('blocked_users')
+        .select('*')
+        .eq('blocker_id', this.userId)
+        .eq('blocked_id', blockedId);
+        
+      if (error) throw error;
+      
+      // Update cache
+      const isBlocked = data && data.length > 0;
+      this.blockedUsersCache[userId] = isBlocked;
+      
+      return isBlocked;
+    } catch (error) {
+      console.error('Error checking blocked status:', error);
+      return false;
+    }
+  }
+  
+  // Helper method to update cache asynchronously
+  private async updateBlockedUserCache(userId: number): Promise<void> {
+    const isBlocked = await this.checkIfUserBlocked(userId);
+    this.blockedUsersCache[userId] = isBlocked;
+  }
+  
   public async blockUser(userId: number): Promise<void> {
     if (!this.userId) return;
     
@@ -421,6 +472,9 @@ class SupabaseService {
         });
         
       if (error) throw error;
+      
+      // Update cache
+      this.blockedUsersCache[userId] = true;
     } catch (error) {
       console.error('Error blocking user:', error);
     }
@@ -439,29 +493,11 @@ class SupabaseService {
         .eq('blocked_id', blockedId);
         
       if (error) throw error;
+      
+      // Update cache
+      this.blockedUsersCache[userId] = false;
     } catch (error) {
       console.error('Error unblocking user:', error);
-    }
-  }
-  
-  public async isUserBlocked(userId: number): Promise<boolean> {
-    if (!this.userId) return false;
-    
-    const blockedId = this.getUuidFromNumber(userId);
-    
-    try {
-      const { data, error } = await supabase
-        .from('blocked_users')
-        .select('*')
-        .eq('blocker_id', this.userId)
-        .eq('blocked_id', blockedId);
-        
-      if (error) throw error;
-      
-      return data && data.length > 0;
-    } catch (error) {
-      console.error('Error checking blocked status:', error);
-      return false;
     }
   }
   
@@ -477,7 +513,14 @@ class SupabaseService {
       if (error) throw error;
       
       // Convert back to numbers for compatibility
-      return (data || []).map(item => this.toNumberId(item.blocked_id));
+      const blockedUsers = (data || []).map(item => this.toNumberId(item.blocked_id));
+      
+      // Update cache for all blocked users
+      blockedUsers.forEach(id => {
+        this.blockedUsersCache[id] = true;
+      });
+      
+      return blockedUsers;
     } catch (error) {
       console.error('Error getting blocked users:', error);
       return [];
@@ -490,8 +533,6 @@ class SupabaseService {
     // For now, return a simple check for admin ID
     return userId === 999; // Same logic as before for compatibility
   }
-  
-  // Implement remaining methods as needed...
   
   // These are placeholders that need proper implementation
   public async sendImage(recipientId: number, imageUrl: string, isBlurred: boolean = false): Promise<void> {
