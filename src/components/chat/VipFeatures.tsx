@@ -49,15 +49,6 @@ const VipFeatures: React.FC<VipFeaturesProps> = ({
   vipUpgradeUser,
   onConfirmVipUpgrade
 }) => {
-  // Define proper handlers to prevent event propagation issues
-  const handleConfirmDelete = () => {
-    onConfirmDelete();
-  };
-
-  const handleCancelDelete = () => {
-    onCancelDelete();
-  };
-
   return (
     <>
       <MediaGalleryDialog
@@ -70,8 +61,8 @@ const VipFeatures: React.FC<VipFeaturesProps> = ({
       <DeleteConfirmationDialog
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
-        onConfirm={handleConfirmDelete}
-        onCancel={handleCancelDelete}
+        onConfirm={onConfirmDelete}
+        onCancel={onCancelDelete}
       />
 
       {onConfirmVipUpgrade && setIsVipUpgradeDialogOpen && vipUpgradeUser && (

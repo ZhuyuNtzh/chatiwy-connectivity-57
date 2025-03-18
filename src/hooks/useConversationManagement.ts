@@ -15,32 +15,18 @@ export const useConversationManagement = () => {
     setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
     setMediaGalleryItems: React.Dispatch<React.SetStateAction<any[]>>
   ) => {
-    // Guard clause to prevent multiple deletion operations
-    if (isDeletionInProgress) return;
+    // Clear the messages and media
+    setMessages([]);
+    setMediaGalleryItems([]);
     
-    // Set the deletion flag
-    setIsDeletionInProgress(true);
+    // Show success notification
+    toast.success('Conversation deleted');
     
-    try {
-      // Perform the actual deletion
-      setMessages([]);
-      setMediaGalleryItems([]);
-      
-      // Show successful toast notification
-      toast.success('Conversation deleted');
-    } catch (error) {
-      // Handle any errors
-      console.error('Error during conversation deletion:', error);
-      toast.error('Failed to delete conversation');
-    } finally {
-      // Always reset the state
-      setIsDeletionInProgress(false);
-      setIsDeleteDialogOpen(false);
-    }
+    // Close the dialog
+    setIsDeleteDialogOpen(false);
   };
   
   const cancelDeleteConversation = () => {
-    // Simple cancel that just closes the dialog
     setIsDeleteDialogOpen(false);
   };
 
