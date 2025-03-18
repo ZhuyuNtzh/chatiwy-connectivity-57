@@ -2,52 +2,9 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { useAdminFeatures } from '@/hooks/useAdminFeatures';
 import { useVipFeatures } from '@/hooks/useVipFeatures';
 import { useUserManagement } from '@/hooks/useUserManagement';
+import { UserProfile, UserRole, BannedUser, AdminSettings } from '@/types/user';
 
-export interface UserProfile {
-  id?: string; // Add id property
-  username: string;
-  age?: number;
-  gender?: string;
-  interests?: string[];
-  location?: string;
-  isOnline?: boolean;
-  lastActive?: Date;
-  role: UserRole;
-  avatarUrl?: string;
-  avatar?: string;
-  isVip?: boolean;
-  isAdmin?: boolean;
-  isVerified?: boolean;
-  joinedAt?: Date;
-  email?: string;
-  isBanned?: boolean;
-  banExpiresAt?: Date;
-  isBot?: boolean;
-  tempVipExpiresAt?: Date;
-  isVisible?: boolean; // Admin visibility toggle
-  phoneNumber?: string; // For admin contact
-}
-
-export type UserRole = 'standard' | 'vip' | 'admin';
-
-export interface BannedUser {
-  username: string;
-  userId: number;
-  banReason?: string;
-  bannedAt: Date;
-  banExpiresAt?: Date;
-  bannedBy: string;
-  ipAddress?: string;
-}
-
-export interface AdminSettings {
-  isVisible: boolean;
-  email: string;
-  phoneNumber?: string;
-  avatarUrl?: string;
-}
-
-interface UserContextType {
+export interface UserContextType {
   currentUser: UserProfile | null;
   setCurrentUser: (user: UserProfile | null) => void;
   isLoggedIn: boolean;
@@ -96,12 +53,10 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const vipFeatures = useVipFeatures();
   const userManagement = useUserManagement();
 
-  // Update userRole when currentUser changes
   useEffect(() => {
     if (currentUser) {
       setUserRole(currentUser.role);
       
-      // Save admin login status to localStorage if admin
       if (currentUser.role === 'admin') {
         localStorage.setItem('adminLoggedIn', 'true');
       }
@@ -110,11 +65,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     }
   }, [currentUser]);
 
-  // Check for admin login status on mount
   useEffect(() => {
     const adminLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
     if (adminLoggedIn && !currentUser) {
-      // Auto-restore admin session on refresh
       setCurrentUser({
         username: 'Admin',
         role: 'admin',
@@ -137,11 +90,8 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         setRulesAccepted,
         userRole,
         setUserRole,
-        // Admin features
         ...adminFeatures,
-        // VIP features
         ...vipFeatures,
-        // User management
         ...userManagement,
       }}
     >
@@ -150,6 +100,4 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   );
 };
 
-// Export types for convenience
-export type { UserProfile, UserRole } from '@/types/user';
-export type { BannedUser, AdminSettings } from '@/types/user';
+export * from '@/types/user';

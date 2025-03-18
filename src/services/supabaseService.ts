@@ -273,9 +273,8 @@ class SupabaseService {
           timestamp: new Date(message.created_at),
           isRead: message.is_read,
           status: 'delivered',
-          // Use optional properties that exist in ChatMessage type
+          // Use properties that exist in ChatMessage type
           isImage: message.is_image,
-          isVoiceMessage: message.is_voice_message,
           imageUrl: message.media_url || undefined,
           audioUrl: message.media_url || undefined
         };
@@ -516,8 +515,12 @@ class SupabaseService {
           timestamp: new Date(msg.created_at),
           isRead: msg.is_read,
           status: 'delivered',
-          messageType: msg.is_image ? 'image' : (msg.is_voice_message ? 'voice' : 'text'),
-          mediaUrl: msg.image_url || msg.audio_url || null,
+          // Use correctly typed properties from ChatMessage
+          isImage: msg.is_image,
+          imageUrl: msg.media_url,
+          isVoiceMessage: msg.is_voice_message,
+          audioUrl: msg.media_url,
+          isDeleted: msg.is_deleted
         }));
         
         console.log(`Retrieved ${messages.length} messages with user ${userId}`);
