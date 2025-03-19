@@ -1,6 +1,7 @@
+
 import { supabase } from '../client';
 import { toast } from 'sonner';
-import { isUsernameTaken } from './userQueries';
+import { isUsernameTaken, getUserByUsername } from './userQueries';
 
 /**
  * Register a new user in the database
@@ -24,8 +25,24 @@ export const registerUser = async (
     // First check if username is taken
     const normalizedUsername = username.trim();
     
+    // Check for existing user with this username
+    const existingUser = await getUserByUsername(normalizedUsername);
+    if (existingUser) {
+      // If the existing user has the same ID as the current user, it's likely the same user trying to reconnect
+      if (existingUser.id === userId) {
+        console.log(`User ${normalizedUsername} is reconnecting with ID ${userId}`);
+        // Just update the online status
+        const success = await updateUserOnlineStatus(userId, true);
+        return success;
+      } else {
+        console.error(`Username "${normalizedUsername}" is already taken by user ID ${existingUser.id}`);
+        toast.error(`Username "${normalizedUsername}" is already taken. Please choose another username.`);
+        return false;
+      }
+    }
+    
     try {
-      // Try to register directly since the database constraint will catch duplication
+      // Try to register 
       console.log(`Attempting to register user ${normalizedUsername} with ID ${userId}`);
       
       const { data, error } = await supabase
@@ -44,10 +61,17 @@ export const registerUser = async (
         console.error('Error registering user:', error);
         
         // Check for duplicate username error
-        if (error.code === '23505' || error.message.includes('duplicate key value')) {
+        if (error.code === '23505' && error.message.includes('users_username_key')) {
           console.error(`Username "${normalizedUsername}" is already taken due to unique constraint violation`);
           toast.error(`Username "${normalizedUsername}" is already taken. Please choose another username.`);
           return false;
+        }
+        
+        // Check for duplicate user ID error
+        if (error.code === '23505' && error.message.includes('users_pkey')) {
+          console.log(`User with ID ${userId} already exists, updating online status instead`);
+          const success = await updateUserOnlineStatus(userId, true);
+          return success;
         }
         
         // Check for RLS policy error
@@ -96,6 +120,8 @@ export const updateUserOnlineStatus = async (
       return false;
     }
     
+    console.log(`Updating user ${userId} online status to ${isOnline}`);
+    
     const { error } = await supabase
       .from('users')
       .update({ 
@@ -109,6 +135,7 @@ export const updateUserOnlineStatus = async (
       return false;
     }
     
+    console.log(`Successfully updated online status for user ${userId} to ${isOnline}`);
     return true;
   } catch (err) {
     console.error('Exception updating online status:', err);

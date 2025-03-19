@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSupabaseConnection } from '@/hooks/useSupabaseConnection';
 import ConnectionStatus from './connection/ConnectionStatus';
 import { toast } from 'sonner';
@@ -14,10 +14,11 @@ interface ChatConnectionHandlerProps {
 const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({ 
   children, 
   userId, 
-  username,
+  username, 
   service
 }) => {
   const [forceRerender, setForceRerender] = useState(0);
+  const [reconnectKey, setReconnectKey] = useState(Date.now());
   
   const {
     isLoading,
@@ -32,8 +33,18 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
     userId, 
     username, 
     service,
-    key: forceRerender // Add a key to force hook re-execution
+    key: reconnectKey // Add a key to force hook re-execution
   });
+
+  // Force reconnect after 2 minutes of inactivity to refresh user lists
+  useEffect(() => {
+    const reconnectInterval = setInterval(() => {
+      console.log("Scheduled reconnect to refresh user data");
+      setReconnectKey(Date.now());
+    }, 2 * 60 * 1000); // 2 minutes
+    
+    return () => clearInterval(reconnectInterval);
+  }, []);
 
   // When username is taken, show error but don't render children
   if (usernameTaken) {
@@ -48,7 +59,7 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
         username={username}
         onRetry={() => {
           // Force re-execution of the hook with a new key
-          setForceRerender(prev => prev + 1);
+          setReconnectKey(Date.now());
           handleRetry();
         }}
         onContinueAnyway={() => {
@@ -72,7 +83,7 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
         username={username}
         onRetry={() => {
           // Force re-execution of the hook with a new key
-          setForceRerender(prev => prev + 1);
+          setReconnectKey(Date.now());
           handleRetry();
         }}
         onContinueAnyway={handleContinueAnyway}
@@ -93,7 +104,7 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
           username={username}
           onRetry={() => {
             // Force re-execution of the hook with a new key
-            setForceRerender(prev => prev + 1);
+            setReconnectKey(Date.now());
             handleRetry();
           }}
           onContinueAnyway={handleContinueAnyway}

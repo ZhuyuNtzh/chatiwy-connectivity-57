@@ -1,3 +1,4 @@
+
 import { supabase } from '../client';
 
 /**
@@ -24,9 +25,8 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
     
     if (error) {
       console.error('Error checking username:', error);
-      // Don't throw, but return false to allow registration attempt
-      // The unique constraint will catch it if it's truly a duplicate
-      return false;
+      // Return true on error to be safe
+      return true;
     }
     
     const isTaken = (count || 0) > 0;
@@ -39,8 +39,8 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
     return isTaken;
   } catch (err) {
     console.error('Exception checking username:', err);
-    // Don't block registration on username check failure
-    return false;
+    // Return true on error to be safe
+    return true;
   }
 };
 
@@ -92,5 +92,45 @@ export const getAllUsers = async (): Promise<any[]> => {
   } catch (err) {
     console.error('Exception getting all users:', err);
     return [];
+  }
+};
+
+/**
+ * Get a user by their username
+ * @param username The username to look for
+ * @returns Promise<any> The user object or null
+ */
+export const getUserByUsername = async (username: string): Promise<any | null> => {
+  try {
+    if (!username || username.trim().length === 0) {
+      console.error('Invalid username provided for lookup');
+      return null;
+    }
+
+    const normalizedUsername = username.trim().toLowerCase();
+    console.log(`Looking up user with username "${normalizedUsername}"...`);
+    
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .ilike('username', normalizedUsername)
+      .limit(1)
+      .single();
+    
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No rows returned
+        console.log(`No user found with username "${normalizedUsername}"`);
+        return null;
+      }
+      console.error('Error looking up user by username:', error);
+      return null;
+    }
+    
+    console.log(`Found user with username "${normalizedUsername}":`, data);
+    return data;
+  } catch (err) {
+    console.error('Exception looking up user by username:', err);
+    return null;
   }
 };

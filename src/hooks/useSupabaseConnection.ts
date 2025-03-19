@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { initializeSupabase } from '@/lib/supabase';
 import { setupConnectionHeartbeat, enableRealtimeForChat } from '@/lib/supabase/realtime';
 import { registerUser, updateUserOnlineStatus } from '@/lib/supabase/users';
-import { isUsernameTaken } from '@/lib/supabase/users/userQueries';
+import { isUsernameTaken, getUserByUsername } from '@/lib/supabase/users/userQueries';
 import { generateUniqueUUID } from '@/lib/supabase/utils';
 
 interface UseSupabaseConnectionProps {
@@ -110,8 +110,10 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
         
         if (!registrationSuccess) {
           // This could be due to the username being taken or other registration issues
-          const takenCheck = await isUsernameTaken(normalizedUsername);
-          if (takenCheck) {
+          // Check if the username exists
+          const existingUser = await getUserByUsername(normalizedUsername);
+          
+          if (existingUser) {
             console.error(`Registration failed because username ${normalizedUsername} is taken`);
             setUsernameTaken(true);
             setIsLoading(false);
@@ -187,15 +189,21 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
       if (isLoading) {
         console.warn("Loading timed out - showing UI anyway");
         setIsLoading(false);
-        setConnectionReady(true); // Try to proceed anyway
       }
     }, 8000); // 8 seconds max loading time
     
     return () => clearTimeout(loadingTimeout);
   }, [isLoading]);
 
-  const handleRetry = () => setRetryCount(0);
-  const handleContinueAnyway = () => setConnectionReady(true);
+  const handleRetry = () => {
+    console.log("User initiated retry, resetting retry count");
+    setRetryCount(0);
+  };
+  
+  const handleContinueAnyway = () => {
+    console.log("User chose to continue anyway");
+    setConnectionReady(true);
+  };
 
   return {
     isLoading,
