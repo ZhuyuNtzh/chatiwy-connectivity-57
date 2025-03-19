@@ -54,6 +54,13 @@ export const registerUser = async (
     
     console.log(`Registering user with ID: ${validUserId} and username: ${username}`);
     
+    // Check if username is available first
+    const isTaken = await isUsernameTaken(username);
+    if (isTaken) {
+      console.error(`Username ${username} is already taken`);
+      return false;
+    }
+    
     // Check if user already exists
     const { data: existingUser, error: fetchError } = await supabase
       .from('users')
@@ -84,16 +91,19 @@ export const registerUser = async (
       return true;
     }
     
-    // Create new user
+    // Create new user using upsert with onConflict to handle race conditions
     const { error: insertError } = await supabase
       .from('users')
-      .insert([{ 
+      .upsert([{ 
         id: validUserId,
         username,
         role,
         is_online: true,
         last_active: new Date().toISOString()
-      }]);
+      }], { 
+        onConflict: 'id',
+        ignoreDuplicates: false
+      });
     
     if (insertError) {
       console.error('Error creating user:', insertError);
@@ -101,6 +111,11 @@ export const registerUser = async (
     }
     
     console.log(`User ${username} registered successfully with ID: ${validUserId}`);
+    
+    // Store the UUID in localStorage for persistence
+    localStorage.setItem('userUUID', validUserId);
+    localStorage.setItem('username', username);
+    
     return true;
   } catch (err) {
     console.error('Exception registering user:', err);

@@ -18,17 +18,45 @@ export const generateStableUUID = (seed: string): string => {
     hash = hash & hash; // Convert to 32bit integer
   }
   
-  // Create parts of the UUID
-  const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (hash + Math.random() * 16) % 16 | 0;
-    hash = Math.floor(hash / 16);
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-  });
+  // Create parts of the UUID using crypto for better randomness
+  let uuid = '';
+  try {
+    // Try to use crypto.randomUUID() first if available
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      uuid = crypto.randomUUID();
+    } else {
+      uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = (hash + Math.random() * 16) % 16 | 0;
+        hash = Math.floor(hash / 16);
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      });
+    }
+  } catch (e) {
+    // Fallback method
+    uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (hash + Math.random() * 16) % 16 | 0;
+      hash = Math.floor(hash / 16);
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  }
   
   return uuid;
 };
 
 // Generate a completely unique UUID (for message IDs, presence, etc.)
 export const generateUniqueUUID = (): string => {
-  return crypto.randomUUID();
+  try {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+  } catch (e) {
+    console.warn('crypto.randomUUID not available, using fallback');
+  }
+  
+  // Fallback method
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 };

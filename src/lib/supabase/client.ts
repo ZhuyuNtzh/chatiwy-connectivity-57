@@ -19,7 +19,13 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
       eventsPerSecond: 10
     }
   },
+  db: {
+    schema: 'public'
+  },
   global: {
+    headers: {
+      'X-Client-Info': 'chatwii-app'
+    },
     fetch: (input: RequestInfo | URL, init?: RequestInit) => {
       // Add custom fetch retry logic or timeout handling
       return fetch(input, init).catch(err => {
@@ -81,3 +87,24 @@ globalChannel
       }, 3000);
     }
   });
+
+// Test the Supabase connection
+export const testSupabaseConnection = async () => {
+  try {
+    // Simple test query
+    const { data, error } = await supabase
+      .from('users')
+      .select('count(*)')
+      .limit(1);
+      
+    if (error) {
+      throw error;
+    }
+    
+    console.log('Supabase connection test successful');
+    return true;
+  } catch (error) {
+    console.error('Supabase connection test failed:', error);
+    return false;
+  }
+};

@@ -1,7 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { checkSupabaseConnection, initializeSupabase } from '@/lib/supabase';
+import { initializeSupabase } from '@/lib/supabase';
 import { setupConnectionHeartbeat, enableRealtimeForChat } from '@/lib/supabase/realtime';
 import { registerUser, updateUserOnlineStatus, isUsernameTaken } from '@/lib/supabase/users';
 import { generateUniqueUUID } from '@/lib/supabase/utils';
@@ -30,6 +29,10 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
 
   // Check Supabase connection on mount
   useEffect(() => {
+    // Check for existing session
+    const existingUUID = localStorage.getItem('userUUID');
+    const existingUsername = localStorage.getItem('username');
+    
     const connectToSupabase = async () => {
       setIsLoading(true);
       
@@ -44,110 +47,83 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
         
         console.log(`Attempting to connect with username: ${username}`);
         
-        // Check if username is already taken - more careful validation
-        if (username) {
-          try {
-            const taken = await isUsernameTaken(username);
-            
-            if (taken) {
-              console.error(`Username ${username} is already taken`);
-              toast.error(`Username "${username}" is already taken. Please choose another username.`);
-              setUsernameTaken(true);
-              setIsLoading(false);
-              return;
-            } else {
-              console.log(`Username ${username} is available`);
-            }
-          } catch (err) {
-            console.error("Error checking username availability:", err);
-            toast.error("Error checking username availability. Will try to proceed anyway.");
-            // We'll continue anyway and let the registration process handle duplicates
-          }
-        }
-        
-        // Initialize Supabase with all necessary features
-        console.log("Initializing Supabase connection...");
+        // First initialize Supabase to make sure connection is working
         const isConnected = await initializeSupabase();
-        
         if (!isConnected) {
-          console.error("Failed to initialize Supabase");
-          
-          if (retryCount < maxRetries) {
-            console.warn(`Connection issue (attempt ${retryCount + 1}/${maxRetries}). Retrying...`);
-            toast.warning(`Connection issue. Retrying... (${retryCount + 1}/${maxRetries})`);
-            
-            // Retry after a short delay, with exponential backoff
-            setTimeout(() => {
-              setRetryCount(prev => prev + 1);
-            }, 1000 * Math.pow(2, retryCount));
-            
-            return;
-          }
-          
-          console.error("Max retries reached. Could not connect to chat backend.");
-          toast.error("Could not connect to chat service. Please try again later.");
-          setConnectionReady(false);
-        } else {
-          console.log("Successfully connected to Supabase");
-          
-          // Create a stable UUID for this user
-          const stableId = generateUniqueUUID();
-          console.log(`Generated stable ID for user: ${stableId}`);
-          
-          // Enable realtime features for chat
-          console.log("Enabling realtime features for chat...");
-          await enableRealtimeForChat();
-          
-          // Set up connection heartbeat to prevent timeouts
-          console.log("Setting up connection heartbeat...");
-          const stopHeartbeat = setupConnectionHeartbeat();
-          
-          // Register or update user - use the stable UUID
-          console.log(`Registering user ${username} with ID ${stableId}...`);
-          const registrationSuccess = await registerUser(
-            stableId,
-            username,
-            'standard' // Default role
-          );
-          
-          if (!registrationSuccess) {
-            console.error("Failed to register user");
-            setUsernameTaken(true);
-            setIsLoading(false);
-            return;
-          }
-          
-          // Update user status
-          console.log("Updating user online status...");
-          await updateUserOnlineStatus(stableId, true);
-          
-          // Store the UUID in sessionStorage for later use
-          sessionStorage.setItem('userUUID', stableId);
-          console.log(`User UUID stored in session: ${stableId}`);
-          
-          // Verify service connection as well
-          if (service && typeof service.testConnection === 'function') {
-            console.log("Testing chat service connection...");
-            const serviceConnected = await service.testConnection();
-            if (!serviceConnected) {
-              console.warn("Chat service connection is unstable. Some features may be limited.");
-              toast.warning("Chat service connection is unstable. Some features may be limited.");
-            } else {
-              console.log("Chat service connection successful");
-            }
-          }
-          
-          setConnectionReady(true);
-          toast.success("Connected to chat service");
-          
-          // Clean up heartbeat on unmount
-          return () => {
-            stopHeartbeat();
-            // Set user offline when component unmounts
-            updateUserOnlineStatus(stableId, false)
-              .catch(err => console.error('Error updating offline status:', err));
-          };
+          throw new Error("Failed to initialize Supabase connection");
         }
+        
+        // Check if username is already taken
+        const taken = await isUsernameTaken(username);
+        if (taken) {
+          console.error(`Username ${username} is already taken`);
+          toast.error(`Username "${username}" is already taken. Please choose another username.`);
+          setUsernameTaken(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Create a stable UUID for this user
+        // If we already have a UUID in localStorage, use it
+        const stableId = existingUUID && existingUsername === username ? 
+          existingUUID : generateUniqueUUID();
+        
+        console.log(`Using user ID: ${stableId}`);
+        
+        // Enable realtime features for chat
+        console.log("Enabling realtime features for chat...");
+        await enableRealtimeForChat();
+        
+        // Set up connection heartbeat to prevent timeouts
+        console.log("Setting up connection heartbeat...");
+        const stopHeartbeat = setupConnectionHeartbeat();
+        
+        // Register or update user
+        console.log(`Registering user ${username} with ID ${stableId}...`);
+        const registrationSuccess = await registerUser(
+          stableId,
+          username,
+          'standard' // Default role
+        );
+        
+        if (!registrationSuccess) {
+          console.error("Failed to register user");
+          toast.error("Failed to register user. Please try again.");
+          setUsernameTaken(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Update user status
+        console.log("Updating user online status...");
+        await updateUserOnlineStatus(stableId, true);
+        
+        // Store the UUID in sessionStorage for later use
+        sessionStorage.setItem('userUUID', stableId);
+        console.log(`User UUID stored in session: ${stableId}`);
+        
+        // Verify service connection as well
+        if (service && typeof service.testConnection === 'function') {
+          console.log("Testing chat service connection...");
+          const serviceConnected = await service.testConnection();
+          if (!serviceConnected) {
+            console.warn("Chat service connection is unstable. Some features may be limited.");
+            toast.warning("Chat service connection is unstable. Some features may be limited.");
+          } else {
+            console.log("Chat service connection successful");
+          }
+        }
+        
+        setConnectionReady(true);
+        toast.success("Connected to chat service");
+        
+        // Clean up heartbeat on unmount
+        return () => {
+          stopHeartbeat();
+          // Set user offline when component unmounts
+          updateUserOnlineStatus(stableId, false)
+            .catch(err => console.error('Error updating offline status:', err));
+        };
       } catch (err) {
         console.error("Error testing connection:", err);
         toast.error("Error connecting to chat service, will retry");
