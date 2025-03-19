@@ -138,11 +138,9 @@ const checkActiveDatabaseConnection = async (): Promise<boolean> => {
     // Check database time to verify active connection
     const startTime = Date.now();
     
-    // Properly type the response from the RPC call to prevent type errors
-    const { data, error } = await supabase.rpc('get_server_timestamp') as {
-      data: string | null,
-      error: any
-    };
+    // Use type assertion with any to bypass TypeScript checking for the RPC call
+    const response: any = await supabase.rpc('get_server_timestamp');
+    const { data, error } = response;
     
     if (error) {
       console.error('Error checking active database connection:', error);
