@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { UserProfile } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
@@ -12,6 +13,7 @@ import {
   setupConnectionHeartbeat, 
   enableRealtimeForChat 
 } from '@/lib/supabase/realtime';
+import { supabase } from '@/lib/supabase/client';
 
 /**
  * Hook to connect to SignalR and update user status
@@ -86,7 +88,7 @@ export const useSignalRConnection = (
         const initSuccess = await initializeSupabase();
         if (!initSuccess) {
           console.error('Failed to initialize Supabase');
-          return;
+          return null;
         }
         
         // Enable realtime for all required tables
@@ -130,12 +132,18 @@ export const useSignalRConnection = (
         toast.error('Failed to connect to Supabase. Try refreshing the page.', {
           duration: 5000,
         });
+        return null;
       }
     };
 
     // Connect to services
     connectToSignalR();
-    const cleanup = connectToSupabase();
+    let cleanup: (() => void) | null = null;
+    
+    // Connect to Supabase and store the cleanup function
+    connectToSupabase().then(cleanupFn => {
+      cleanup = cleanupFn;
+    });
 
     // Set up window beforeunload event to properly disconnect when page is closed
     const handleBeforeUnload = () => {

@@ -2,7 +2,6 @@
 import { supabase } from './client';
 import { connectionState } from './client';
 import { toast } from 'sonner';
-import { enableRealtimeForUsers } from './realtime';
 
 /**
  * Check if Supabase connection is working
@@ -50,27 +49,34 @@ export const checkSupabaseConnection = async (): Promise<boolean> => {
 /**
  * Enable realtime functionality for the users table
  */
-export const enableRealtimeForUsers = async (): Promise<boolean> => {
+export const enableRealtimeSubscription = async (tableName: string): Promise<boolean> => {
   try {
-    console.log('Enabling realtime for users table...');
+    console.log(`Enabling realtime for ${tableName} table...`);
     
     // Fix TypeScript error by using type assertion
     const { error } = await (supabase.rpc as any)(
       'enable_realtime_subscription',
-      { table_name: 'users' }
+      { table_name: tableName }
     );
     
     if (error) {
-      console.error('Error enabling realtime for users:', error);
+      console.error(`Error enabling realtime for ${tableName}:`, error);
       return false;
     }
     
-    console.log('Successfully enabled realtime for users table');
+    console.log(`Successfully enabled realtime for ${tableName} table`);
     return true;
   } catch (err) {
-    console.error('Exception enabling realtime:', err);
+    console.error(`Exception enabling realtime for ${tableName}:`, err);
     return false;
   }
+};
+
+/**
+ * Enable realtime functionality for the users table
+ */
+export const enableRealtimeForUsers = async (): Promise<boolean> => {
+  return enableRealtimeSubscription('users');
 };
 
 /**
@@ -92,21 +98,13 @@ export const initializeSupabase = async (): Promise<boolean> => {
     const usersRealtimeEnabled = await enableRealtimeForUsers();
     
     // Enable realtime for messages table
-    // Fix TypeScript error by using type assertion
-    const { error: messagesError } = await (supabase.rpc as any)(
-      'enable_realtime_subscription',
-      { table_name: 'messages' }
-    );
+    const messagesRealtimeEnabled = await enableRealtimeSubscription('messages');
     
     // Enable realtime for conversations table
-    // Fix TypeScript error by using type assertion
-    const { error: convsError } = await (supabase.rpc as any)(
-      'enable_realtime_subscription',
-      { table_name: 'conversations' }
-    );
+    const convsRealtimeEnabled = await enableRealtimeSubscription('conversations');
     
-    if (messagesError || convsError) {
-      console.error('Error enabling realtime for tables:', messagesError || convsError);
+    if (!usersRealtimeEnabled || !messagesRealtimeEnabled || !convsRealtimeEnabled) {
+      console.error('Error enabling realtime for tables');
       
       // Continue anyway but log the error
       console.warn('Continuing with partial realtime functionality');
