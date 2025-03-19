@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { generateStableUUID, generateUniqueUUID } from './utils';
 
 /**
- * Check if a username is already taken
+ * Check if a username is already taken with improved error handling
  * @param username The username to check
  * @returns Promise resolving to boolean indicating if username is taken
  */
@@ -14,6 +14,8 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
       return false;
     }
     
+    console.log(`Checking if username "${username}" is taken...`);
+    
     const { data, error, count } = await supabase
       .from('users')
       .select('id', { count: 'exact' })
@@ -22,14 +24,17 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
     if (error) {
       console.error('Error checking username:', error);
       toast.error('Error checking username availability');
-      return false;
+      throw error;
     }
     
-    return count ? count > 0 : false;
+    const isTaken = count ? count > 0 : false;
+    console.log(`Username "${username}" is ${isTaken ? 'taken' : 'available'}`);
+    
+    return isTaken;
   } catch (err) {
     console.error('Exception checking username:', err);
     toast.error('Error checking username availability');
-    return false;
+    throw err; // Propagate error to caller
   }
 };
 
@@ -46,14 +51,14 @@ export const registerUser = async (
   role: string = 'standard'
 ): Promise<boolean> => {
   try {
-    // Ensure we have valid inputs
+    // Validate inputs
     if (!username || username.trim() === '') {
       console.error('Invalid username for registration');
       toast.error('Username cannot be empty');
       return false;
     }
     
-    // Generate a valid UUID - always use a completely unique UUID for new users
+    // Generate a valid UUID
     const validUserId = typeof userId === 'string' && 
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId) 
       ? userId 
@@ -61,13 +66,51 @@ export const registerUser = async (
     
     console.log(`Registering/updating user ${username} with ID ${validUserId}`);
     
-    // First check if username is taken by someone else
-    const isTaken = await isUsernameTaken(username);
-    if (isTaken) {
-      console.error(`Username ${username} is already taken`);
-      toast.error(`Username ${username} is already taken. Please choose another.`);
+    // First check if username is taken by someone else (with improved logic)
+    const checkUsernameResult = await supabase
+      .from('users')
+      .select('id, username')
+      .eq('username', username);
+    
+    if (checkUsernameResult.error) {
+      console.error('Error checking username:', checkUsernameResult.error);
+      toast.error('Error during registration process');
       return false;
     }
+    
+    if (checkUsernameResult.data && checkUsernameResult.data.length > 0) {
+      const existingUser = checkUsernameResult.data[0];
+      
+      // If the username is taken by a different user
+      if (existingUser.id !== validUserId) {
+        console.error(`Username ${username} is already taken by another user`);
+        toast.error(`Username "${username}" is already taken. Please choose another.`);
+        return false;
+      }
+      
+      // If it's the same user, just update the online status
+      console.log(`User ${username} already exists, updating online status`);
+      
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ 
+          is_online: true,
+          last_active: new Date().toISOString()
+        })
+        .eq('id', validUserId);
+      
+      if (updateError) {
+        console.error('Error updating user:', updateError);
+        toast.error('Error updating user data');
+        return false;
+      }
+      
+      toast.success(`Welcome back, ${username}!`);
+      return true;
+    }
+    
+    // Username is available, proceed with registration
+    console.log(`Username ${username} is available, proceeding with registration`);
     
     // Check if user with same ID exists
     const { data: existingUserId, error: checkIdError } = await supabase
@@ -107,6 +150,7 @@ export const registerUser = async (
     }
     
     // Otherwise, insert new user
+    console.log(`Creating new user with username ${username}`);
     const userData = {
       id: validUserId,
       username: username,
@@ -120,14 +164,15 @@ export const registerUser = async (
       .insert(userData);
     
     if (insertError) {
-      // Check if it's a unique constraint violation
-      if (insertError.message.includes('unique constraint')) {
+      // Handle unique constraint violation explicitly
+      if (insertError.code === '23505') {
         console.error('Username already taken:', insertError);
-        toast.error(`Username ${username} is already taken. Please choose another.`);
-      } else {
-        console.error('Error registering user:', insertError);
-        toast.error('Failed to register user. Please try again.');
+        toast.error(`Username "${username}" is already taken. Please choose another.`);
+        return false;
       }
+      
+      console.error('Error registering user:', insertError);
+      toast.error('Failed to register user. Please try again.');
       return false;
     }
     

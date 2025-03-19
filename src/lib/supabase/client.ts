@@ -9,18 +9,25 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 // Create Supabase client with better config
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    persistSession: true,  // Keep session alive between page refreshes
-    autoRefreshToken: true, // Automatically refresh token before it expires
-    detectSessionInUrl: true, // Detect if a session is in the URL and automatically store it
-    storage: localStorage // Use localStorage for session storage
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true, 
+    storage: localStorage
   },
   realtime: {
     params: {
-      eventsPerSecond: 10 // Increase events per second limit
+      eventsPerSecond: 10
     }
   },
-  db: {
-    schema: 'public' // Ensure we're using public schema
+  global: {
+    fetch: (...args) => {
+      // Add custom fetch retry logic or timeout handling
+      return fetch(...args).catch(err => {
+        console.error("Network error in Supabase request:", err);
+        toast.error("Network error. Please check your connection.");
+        throw err;
+      });
+    }
   }
 });
 
@@ -34,23 +41,24 @@ export const connectionState = {
   maxReconnectAttempts: 5
 };
 
-// Configure realtime channel for better connection
-supabase.realtime.setAuth(supabaseKey);
-
-// Initialize a global channel for presence
+// Set up presence channel with more robust error handling
 export const globalChannel = supabase.channel('global_presence', {
   config: {
     presence: {
-      key: 'user-presence', // Used to identify this specific presence
+      key: 'user-presence',
     },
   },
 });
 
-// Set up presence tracking
+// Set up presence tracking with better error handling
 globalChannel
   .on('presence', { event: 'sync' }, () => {
-    const state = globalChannel.presenceState();
-    console.log('Presence synchronized:', state);
+    try {
+      const state = globalChannel.presenceState();
+      console.log('Presence synchronized:', state);
+    } catch (err) {
+      console.error('Error in presence sync:', err);
+    }
   })
   .on('presence', { event: 'join' }, ({ key, newPresences }) => {
     console.log('User joined presence:', key, newPresences);
@@ -58,4 +66,18 @@ globalChannel
   .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
     console.log('User left presence:', key, leftPresences);
   })
-  .subscribe();
+  .subscribe((status) => {
+    console.log('Presence channel status:', status);
+    
+    if (status === 'SUBSCRIBED') {
+      console.log('Successfully subscribed to presence channel');
+    } else if (status === 'CHANNEL_ERROR') {
+      console.error('Error in presence channel subscription');
+      
+      // Try to reconnect after a short delay
+      setTimeout(() => {
+        console.log('Attempting to reconnect presence channel');
+        globalChannel.subscribe();
+      }, 3000);
+    }
+  });
