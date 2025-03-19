@@ -111,13 +111,16 @@ export const updateUserOnlineStatus = async (
   isOnline: boolean
 ): Promise<boolean> => {
   try {
+    // Convert userId to string if it's a number
+    const userIdStr = typeof userId === 'number' ? userId.toString() : userId;
+    
     // Validate the userId is a UUID
-    if (typeof userId === 'string' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
-      console.error(`Invalid UUID format for userId: ${userId}`);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userIdStr)) {
+      console.error(`Invalid UUID format for userId: ${userIdStr}`);
       return false;
     }
     
-    console.log(`Updating online status for user ID ${userId} to ${isOnline}`);
+    console.log(`Updating online status for user ID ${userIdStr} to ${isOnline}`);
     
     const { error } = await supabase
       .from('users')
@@ -125,14 +128,14 @@ export const updateUserOnlineStatus = async (
         is_online: isOnline,
         last_active: new Date().toISOString()
       })
-      .eq('id', userId);
+      .eq('id', userIdStr);
     
     if (error) {
       console.error('Error updating user online status:', error);
       return false;
     }
     
-    console.log(`User ${userId} online status updated to ${isOnline}`);
+    console.log(`User ${userIdStr} online status updated to ${isOnline}`);
     return true;
   } catch (err) {
     console.error('Exception updating user online status:', err);
@@ -209,18 +212,25 @@ export const setupRealtimeSubscription = async (
   tableName: string
 ): Promise<boolean> => {
   try {
-    // Fix TypeScript error by using type assertion
-    const { error } = await (supabase.rpc as any)(
-      'enable_realtime_subscription',
-      { table_name: tableName }
-    );
+    console.log(`Setting up realtime subscription for ${tableName} table...`);
     
-    if (error) {
-      console.error(`Error setting up realtime for ${tableName}:`, error);
-      return false;
-    }
+    // Create a channel for realtime subscription
+    const channel = supabase.channel(`realtime_${tableName}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: tableName,
+      }, (payload) => {
+        console.log(`Realtime change in ${tableName}:`, payload);
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`Successfully subscribed to ${tableName} table changes`);
+        } else {
+          console.log(`Subscription status for ${tableName}: ${status}`);
+        }
+      });
     
-    console.log(`Realtime subscription for ${tableName} enabled successfully`);
     return true;
   } catch (err) {
     console.error(`Exception setting up realtime for ${tableName}:`, err);
