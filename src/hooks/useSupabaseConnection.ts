@@ -56,14 +56,14 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
           throw new Error("Failed to initialize Supabase connection");
         }
         
-        // Create a stable UUID for this user
-        // If we already have a UUID in localStorage and username hasn't changed, use it
-        let stableId = existingUUID;
+        // Determine if we should use existing UUID or generate a new one
+        let stableId: string;
         let shouldCheckUsername = true;
         
         // If we have an existing UUID and username matches, skip username check
         if (existingUUID && existingUsername === normalizedUsername) {
           console.log(`Using existing UUID ${existingUUID} for username ${normalizedUsername}`);
+          stableId = existingUUID;
           shouldCheckUsername = false;
         } else {
           // Generate a new UUID for new users or changed usernames
@@ -102,46 +102,47 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
         
         // Register or update user
         console.log(`Registering user ${normalizedUsername} with ID ${stableId}...`);
-        const registrationSuccess = await registerUser(
-          stableId,
-          normalizedUsername,
-          'standard' // Default role
-        );
-        
-        if (!registrationSuccess) {
-          // This could be due to the username being taken or other registration issues
-          // Check if the username exists
-          const existingUser = await getUserByUsername(normalizedUsername);
+        try {
+          const registrationSuccess = await registerUser(
+            stableId,
+            normalizedUsername,
+            'standard' // Default role
+          );
           
-          if (existingUser) {
-            // If user exists but has a different ID than our stableId
-            if (existingUser.id !== stableId) {
-              console.error(`Registration failed because username ${normalizedUsername} is taken`);
+          if (!registrationSuccess) {
+            // Check if the username exists but with a different user ID
+            const existingUser = await getUserByUsername(normalizedUsername);
+            
+            if (existingUser && existingUser.id !== stableId) {
+              console.error(`Username ${normalizedUsername} is taken by user with ID ${existingUser.id}`);
               setUsernameTaken(true);
               setIsLoading(false);
+              stopHeartbeat();
               return;
-            } else {
+            } else if (existingUser && existingUser.id === stableId) {
               // Same user reconnecting, just update status
-              console.log(`User ${normalizedUsername} already exists with same ID, updating status`);
+              console.log(`User ${normalizedUsername} already exists with same ID ${stableId}, updating status`);
               await updateUserOnlineStatus(stableId, true);
+            } else {
+              // If registration failed for non-username reasons
+              setValidationError("Registration failed. Please try again with a different username.");
+              setIsLoading(false);
+              stopHeartbeat();
+              return;
             }
-          } else {
-            // If it's not a taken username, but registration still failed
-            console.error("Registration failed for non-username reasons");
-            setValidationError("Registration failed. Please try again with a different username.");
-            setIsLoading(false);
-            return;
           }
+        } catch (regError) {
+          console.error("Registration error:", regError);
+          setValidationError("Error during registration. Please try again.");
+          setIsLoading(false);
+          stopHeartbeat();
+          return;
         }
-        
-        // Update user status
-        console.log("Updating user online status...");
-        await updateUserOnlineStatus(stableId, true);
         
         // Store the UUID and username in localStorage for later use
         localStorage.setItem('userUUID', stableId);
         localStorage.setItem('username', normalizedUsername);
-        console.log(`User UUID stored in local storage: ${stableId}`);
+        console.log(`User UUID and username stored in local storage`);
         
         // Verify service connection as well
         if (service && typeof service.testConnection === 'function') {
@@ -160,6 +161,7 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
         
         // Clean up heartbeat on unmount
         return () => {
+          console.log("Cleaning up Supabase connection");
           stopHeartbeat();
           // Set user offline when component unmounts
           updateUserOnlineStatus(stableId, false)
@@ -187,10 +189,7 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
       setIsLoading(false);
       setValidationError("Please provide a username");
     }
-  }, [retryCount, service, userId, username, key]); // Added key to dependency array
-
-  // Hide loading screen after timeout to prevent UI freeze
-  useEffect(() => {
+    
     // Set a maximum time for loading screen
     const loadingTimeout = setTimeout(() => {
       if (isLoading) {
@@ -200,7 +199,7 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
     }, 8000); // 8 seconds max loading time
     
     return () => clearTimeout(loadingTimeout);
-  }, [isLoading]);
+  }, [retryCount, service, userId, username, key]); // Added key to dependency array
 
   const handleRetry = () => {
     console.log("User initiated retry, resetting retry count");

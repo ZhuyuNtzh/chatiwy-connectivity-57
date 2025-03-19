@@ -11,12 +11,13 @@ export const subscribeToOnlineUsers = (callback: (users: any[]) => void) => {
   
   // Create a realtime subscription for user changes
   const subscription = supabase
-    .channel('public:users')
+    .channel('online_users_channel')
     .on('postgres_changes', 
       {
         event: '*', 
         schema: 'public',
-        table: 'users'
+        table: 'users',
+        filter: 'is_online=eq.true'
       }, 
       async (payload) => {
         console.log('User table change detected:', payload);
@@ -64,9 +65,9 @@ export const setupRealtimeSubscription = (
 ) => {
   console.log(`Setting up realtime subscription for user ${userId}...`);
   
-  // Create a realtime subscription for this specific user
+  // Create a realtime subscription for this specific user using channel name that won't conflict
   const subscription = supabase
-    .channel(`public:users:id=eq.${userId}`)
+    .channel(`user_status_${userId}`)
     .on('postgres_changes', 
       {
         event: 'UPDATE',

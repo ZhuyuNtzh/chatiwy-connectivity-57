@@ -16,11 +16,11 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
     const normalizedUsername = username.trim().toLowerCase(); // Normalize to lowercase
     console.log(`Checking if username "${normalizedUsername}" is taken...`);
     
-    // Use lower() for case-insensitive comparison with the index we created
+    // Use lower() for case-insensitive comparison
     const { data, error, count } = await supabase
       .from('users')
       .select('id, username', { count: 'exact' })
-      .filter('username', 'ilike', normalizedUsername) 
+      .ilike('username', normalizedUsername) 
       .limit(1);
     
     if (error) {
@@ -114,7 +114,7 @@ export const getUserByUsername = async (username: string): Promise<any | null> =
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .filter('username', 'ilike', normalizedUsername)
+      .ilike('username', normalizedUsername)
       .limit(1)
       .maybeSingle(); // Use maybeSingle instead of single to avoid errors when not found
     
