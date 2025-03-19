@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { UserProfile } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
@@ -7,6 +6,12 @@ import { toast } from 'sonner';
 import { updateUserOnlineStatus, registerUser } from '@/lib/supabase/users';
 import { initializeSupabase } from '@/lib/supabase/connection';
 import { useOnlineUsers } from './useOnlineUsers';
+import { 
+  setupUserPresence, 
+  broadcastUserStatus,
+  setupConnectionHeartbeat, 
+  enableRealtimeForChat 
+} from '@/lib/supabase/realtime';
 
 /**
  * Hook to connect to SignalR and update user status
@@ -84,6 +89,9 @@ export const useSignalRConnection = (
           return;
         }
         
+        // Enable realtime for all required tables
+        await enableRealtimeForChat();
+        
         // Register user in Supabase
         await registerUser(
           userId.toString(), 
@@ -91,9 +99,32 @@ export const useSignalRConnection = (
           currentUser.role || 'standard'
         );
         
+        // Set up presence channel
+        const presenceChannel = setupUserPresence(
+          userId.toString(),
+          (changedUserId, isOnline) => {
+            console.log(`User ${changedUserId} is now ${isOnline ? 'online' : 'offline'}`);
+            // Update UI or perform actions when user status changes
+          }
+        );
+        
+        // Broadcast user's online status
+        await broadcastUserStatus(userId.toString(), true);
+        
+        // Set up heartbeat to keep connection alive
+        const stopHeartbeat = setupConnectionHeartbeat();
+        
         // Initialize Supabase service with current user
         await supabaseService.initialize(userId.toString(), username);
         console.log('Successfully connected to Supabase realtime');
+        
+        // Return cleanup function
+        return () => {
+          if (presenceChannel) {
+            supabase.removeChannel(presenceChannel);
+          }
+          stopHeartbeat();
+        };
       } catch (error) {
         console.error('Error connecting to Supabase realtime:', error);
         toast.error('Failed to connect to Supabase. Try refreshing the page.', {
@@ -104,13 +135,14 @@ export const useSignalRConnection = (
 
     // Connect to services
     connectToSignalR();
-    connectToSupabase();
+    const cleanup = connectToSupabase();
 
     // Set up window beforeunload event to properly disconnect when page is closed
     const handleBeforeUnload = () => {
       signalRService.disconnect();
       supabaseService.disconnect();
       updateUserOnlineStatus(userId.toString(), false);
+      broadcastUserStatus(userId.toString(), false);
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -131,8 +163,15 @@ export const useSignalRConnection = (
       updateUserOnlineStatus(userId.toString(), false)
         .catch(err => console.error('Error updating user offline status:', err));
         
+      // Broadcast offline status
+      broadcastUserStatus(userId.toString(), false)
+        .catch(err => console.error('Error broadcasting offline status:', err));
+        
       // Remove event listener
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      
+      // Run any cleanup returned from connectToSupabase
+      if (cleanup) cleanup();
     };
   }, [currentUser, setConnectedUsersCount, onlineCount]);
 };

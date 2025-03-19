@@ -1,42 +1,60 @@
 
 import { supabase } from './client';
+import { connectionState } from './client';
 import { toast } from 'sonner';
+import { enableRealtimeForUsers } from './realtime';
 
 /**
  * Check if Supabase connection is working
- * @returns Whether the connection is working
+ * @returns Promise resolving to boolean indicating connection status
  */
 export const checkSupabaseConnection = async (): Promise<boolean> => {
   try {
     console.log('Testing Supabase connection...');
-    // Try to ping Supabase (select minimal data for fast response)
-    const { error } = await supabase
+    
+    // Simple query to test connection
+    const { data, error } = await supabase
       .from('users')
-      .select('id')
-      .limit(1);
-      
+      .select('count', { count: 'exact', head: true });
+    
     if (error) {
       console.error('Error connecting to Supabase:', error);
+      
+      if (!connectionState.connectionWarningShown) {
+        toast.error('Error connecting to database. Please check your internet connection.', {
+          duration: 5000,
+        });
+        connectionState.connectionWarningShown = true;
+      }
+      
       return false;
     }
     
     console.log('Successfully connected to Supabase');
+    
+    // Only show success toast once per session
+    if (!connectionState.connectionSuccessShown) {
+      toast.success('Connected to chat service', {
+        duration: 3000,
+      });
+      connectionState.connectionSuccessShown = true;
+    }
+    
     return true;
   } catch (err) {
-    console.error('Exception testing Supabase connection:', err);
+    console.error('Exception testing connection:', err);
     return false;
   }
 };
 
 /**
- * Enable realtime functionality for all required tables
- * @returns Whether realtime was successfully enabled
+ * Enable realtime functionality for the users table
  */
 export const enableRealtimeForUsers = async (): Promise<boolean> => {
   try {
     console.log('Enabling realtime for users table...');
     
-    // Cast supabase.rpc to any to bypass TypeScript errors
+    // Fix TypeScript error by using type assertion
     const { error } = await (supabase.rpc as any)(
       'enable_realtime_subscription',
       { table_name: 'users' }
@@ -44,9 +62,6 @@ export const enableRealtimeForUsers = async (): Promise<boolean> => {
     
     if (error) {
       console.error('Error enabling realtime for users:', error);
-      toast.error('Failed to enable realtime updates. Chat functionality may be limited.', {
-        duration: 5000
-      });
       return false;
     }
     
@@ -54,109 +69,53 @@ export const enableRealtimeForUsers = async (): Promise<boolean> => {
     return true;
   } catch (err) {
     console.error('Exception enabling realtime:', err);
-    toast.error('Failed to enable realtime updates. Please refresh the page.', {
-      duration: 5000
-    });
     return false;
   }
 };
 
 /**
- * Initialize Supabase with all required functionality
- * @returns Whether initialization was successful
+ * Initialize Supabase with all required features
+ * @returns Promise resolving to boolean indicating success
  */
 export const initializeSupabase = async (): Promise<boolean> => {
   try {
     console.log('Initializing Supabase...');
     
-    // First, check connection
+    // Check connection first
     const isConnected = await checkSupabaseConnection();
     if (!isConnected) {
       console.error('Failed to connect to Supabase');
-      toast.error('Cannot connect to chat service. Please check your internet connection.', {
-        duration: 6000
-      });
       return false;
     }
     
-    // Enable realtime for users
-    const realtimeEnabled = await enableRealtimeForUsers();
+    // Enable realtime for users table
+    const usersRealtimeEnabled = await enableRealtimeForUsers();
     
-    // Enable realtime for messages and conversations
-    const messagesEnabled = await (supabase.rpc as any)(
+    // Enable realtime for messages table
+    // Fix TypeScript error by using type assertion
+    const { error: messagesError } = await (supabase.rpc as any)(
       'enable_realtime_subscription',
       { table_name: 'messages' }
-    ).then(
-      (res: any) => !res.error,
-      () => false
     );
     
-    const conversationsEnabled = await (supabase.rpc as any)(
+    // Enable realtime for conversations table
+    // Fix TypeScript error by using type assertion
+    const { error: convsError } = await (supabase.rpc as any)(
       'enable_realtime_subscription',
       { table_name: 'conversations' }
-    ).then(
-      (res: any) => !res.error,
-      () => false
     );
     
-    // Log realtime status
-    console.log(`Realtime status - Users: ${realtimeEnabled}, Messages: ${messagesEnabled}, Conversations: ${conversationsEnabled}`);
-    
-    // If any realtime enablement failed, show warning but don't fail entirely
-    if (!realtimeEnabled || !messagesEnabled || !conversationsEnabled) {
-      toast.warning('Some realtime features may be limited. You might need to refresh to see updates.', {
-        duration: 6000
-      });
+    if (messagesError || convsError) {
+      console.error('Error enabling realtime for tables:', messagesError || convsError);
+      
+      // Continue anyway but log the error
+      console.warn('Continuing with partial realtime functionality');
     }
     
-    // Check for active database connection
-    const activeConnection = await checkActiveDatabaseConnection();
-    if (!activeConnection) {
-      console.warn('Database appears to be connected but not fully active');
-      toast.warning('Chat service connection is unstable. Some features may be delayed.', {
-        duration: 5000
-      });
-    }
-    
-    console.log('Supabase initialization completed');
+    console.log('Supabase initialized successfully');
     return true;
   } catch (err) {
     console.error('Exception initializing Supabase:', err);
-    toast.error('Failed to initialize chat service. Please refresh the page.', {
-      duration: 6000
-    });
-    return false;
-  }
-};
-
-/**
- * Check if database has an active, responsive connection
- * @returns Whether the database is actively responding
- */
-const checkActiveDatabaseConnection = async (): Promise<boolean> => {
-  try {
-    // Check database time to verify active connection
-    const startTime = Date.now();
-    
-    // Use a simple query instead of RPC to avoid type issues
-    const { data, error } = await supabase
-      .from('users')
-      .select('count')
-      .limit(1)
-      .single();
-    
-    if (error) {
-      console.error('Error checking active database connection:', error);
-      return false;
-    }
-    
-    // Measure response time
-    const responseTime = Date.now() - startTime;
-    console.log(`Database response time: ${responseTime}ms`);
-    
-    return responseTime < 5000; // Response should be under 5 seconds
-  } catch (err) {
-    console.error('Exception checking active database connection:', err);
     return false;
   }
 };

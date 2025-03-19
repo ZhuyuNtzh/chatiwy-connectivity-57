@@ -1,56 +1,52 @@
 
 import { useState, useEffect } from 'react';
-import { getOnlineUsers, subscribeToOnlineUsers } from '@/lib/supabase/users';
-import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase/client';
+import { getOnlineUsers } from '@/lib/supabase/users';
 
 /**
- * Hook to track online users with real-time updates
- * @returns Object with online users, count, and loading state
+ * Hook for tracking online users
+ * @returns Object containing online users array and count
  */
 export const useOnlineUsers = () => {
   const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
+  const [onlineCount, setOnlineCount] = useState<number>(0);
+  
   useEffect(() => {
-    setIsLoading(true);
+    // Fetch initial online users
+    const fetchOnlineUsers = async () => {
+      const users = await getOnlineUsers();
+      setOnlineUsers(users);
+      setOnlineCount(users.length);
+    };
     
-    // Initial fetch of online users
-    getOnlineUsers()
-      .then((users) => {
-        setOnlineUsers(users);
-        console.log(`Initial online users count: ${users.length}`);
-      })
-      .catch((err) => {
-        console.error('Error fetching online users:', err);
-        setError('Failed to load online users');
-        toast.error('Could not load active users. Please refresh the page.');
-      })
-      .finally(() => {
-        setIsLoading(false);
+    fetchOnlineUsers();
+    
+    // Subscribe to online user updates
+    const channel = supabase
+      .channel('online-users-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'users',
+          filter: 'is_online=eq.true'
+        },
+        (payload) => {
+          console.log('User online status changed:', payload);
+          // Refresh the full list when any user's status changes
+          fetchOnlineUsers();
+        }
+      )
+      .subscribe((status) => {
+        console.log(`Online users subscription status: ${status}`);
       });
-      
-    // Subscribe to real-time updates
-    const unsubscribe = subscribeToOnlineUsers((updatedUsers) => {
-      console.log(`Real-time online users update: ${updatedUsers.length} users`);
-      setOnlineUsers(updatedUsers);
-    });
     
-    // Clean up subscription on unmount
+    // Cleanup
     return () => {
-      unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, []);
-
-  return {
-    onlineUsers,
-    onlineCount: onlineUsers.length,
-    isLoading,
-    error,
-    // Helper functions
-    getByRole: (role: string) => onlineUsers.filter(user => user.role === role),
-    getStandardUsers: () => onlineUsers.filter(user => user.role === 'standard'),
-    getVipUsers: () => onlineUsers.filter(user => user.role === 'vip'),
-    getAdminUsers: () => onlineUsers.filter(user => user.role === 'admin'),
-  };
+  
+  return { onlineUsers, onlineCount };
 };

@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { checkSupabaseConnection, initializeSupabase } from '@/lib/supabase';
-import { setupConnectionHeartbeat } from '@/lib/supabase/realtime';
+import { setupConnectionHeartbeat, enableRealtimeForChat } from '@/lib/supabase/realtime';
 import { registerUser, updateUserOnlineStatus } from '@/lib/supabase/users';
 import ChatLoading from './ChatLoading';
 
@@ -55,6 +55,9 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
           setConnectionReady(false);
         } else {
           console.log("Successfully connected to Supabase");
+          
+          // Enable realtime features for chat
+          await enableRealtimeForChat();
           
           // Set up connection heartbeat to prevent timeouts
           const stopHeartbeat = setupConnectionHeartbeat();
