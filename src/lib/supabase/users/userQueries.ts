@@ -16,11 +16,11 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
     const normalizedUsername = username.trim().toLowerCase(); // Normalize to lowercase
     console.log(`Checking if username "${normalizedUsername}" is taken...`);
     
-    // Use ilike for case-insensitive comparison
+    // Use lower() for case-insensitive comparison with the index we created
     const { data, error, count } = await supabase
       .from('users')
       .select('id, username', { count: 'exact' })
-      .ilike('username', normalizedUsername) 
+      .filter('username', 'ilike', normalizedUsername) 
       .limit(1);
     
     if (error) {
@@ -110,24 +110,25 @@ export const getUserByUsername = async (username: string): Promise<any | null> =
     const normalizedUsername = username.trim().toLowerCase();
     console.log(`Looking up user with username "${normalizedUsername}"...`);
     
+    // Use ilike for case-insensitive matching
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .ilike('username', normalizedUsername)
+      .filter('username', 'ilike', normalizedUsername)
       .limit(1)
-      .single();
+      .maybeSingle(); // Use maybeSingle instead of single to avoid errors when not found
     
     if (error) {
-      if (error.code === 'PGRST116') {
-        // No rows returned
-        console.log(`No user found with username "${normalizedUsername}"`);
-        return null;
-      }
       console.error('Error looking up user by username:', error);
       return null;
     }
     
-    console.log(`Found user with username "${normalizedUsername}":`, data);
+    if (data) {
+      console.log(`Found user with username "${normalizedUsername}":`, data);
+    } else {
+      console.log(`No user found with username "${normalizedUsername}"`);
+    }
+    
     return data;
   } catch (err) {
     console.error('Exception looking up user by username:', err);

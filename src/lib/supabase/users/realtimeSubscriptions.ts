@@ -1,117 +1,96 @@
 
 import { supabase } from '../client';
-import { getOnlineUsers } from './userQueries';
-import { toast } from 'sonner';
 
 /**
- * Subscribe to online users changes
- * @param callback Function to call when online users change
- * @returns Unsubscribe function
+ * Subscribe to changes in the online users list
+ * @param callback Function to call when the online users list changes
+ * @returns A function to unsubscribe from the realtime subscription
  */
-export const subscribeToOnlineUsers = (
-  callback: (users: any[]) => void
-): (() => void) => {
-  try {
-    console.log("Setting up subscription to online users changes...");
-    
-    // Set up channel subscription with enhanced error handling
-    const channel = supabase
-      .channel('public:users')
-      .on('postgres_changes', { 
+export const subscribeToOnlineUsers = (callback: (users: any[]) => void) => {
+  console.log('Setting up realtime subscription for online users...');
+  
+  // Create a realtime subscription for user changes
+  const subscription = supabase
+    .channel('public:users')
+    .on('postgres_changes', 
+      {
         event: '*', 
-        schema: 'public', 
-        table: 'users',
-        filter: 'is_online=eq.true'
-      }, payload => {
-        console.log('Online users changed:', payload);
-        // Refresh the online users list
-        getOnlineUsers()
-          .then(users => {
-            console.log(`Retrieved ${users.length} online users after change`);
-            callback(users);
-          })
-          .catch(err => {
-            console.error('Error fetching online users after change:', err);
-          });
-      })
-      .subscribe((status) => {
-        console.log(`Subscription status for online users: ${status}`);
+        schema: 'public',
+        table: 'users'
+      }, 
+      async (payload) => {
+        console.log('User table change detected:', payload);
         
-        if (status === 'SUBSCRIBED') {
-          console.log('Successfully subscribed to online users changes');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('Error subscribing to online users changes');
-          toast.error('Connection issue with chat service. Some features may be limited.', {
-            id: 'subscription-error',
-            duration: 3000
-          });
+        // Fetch the latest online users
+        try {
+          const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('is_online', true)
+            .order('last_active', { ascending: false });
+          
+          if (error) {
+            console.error('Error fetching online users after change:', error);
+            return;
+          }
+          
+          console.log(`Notifying callback with ${data?.length || 0} online users`);
+          callback(data || []);
+        } catch (err) {
+          console.error('Exception fetching online users after change:', err);
         }
-      });
+      }
+    )
+    .subscribe((status) => {
+      console.log('User subscription status:', status);
+    });
   
-    // Initially load online users
-    getOnlineUsers()
-      .then(users => {
-        console.log(`Initially loaded ${users.length} online users`);
-        callback(users);
-      })
-      .catch(err => {
-        console.error('Error loading initial online users:', err);
-      });
-  
-    // Return unsubscribe function
-    return () => {
-      console.log('Unsubscribing from online users changes');
-      supabase.removeChannel(channel);
-    };
-  } catch (err) {
-    console.error('Exception in subscribeToOnlineUsers:', err);
-    toast.error('Error connecting to real-time updates');
-    
-    // Return no-op function in case of error
-    return () => {};
-  }
+  // Return an unsubscribe function
+  return () => {
+    console.log('Unsubscribing from online users');
+    subscription.unsubscribe();
+  };
 };
 
 /**
- * Setup realtime subscription for any table
- * @param table Table name
- * @param callback Callback when data changes
- * @returns Unsubscribe function
+ * Set up a realtime subscription for a specific user's status
+ * @param userId The ID of the user to monitor
+ * @param callback Function to call when the user's status changes
+ * @returns A function to unsubscribe from the realtime subscription
  */
 export const setupRealtimeSubscription = (
-  table: string,
-  callback: (data: any) => void
-): (() => void) => {
-  try {
-    console.log(`Setting up subscription to ${table} changes...`);
-    
-    const channel = supabase
-      .channel(`public:${table}`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table
-      }, payload => {
-        console.log(`${table} change:`, payload);
-        callback(payload);
-      })
-      .subscribe((status) => {
-        console.log(`Subscription status for ${table}: ${status}`);
+  userId: string,
+  callback: (isOnline: boolean) => void
+) => {
+  console.log(`Setting up realtime subscription for user ${userId}...`);
+  
+  // Create a realtime subscription for this specific user
+  const subscription = supabase
+    .channel(`public:users:id=eq.${userId}`)
+    .on('postgres_changes', 
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'users',
+        filter: `id=eq.${userId}`
+      }, 
+      (payload) => {
+        console.log(`User ${userId} status updated:`, payload);
         
-        if (status === 'SUBSCRIBED') {
-          console.log(`Successfully subscribed to ${table} changes`);
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error(`Error subscribing to ${table} changes`);
-          console.warn(`Realtime updates for ${table} may not work correctly`);
-        }
-      });
-    
-    return () => {
-      console.log(`Unsubscribing from ${table} changes`);
-      supabase.removeChannel(channel);
-    };
-  } catch (err) {
-    console.error(`Exception in setupRealtimeSubscription for ${table}:`, err);
-    return () => {};
-  }
+        // Extract the online status from the payload
+        const isOnline = payload.new?.is_online === true;
+        
+        console.log(`User ${userId} is now ${isOnline ? 'online' : 'offline'}`);
+        callback(isOnline);
+      }
+    )
+    .subscribe((status) => {
+      console.log(`User ${userId} subscription status:`, status);
+    });
+  
+  // Return an unsubscribe function
+  return () => {
+    console.log(`Unsubscribing from user ${userId}`);
+    subscription.unsubscribe();
+  };
 };

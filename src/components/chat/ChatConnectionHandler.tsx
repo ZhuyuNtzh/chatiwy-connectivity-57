@@ -36,12 +36,12 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
     key: reconnectKey // Add a key to force hook re-execution
   });
 
-  // Force reconnect after 2 minutes of inactivity to refresh user lists
+  // Force reconnect after 1 minute of inactivity to refresh user lists
   useEffect(() => {
     const reconnectInterval = setInterval(() => {
       console.log("Scheduled reconnect to refresh user data");
       setReconnectKey(Date.now());
-    }, 2 * 60 * 1000); // 2 minutes
+    }, 1 * 60 * 1000); // 1 minute
     
     return () => clearInterval(reconnectInterval);
   }, []);

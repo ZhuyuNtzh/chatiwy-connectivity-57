@@ -114,17 +114,24 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
           const existingUser = await getUserByUsername(normalizedUsername);
           
           if (existingUser) {
-            console.error(`Registration failed because username ${normalizedUsername} is taken`);
-            setUsernameTaken(true);
+            // If user exists but has a different ID than our stableId
+            if (existingUser.id !== stableId) {
+              console.error(`Registration failed because username ${normalizedUsername} is taken`);
+              setUsernameTaken(true);
+              setIsLoading(false);
+              return;
+            } else {
+              // Same user reconnecting, just update status
+              console.log(`User ${normalizedUsername} already exists with same ID, updating status`);
+              await updateUserOnlineStatus(stableId, true);
+            }
+          } else {
+            // If it's not a taken username, but registration still failed
+            console.error("Registration failed for non-username reasons");
+            setValidationError("Registration failed. Please try again with a different username.");
             setIsLoading(false);
             return;
           }
-          
-          // If it's not a taken username, but registration still failed
-          console.error("Registration failed for non-username reasons");
-          setValidationError("Registration failed. Please try again with a different username.");
-          setIsLoading(false);
-          return;
         }
         
         // Update user status
