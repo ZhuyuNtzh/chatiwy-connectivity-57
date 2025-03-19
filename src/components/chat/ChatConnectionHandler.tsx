@@ -27,22 +27,58 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
     handleContinueAnyway
   } = useSupabaseConnection({ userId, username, service });
 
-  return (
-    <>
+  // When username is taken, show error but don't render children
+  if (usernameTaken) {
+    return (
       <ConnectionStatus
         isLoading={isLoading}
-        connectionReady={connectionReady}
+        connectionReady={false}
         retryCount={retryCount}
         maxRetries={maxRetries}
-        validationError={validationError}
-        usernameTaken={usernameTaken}
+        validationError={null}
+        usernameTaken={true}
         username={username}
         onRetry={handleRetry}
         onContinueAnyway={handleContinueAnyway}
       />
+    );
+  }
+
+  // When there's a validation error, show error but don't render children
+  if (validationError) {
+    return (
+      <ConnectionStatus
+        isLoading={isLoading}
+        connectionReady={false}
+        retryCount={retryCount}
+        maxRetries={maxRetries}
+        validationError={validationError}
+        usernameTaken={false}
+        username={username}
+        onRetry={handleRetry}
+        onContinueAnyway={handleContinueAnyway}
+      />
+    );
+  }
+
+  return (
+    <>
+      {isLoading || !connectionReady ? (
+        <ConnectionStatus
+          isLoading={isLoading}
+          connectionReady={connectionReady}
+          retryCount={retryCount}
+          maxRetries={maxRetries}
+          validationError={null}
+          usernameTaken={false}
+          username={username}
+          onRetry={handleRetry}
+          onContinueAnyway={handleContinueAnyway}
+        />
+      ) : null}
       
-      {/* Only show children when connection is ready and username is valid */}
-      {connectionReady && !usernameTaken && !validationError && children}
+      {/* Only show children when connection is ready */}
+      {connectionReady && children}
     </>
   );
 };

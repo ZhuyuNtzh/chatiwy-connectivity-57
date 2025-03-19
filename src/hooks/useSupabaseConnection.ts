@@ -51,13 +51,18 @@ export const useSupabaseConnection = ({ userId, username, service }: UseSupabase
         
         // Check if username is already taken, but only if it's a new user or changing username
         if (existingUsername !== normalizedUsername) {
-          const taken = await isUsernameTaken(normalizedUsername);
-          if (taken) {
-            console.error(`Username ${normalizedUsername} is already taken`);
-            toast.error(`Username "${normalizedUsername}" is already taken. Please choose another username.`);
-            setUsernameTaken(true);
-            setIsLoading(false);
-            return;
+          try {
+            const taken = await isUsernameTaken(normalizedUsername);
+            if (taken) {
+              console.error(`Username ${normalizedUsername} is already taken`);
+              toast.error(`Username "${normalizedUsername}" is already taken. Please choose another username.`);
+              setUsernameTaken(true);
+              setIsLoading(false);
+              return;
+            }
+          } catch (checkError) {
+            console.error("Error checking if username is taken:", checkError);
+            // Continue with registration attempt anyway, we'll get a DB constraint error if it's taken
           }
         }
         
@@ -89,15 +94,21 @@ export const useSupabaseConnection = ({ userId, username, service }: UseSupabase
         );
         
         if (!registrationSuccess) {
-          console.error("Failed to register user");
+          // This could be due to the username being taken or other registration issues
+          // If username is taken, the registration function will have already shown a toast
           
-          // Only set usernameTaken if that's likely the issue
+          // Check if the username check failed but the registration shows it's taken
           if (!usernameTaken) {
-            setUsernameTaken(true);
+            const takenCheck = await isUsernameTaken(normalizedUsername);
+            if (takenCheck) {
+              setUsernameTaken(true);
+              setIsLoading(false);
+              return;
+            }
           }
           
-          setIsLoading(false);
-          return;
+          // If it's not a taken username, then it's another registration error
+          console.warn("Registration had issues but we'll try to continue");
         }
         
         // Update user status

@@ -24,12 +24,17 @@ export const registerUser = async (
     
     // First check if username is taken
     const normalizedUsername = username.trim();
-    const isTaken = await isUsernameTaken(normalizedUsername);
-    
-    if (isTaken) {
-      console.error(`Username "${normalizedUsername}" is already taken by another user`);
-      toast.error(`Username "${normalizedUsername}" is already taken. Please choose another username.`);
-      return false;
+    try {
+      const isTaken = await isUsernameTaken(normalizedUsername);
+      
+      if (isTaken) {
+        console.error(`Username "${normalizedUsername}" is already taken by another user`);
+        toast.error(`Username "${normalizedUsername}" is already taken. Please choose another username.`);
+        return false;
+      }
+    } catch (checkError) {
+      console.error('Error checking username availability:', checkError);
+      // Continue with registration attempt anyway
     }
     
     console.log(`Attempting to register user ${normalizedUsername} with ID ${userId}`);

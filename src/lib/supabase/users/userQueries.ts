@@ -32,7 +32,7 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
     return isTaken;
   } catch (err) {
     console.error('Exception checking username:', err);
-    return false; // In case of error, let them try to register
+    throw err; // Let caller handle the error properly
   }
 };
 
