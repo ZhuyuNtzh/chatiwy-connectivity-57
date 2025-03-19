@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { checkSupabaseConnection, initializeSupabase } from '@/lib/supabase';
 import { setupConnectionHeartbeat } from '@/lib/supabase/realtime';
+import { registerUser, updateUserOnlineStatus } from '@/lib/supabase/users';
 import ChatLoading from './ChatLoading';
 
 interface ChatConnectionHandlerProps {
@@ -58,6 +59,16 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
           // Set up connection heartbeat to prevent timeouts
           const stopHeartbeat = setupConnectionHeartbeat();
           
+          // Register or update user
+          await registerUser(
+            userId.toString(),
+            username,
+            'standard' // Default role
+          );
+          
+          // Update user status
+          await updateUserOnlineStatus(userId.toString(), true);
+          
           // Verify service connection as well
           if (service && typeof service.testConnection === 'function') {
             const serviceConnected = await service.testConnection();
@@ -71,7 +82,12 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
           setConnectionReady(true);
           
           // Clean up heartbeat on unmount
-          return () => stopHeartbeat();
+          return () => {
+            stopHeartbeat();
+            // Set user offline when component unmounts
+            updateUserOnlineStatus(userId.toString(), false)
+              .catch(err => console.error('Error updating offline status:', err));
+          };
         }
       } catch (err) {
         console.error("Error testing connection:", err);
@@ -85,7 +101,7 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
     };
     
     connectToSupabase();
-  }, [retryCount, service]);
+  }, [retryCount, service, userId, username]);
   
   // Force prefetch chat history to ensure connection works
   useEffect(() => {

@@ -139,6 +139,16 @@ export const registerUser = async (userId: string, username: string, role: strin
       return false;
     }
     
+    // After successful registration, broadcast user status and enable realtime
+    await broadcastUserStatus(userId.toString(), true);
+    const realtimeEnabled = await setupRealtimeSubscription();
+    
+    if (!realtimeEnabled) {
+      toast.warning('Live updates may be limited. You might need to refresh to see new messages.', {
+        duration: 5000
+      });
+    }
+    
     console.log(`User ${username} registered/updated successfully with ID ${userId}`);
     return true;
   } catch (err) {
@@ -174,6 +184,9 @@ export const updateUserOnlineStatus = async (userId: string, isOnline: boolean):
       return false;
     }
     
+    // Broadcast status change
+    await broadcastUserStatus(userId, isOnline);
+    
     console.log(`User ${userId} online status updated to ${isOnline}`);
     return true;
   } catch (err) {
@@ -205,4 +218,93 @@ export const getOnlineUsers = async (): Promise<any[]> => {
     console.error('Exception fetching online users:', err);
     return [];
   }
+};
+
+/**
+ * Set up realtime subscription to user status changes
+ * @returns Success status
+ */
+export const setupRealtimeSubscription = async (): Promise<boolean> => {
+  try {
+    console.log('Setting up realtime subscription for user status...');
+    
+    // Use explicit type casting to handle Supabase RPC typing issues
+    const { error } = await supabase.rpc(
+      'enable_realtime_subscription',
+      { table_name: 'users' }
+    );
+    
+    if (error) {
+      console.error('Error enabling realtime subscription:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (err) {
+    console.error('Error setting up realtime subscription:', err);
+    return false;
+  }
+};
+
+/**
+ * Broadcast user status to other clients
+ * @param userId User ID
+ * @param isOnline Whether user is online
+ */
+export const broadcastUserStatus = async (userId: string, isOnline: boolean): Promise<boolean> => {
+  try {
+    console.log(`Broadcasting user status for ${userId} (online: ${isOnline})`);
+    
+    // Update the database record
+    const { error } = await supabase
+      .from('users')
+      .update({
+        is_online: isOnline,
+        last_active: new Date().toISOString()
+      })
+      .eq('id', userId);
+      
+    if (error) {
+      console.error('Error broadcasting user status:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (err) {
+    console.error('Error in broadcastUserStatus:', err);
+    return false;
+  }
+};
+
+/**
+ * Subscribe to online users updates
+ * @param onUsersChange Callback when user list changes
+ * @returns A function to unsubscribe
+ */
+export const subscribeToOnlineUsers = (onUsersChange: (users: any[]) => void): (() => void) => {
+  // Create a channel for the users table
+  const channel = supabase
+    .channel('public:users')
+    .on('postgres_changes', 
+      { event: '*', schema: 'public', table: 'users' }, 
+      async (payload) => {
+        console.log('User change detected:', payload);
+        // Fetch updated user list when any user status changes
+        const onlineUsers = await getOnlineUsers();
+        onUsersChange(onlineUsers);
+      }
+    )
+    .subscribe((status) => {
+      console.log(`User subscription status: ${status}`);
+      if (status === 'SUBSCRIBED') {
+        // Initial load of online users
+        getOnlineUsers().then(onUsersChange);
+      }
+    });
+    
+  // Return unsubscribe function
+  return () => {
+    console.log('Unsubscribing from online users');
+    supabase.removeChannel(channel);
+  };
 };

@@ -4,9 +4,9 @@ import { UserProfile } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
 import { supabaseService } from '@/services/supabaseService';
 import { toast } from 'sonner';
-import { updateUserOnlineStatus } from '@/lib/supabase';
+import { updateUserOnlineStatus, registerUser } from '@/lib/supabase/users';
 import { initializeSupabase } from '@/lib/supabase/connection';
-import { broadcastUserStatus } from '@/lib/supabase/realtime';
+import { useOnlineUsers } from './useOnlineUsers';
 
 /**
  * Hook to connect to SignalR and update user status
@@ -17,6 +17,16 @@ export const useSignalRConnection = (
   currentUser: UserProfile | null,
   setConnectedUsersCount?: (count: number) => void
 ) => {
+  // Use our new online users hook
+  const { onlineCount } = useOnlineUsers();
+  
+  // Update connected users count whenever onlineCount changes
+  useEffect(() => {
+    if (setConnectedUsersCount) {
+      setConnectedUsersCount(onlineCount);
+    }
+  }, [onlineCount, setConnectedUsersCount]);
+
   useEffect(() => {
     // If we don't have a user, don't connect
     if (!currentUser || !currentUser.username) {
@@ -44,13 +54,16 @@ export const useSignalRConnection = (
         // Also update the user's online status in Supabase
         await updateUserOnlineStatus(userId.toString(), true);
         
+        // Register user if needed
+        await registerUser(
+          userId.toString(), 
+          username, 
+          currentUser.role || 'standard'
+        );
+        
         // Set up connected users count change event
-        if (setConnectedUsersCount) {
-          signalRService.onConnectedUsersCountChanged((count) => {
-            if (isMounted) {
-              setConnectedUsersCount(count);
-            }
-          });
+        if (setConnectedUsersCount && isMounted) {
+          setConnectedUsersCount(onlineCount);
         }
       } catch (error) {
         console.error('Error connecting to SignalR hub:', error);
@@ -71,21 +84,16 @@ export const useSignalRConnection = (
           return;
         }
         
+        // Register user in Supabase
+        await registerUser(
+          userId.toString(), 
+          username, 
+          currentUser.role || 'standard'
+        );
+        
         // Initialize Supabase service with current user
         await supabaseService.initialize(userId.toString(), username);
         console.log('Successfully connected to Supabase realtime');
-        
-        // Broadcast user status
-        await broadcastUserStatus(userId.toString(), true);
-
-        // Set up connected users count change event
-        if (setConnectedUsersCount) {
-          supabaseService.onConnectedUsersCountChanged((count) => {
-            if (isMounted) {
-              setConnectedUsersCount(count);
-            }
-          });
-        }
       } catch (error) {
         console.error('Error connecting to Supabase realtime:', error);
         toast.error('Failed to connect to Supabase. Try refreshing the page.', {
@@ -103,7 +111,6 @@ export const useSignalRConnection = (
       signalRService.disconnect();
       supabaseService.disconnect();
       updateUserOnlineStatus(userId.toString(), false);
-      broadcastUserStatus(userId.toString(), false);
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -123,13 +130,9 @@ export const useSignalRConnection = (
       // Update user status in database
       updateUserOnlineStatus(userId.toString(), false)
         .catch(err => console.error('Error updating user offline status:', err));
-      
-      // Broadcast user offline status
-      broadcastUserStatus(userId.toString(), false)
-        .catch(err => console.error('Error broadcasting offline status:', err));
         
       // Remove event listener
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [currentUser, setConnectedUsersCount]);
+  }, [currentUser, setConnectedUsersCount, onlineCount]);
 };

@@ -37,7 +37,7 @@ export const enableRealtimeForUsers = async (): Promise<boolean> => {
     console.log('Enabling realtime for users table...');
     
     // Use explicit type casting to handle Supabase RPC typing issues
-    const { error } = await (supabase.rpc as any)(
+    const { error } = await supabase.rpc(
       'enable_realtime_subscription',
       { table_name: 'users' }
     );
@@ -83,19 +83,19 @@ export const initializeSupabase = async (): Promise<boolean> => {
     const realtimeEnabled = await enableRealtimeForUsers();
     
     // Enable realtime for messages and conversations
-    const messagesEnabled = await (supabase.rpc as any)(
+    const messagesEnabled = await supabase.rpc(
       'enable_realtime_subscription',
       { table_name: 'messages' }
     ).then(
-      (res: { error: any }) => !res.error,
+      (res) => !res.error,
       () => false
     );
     
-    const conversationsEnabled = await (supabase.rpc as any)(
+    const conversationsEnabled = await supabase.rpc(
       'enable_realtime_subscription',
       { table_name: 'conversations' }
     ).then(
-      (res: { error: any }) => !res.error,
+      (res) => !res.error,
       () => false
     );
     
@@ -138,8 +138,12 @@ const checkActiveDatabaseConnection = async (): Promise<boolean> => {
     // Check database time to verify active connection
     const startTime = Date.now();
     
-    // Cast to any to handle the typing issues
-    const { data, error } = await (supabase.rpc as any)('get_server_timestamp');
+    // Use a simple query instead of RPC to avoid type issues
+    const { data, error } = await supabase
+      .from('users')
+      .select('count')
+      .limit(1)
+      .single();
     
     if (error) {
       console.error('Error checking active database connection:', error);
@@ -150,11 +154,7 @@ const checkActiveDatabaseConnection = async (): Promise<boolean> => {
     const responseTime = Date.now() - startTime;
     console.log(`Database response time: ${responseTime}ms`);
     
-    // Verify we got a valid timestamp response
-    const hasValidTimestamp = data && typeof data === 'string' && new Date(data).getTime() > 0;
-    console.log(`Database timestamp check: ${hasValidTimestamp ? 'Valid' : 'Invalid'}`);
-    
-    return hasValidTimestamp && responseTime < 5000; // Response should be under 5 seconds
+    return responseTime < 5000; // Response should be under 5 seconds
   } catch (err) {
     console.error('Exception checking active database connection:', err);
     return false;
