@@ -228,11 +228,11 @@ export const setupRealtimeSubscription = async (): Promise<boolean> => {
   try {
     console.log('Setting up realtime subscription for user status...');
     
-    // Apply correct type assertion
-    const { error } = await supabase.rpc(
+    // Cast supabase.rpc to any to bypass TypeScript errors
+    const { error } = await (supabase.rpc as any)(
       'enable_realtime_subscription',
       { table_name: 'users' }
-    ) as unknown as { error: any };
+    );
     
     if (error) {
       console.error('Error enabling realtime subscription:', error);
