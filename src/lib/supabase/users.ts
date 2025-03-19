@@ -228,11 +228,11 @@ export const setupRealtimeSubscription = async (): Promise<boolean> => {
   try {
     console.log('Setting up realtime subscription for user status...');
     
-    // Use type casting to handle Supabase RPC typing issues
-    const { error } = await (supabase.rpc(
+    // Apply correct type assertion
+    const { error } = await supabase.rpc(
       'enable_realtime_subscription',
       { table_name: 'users' }
-    ) as any);
+    ) as unknown as { error: any };
     
     if (error) {
       console.error('Error enabling realtime subscription:', error);

@@ -36,11 +36,11 @@ export const enableRealtimeForUsers = async (): Promise<boolean> => {
   try {
     console.log('Enabling realtime for users table...');
     
-    // Use type casting to handle Supabase RPC typing issues
-    const { error } = await (supabase.rpc(
+    // Apply type assertion to the entire function call
+    const { error } = await supabase.rpc(
       'enable_realtime_subscription',
       { table_name: 'users' }
-    ) as any);
+    ) as unknown as { error: any };
     
     if (error) {
       console.error('Error enabling realtime for users:', error);
@@ -83,21 +83,21 @@ export const initializeSupabase = async (): Promise<boolean> => {
     const realtimeEnabled = await enableRealtimeForUsers();
     
     // Enable realtime for messages and conversations
-    const messagesEnabled = await (supabase.rpc(
+    const messagesEnabled = await supabase.rpc(
       'enable_realtime_subscription',
       { table_name: 'messages' }
-    ) as any).then(
+    ).then(
       (res: any) => !res.error,
       () => false
-    );
+    ) as unknown as boolean;
     
-    const conversationsEnabled = await (supabase.rpc(
+    const conversationsEnabled = await supabase.rpc(
       'enable_realtime_subscription',
       { table_name: 'conversations' }
-    ) as any).then(
+    ).then(
       (res: any) => !res.error,
       () => false
-    );
+    ) as unknown as boolean;
     
     // Log realtime status
     console.log(`Realtime status - Users: ${realtimeEnabled}, Messages: ${messagesEnabled}, Conversations: ${conversationsEnabled}`);
