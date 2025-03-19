@@ -2,9 +2,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
-// Get Supabase URL and key from environment or use fallback for development
-const supabaseUrl = 'https://esqrfcjfctloaukvfjom.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzcXJmY2pmY3Rsb2F1a3Zmam9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIzMzA1MDMsImV4cCI6MjA1NzkwNjUwM30.dp0M1K2Gzk1zQWLSK9WLZEaoUu6k2G6JOXbTPpMF1Vw';
+// Get Supabase URL and key from the correct project
+const supabaseUrl = 'https://awgsmikgomxbzojpirug.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3Z3NtaWtnb214YnpvanBpcnVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI0MjM0NjcsImV4cCI6MjA1Nzk5OTQ2N30.CaPjfgZJpU-45Xbyn24ayTY-KJzXg_QMUzdahLhcfmg';
 
 // Create Supabase client with better config
 export const supabase = createClient(supabaseUrl, supabaseKey, {
