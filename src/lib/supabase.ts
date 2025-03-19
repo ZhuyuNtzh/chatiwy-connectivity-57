@@ -3,11 +3,11 @@
 export { supabase } from './supabase/client';
 export { 
   checkSupabaseConnection, 
-  enableRealtimeForUsersDeprecated,
+  enableRealtimeForUsers,
   initializeSupabase 
 } from './supabase/connection';
 export { 
-  enableRealtimeForUsers, 
+  enableRealtimeForUsers as enableRealtimeForChat, 
   subscribeToConversation, 
   setupUserPresence,
   broadcastUserStatus,
