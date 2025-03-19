@@ -1,0 +1,11 @@
+
+# Chatwii Robots.txt
+User-agent: *
+Allow: /
+Disallow: /secure-admin-access-8472
+Disallow: /admin-dashboard
+Disallow: /admin-chat
+Disallow: /admin-moderation
+
+# Sitemap
+Sitemap: https://chatiwy.com/sitemap.xml
