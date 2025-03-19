@@ -5,17 +5,15 @@
  * @returns A valid UUID string
  */
 export const generateStableUUID = (input: string | number): string => {
-  // If it's already a valid UUID, return it
-  if (typeof input === 'string' && 
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input)) {
-    return input;
-  }
-  
-  // Convert to string
+  // Convert to string first
   const inputStr = String(input);
   
-  // Simple algorithm to create a stable UUID-like string
-  // This is a simplistic implementation for demo purposes
+  // If it's already a valid UUID, return it
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(inputStr)) {
+    return inputStr;
+  }
+  
+  // Create a stable UUID-like string based on the input
   const template = '00000000-0000-0000-0000-000000000000';
   let result = '';
   let pos = 0;

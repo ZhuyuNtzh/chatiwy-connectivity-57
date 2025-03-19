@@ -47,13 +47,13 @@ export const checkSupabaseConnection = async (): Promise<boolean> => {
 };
 
 /**
- * Enable realtime functionality for a specific table using channel subscription instead of RPC
+ * Enable realtime functionality for a specific table using channel subscription
  */
 export const enableRealtimeSubscription = async (tableName: string): Promise<boolean> => {
   try {
     console.log(`Enabling realtime for ${tableName} table...`);
     
-    // Instead of using RPC which doesn't exist, use channel subscription
+    // Use channel subscription for realtime updates
     const channel = supabase.channel(`realtime_${tableName}`)
       .on('postgres_changes', {
         event: '*',
@@ -66,6 +66,7 @@ export const enableRealtimeSubscription = async (tableName: string): Promise<boo
         console.log(`Realtime subscription status for ${tableName}: ${status}`);
         if (status === 'SUBSCRIBED') {
           console.log(`Successfully subscribed to realtime changes for ${tableName}`);
+          connectionState.realtimeEnabled = true;
         }
       });
     

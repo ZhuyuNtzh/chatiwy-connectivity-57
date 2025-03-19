@@ -39,20 +39,32 @@ const generateStableUUID = (input: string | number): string => {
     return input;
   }
   
-  // Otherwise generate a deterministic UUID using crypto API
-  const str = input.toString();
+  // Convert to string
+  const inputStr = String(input);
   
   // Simple algorithm to create a stable UUID-like string
-  // Note: This is NOT a proper UUID but will work for our demo
-  const namespace = '00000000-0000-0000-0000-000000000000';
-  return namespace.replace(/[0]/g, (c, i) => {
-    if (i < str.length) {
-      // Use character code as hex digit
-      const code = str.charCodeAt(i % str.length);
-      return (code % 16).toString(16);
+  // This is a simplistic implementation for demo purposes
+  const template = '00000000-0000-0000-0000-000000000000';
+  let result = '';
+  let pos = 0;
+  
+  for (let i = 0; i < template.length; i++) {
+    if (template[i] === '-') {
+      result += '-';
+    } else {
+      // Use character from input or fallback to a derived value
+      const charCode = pos < inputStr.length ? 
+        inputStr.charCodeAt(pos) : 
+        (inputStr.length > 0 ? inputStr.charCodeAt(pos % inputStr.length) : 97);
+      
+      // Convert to a hex digit (0-15)
+      const hexDigit = (charCode % 16).toString(16);
+      result += hexDigit;
+      pos++;
     }
-    return c;
-  });
+  }
+  
+  return result;
 };
 
 /**

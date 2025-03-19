@@ -76,6 +76,7 @@ const Header = ({
             </div>
           </div>
           
+          {/* Make the icon itself toggle dark mode */}
           <div
             onClick={toggleDarkMode}
             className="ml-1 md:ml-2 p-2 cursor-pointer rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"

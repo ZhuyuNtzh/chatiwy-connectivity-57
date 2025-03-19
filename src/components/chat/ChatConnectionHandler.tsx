@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { checkSupabaseConnection, initializeSupabase } from '@/lib/supabase';
 import { setupConnectionHeartbeat, enableRealtimeForChat } from '@/lib/supabase/realtime';
 import { registerUser, updateUserOnlineStatus } from '@/lib/supabase/users';
-import ChatLoading from './ChatLoading';
 
 interface ChatConnectionHandlerProps {
   children: React.ReactNode;
@@ -121,7 +120,7 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
               console.log(`Retrieved ${messages?.length || 0} messages for conversation with ${username}`);
               // If no messages were retrieved, test if we can actually write to the database
               if (!messages || messages.length === 0) {
-                service.testMessageCreation()
+                service.testMessageCreation?.()
                   .then((success: boolean) => {
                     if (!success) {
                       toast.warning("Message delivery might be delayed. Please be patient.", {
@@ -154,7 +153,11 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
   }, [isLoading, connectionReady, userId, username, service]);
 
   if (isLoading) {
-    return <ChatLoading />;
+    return (
+      <div className="flex items-center justify-center h-screen w-full bg-white dark:bg-gray-800">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   if (!connectionReady) {
