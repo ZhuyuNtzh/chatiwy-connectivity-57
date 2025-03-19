@@ -1,28 +1,32 @@
 import { supabase } from './client';
 import { toast } from 'sonner';
+import { enableRealtimeSubscription } from './connection';
 
 /**
- * Enable realtime functionality for the users table
+ * Enable realtime functionality for all tables needed for chat
  */
-export const enableRealtimeForUsers = async (): Promise<boolean> => {
+export const enableRealtimeForChat = async (): Promise<boolean> => {
   try {
-    console.log('Enabling realtime for users table...');
+    console.log('Enabling realtime for chat tables...');
     
-    // Use explicit type casting to handle Supabase RPC typing issues
-    const { error } = await (supabase.rpc as any)(
-      'enable_realtime_subscription',
-      { table_name: 'users' }
-    );
+    // Enable for users
+    const usersResult = await enableRealtimeSubscription('users');
     
-    if (error) {
-      console.error('Error enabling realtime for users:', error);
+    // Enable for messages
+    const messagesResult = await enableRealtimeSubscription('messages');
+    
+    // Enable for conversations
+    const convsResult = await enableRealtimeSubscription('conversations');
+    
+    if (!usersResult || !messagesResult || !convsResult) {
+      console.error('Error enabling realtime for some tables');
       return false;
     }
     
-    console.log('Successfully enabled realtime for users table');
+    console.log('Successfully enabled realtime for chat tables');
     return true;
   } catch (err) {
-    console.error('Exception enabling realtime:', err);
+    console.error('Exception enabling realtime for chat:', err);
     return false;
   }
 };
@@ -199,41 +203,6 @@ export const broadcastUserStatus = async (
     return true;
   } catch (err) {
     console.error('Exception broadcasting user status:', err);
-    return false;
-  }
-};
-
-/**
- * Enable realtime for all tables needed for the chat functionality
- */
-export const enableRealtimeForChat = async (): Promise<boolean> => {
-  try {
-    console.log('Enabling realtime for chat tables...');
-    
-    // Enable for users
-    const usersResult = await enableRealtimeForUsers();
-    
-    // Enable for messages
-    const { error: messagesError } = await (supabase.rpc as any)(
-      'enable_realtime_subscription',
-      { table_name: 'messages' }
-    );
-    
-    // Enable for conversations
-    const { error: convsError } = await (supabase.rpc as any)(
-      'enable_realtime_subscription',
-      { table_name: 'conversations' }
-    );
-    
-    if (messagesError || convsError) {
-      console.error('Error enabling realtime:', messagesError || convsError);
-      return false;
-    }
-    
-    console.log('Successfully enabled realtime for chat tables');
-    return true;
-  } catch (err) {
-    console.error('Exception enabling realtime for chat:', err);
     return false;
   }
 };

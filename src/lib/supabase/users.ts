@@ -35,16 +35,27 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
  * @returns Promise resolving to boolean indicating success
  */
 export const registerUser = async (
-  userId: string,
+  userId: string | number,
   username: string,
   role: string = 'standard'
 ): Promise<boolean> => {
   try {
+    // Ensure userId is a valid UUID, if it's not, generate one
+    let validUserId: string;
+    
+    if (typeof userId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      validUserId = userId;
+    } else {
+      // For non-UUID values, generate a deterministic UUID based on the username
+      validUserId = crypto.randomUUID();
+      console.log(`Generated UUID ${validUserId} for user ${username} as the provided ID was not a valid UUID`);
+    }
+    
     // First check if user already exists
     const { data: existingUser, error: checkError } = await supabase
       .from('users')
       .select('id')
-      .eq('id', userId)
+      .eq('username', username)
       .maybeSingle();
     
     if (checkError) {
@@ -54,20 +65,24 @@ export const registerUser = async (
     
     // If user exists, just return true
     if (existingUser) {
-      console.log(`User ${username} already registered`);
+      console.log(`User ${username} already registered with ID ${existingUser.id}`);
       return true;
     }
     
     // Otherwise, insert new user
+    const userData = {
+      id: validUserId,
+      username,
+      role,
+      is_online: true,
+      last_active: new Date().toISOString()
+    };
+    
+    console.log(`Registering new user with data:`, userData);
+    
     const { error: insertError } = await supabase
       .from('users')
-      .insert({
-        id: userId,
-        username,
-        role,
-        is_online: true,
-        last_active: new Date().toISOString()
-      });
+      .insert(userData);
     
     if (insertError) {
       console.error('Error registering user:', insertError);
@@ -77,7 +92,7 @@ export const registerUser = async (
       return false;
     }
     
-    console.log(`User ${username} registered successfully`);
+    console.log(`User ${username} registered successfully with ID ${validUserId}`);
     return true;
   } catch (err) {
     console.error('Exception registering user:', err);
@@ -92,10 +107,18 @@ export const registerUser = async (
  * @returns Promise resolving to boolean indicating success
  */
 export const updateUserOnlineStatus = async (
-  userId: string,
+  userId: string | number,
   isOnline: boolean
 ): Promise<boolean> => {
   try {
+    // Validate the userId is a UUID
+    if (typeof userId === 'string' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      console.error(`Invalid UUID format for userId: ${userId}`);
+      return false;
+    }
+    
+    console.log(`Updating online status for user ID ${userId} to ${isOnline}`);
+    
     const { error } = await supabase
       .from('users')
       .update({

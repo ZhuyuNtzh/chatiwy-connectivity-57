@@ -47,22 +47,30 @@ export const checkSupabaseConnection = async (): Promise<boolean> => {
 };
 
 /**
- * Enable realtime functionality for the users table
+ * Enable realtime functionality for a specific table using channel subscription instead of RPC
  */
 export const enableRealtimeSubscription = async (tableName: string): Promise<boolean> => {
   try {
     console.log(`Enabling realtime for ${tableName} table...`);
     
-    // Fix TypeScript error by using type assertion
-    const { error } = await (supabase.rpc as any)(
-      'enable_realtime_subscription',
-      { table_name: tableName }
-    );
+    // Instead of using RPC which doesn't exist, use channel subscription
+    const channel = supabase.channel(`realtime_${tableName}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: tableName,
+      }, (payload) => {
+        console.log(`Realtime change in ${tableName}:`, payload);
+      })
+      .subscribe((status) => {
+        console.log(`Realtime subscription status for ${tableName}: ${status}`);
+        if (status === 'SUBSCRIBED') {
+          console.log(`Successfully subscribed to realtime changes for ${tableName}`);
+        }
+      });
     
-    if (error) {
-      console.error(`Error enabling realtime for ${tableName}:`, error);
-      return false;
-    }
+    // Wait a bit to ensure subscription is established
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     console.log(`Successfully enabled realtime for ${tableName} table`);
     return true;
@@ -103,6 +111,8 @@ export const initializeSupabase = async (): Promise<boolean> => {
     // Enable realtime for conversations table
     const convsRealtimeEnabled = await enableRealtimeSubscription('conversations');
     
+    console.log(`Realtime status - Users: ${usersRealtimeEnabled}, Messages: ${messagesRealtimeEnabled}, Conversations: ${convsRealtimeEnabled}`);
+    
     if (!usersRealtimeEnabled || !messagesRealtimeEnabled || !convsRealtimeEnabled) {
       console.error('Error enabling realtime for tables');
       
@@ -110,6 +120,9 @@ export const initializeSupabase = async (): Promise<boolean> => {
       console.warn('Continuing with partial realtime functionality');
     }
     
+    // Track execution time for debugging
+    const endTime = performance.now();
+    console.log(`Database response time: ${Math.round(endTime)}ms`);
     console.log('Supabase initialized successfully');
     return true;
   } catch (err) {

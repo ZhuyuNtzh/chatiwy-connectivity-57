@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { UserProfile } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
@@ -42,8 +41,15 @@ export const useSignalRConnection = (
 
     // Create a flag to track if this component is mounted
     let isMounted = true;
-    // Use string ID if available, or use username as fallback
-    const userId = currentUser.id || currentUser.username;
+    
+    // Generate a proper UUID if we don't have one
+    // This is critical since Supabase expects UUIDs for the user IDs
+    const userId = currentUser.id ? 
+      (typeof currentUser.id === 'number' ? 
+        crypto.randomUUID() : // Generate a UUID if we have a number
+        currentUser.id.toString()) : // Use the ID as is if it's a string
+      crypto.randomUUID(); // Generate a UUID if we don't have an ID
+    
     const username = currentUser.username;
 
     // Connect to SignalR hub
@@ -59,11 +65,11 @@ export const useSignalRConnection = (
         console.log('Successfully connected to SignalR');
 
         // Also update the user's online status in Supabase
-        await updateUserOnlineStatus(userId.toString(), true);
+        await updateUserOnlineStatus(userId, true);
         
         // Register user if needed
         await registerUser(
-          userId.toString(), 
+          userId, 
           username, 
           currentUser.role || 'standard'
         );
@@ -96,14 +102,14 @@ export const useSignalRConnection = (
         
         // Register user in Supabase
         await registerUser(
-          userId.toString(), 
+          userId,
           username, 
           currentUser.role || 'standard'
         );
         
         // Set up presence channel
         const presenceChannel = setupUserPresence(
-          userId.toString(),
+          userId,
           (changedUserId, isOnline) => {
             console.log(`User ${changedUserId} is now ${isOnline ? 'online' : 'offline'}`);
             // Update UI or perform actions when user status changes
@@ -111,13 +117,13 @@ export const useSignalRConnection = (
         );
         
         // Broadcast user's online status
-        await broadcastUserStatus(userId.toString(), true);
+        await broadcastUserStatus(userId, true);
         
         // Set up heartbeat to keep connection alive
         const stopHeartbeat = setupConnectionHeartbeat();
         
         // Initialize Supabase service with current user
-        await supabaseService.initialize(userId.toString(), username);
+        await supabaseService.initialize(userId, username);
         console.log('Successfully connected to Supabase realtime');
         
         // Return cleanup function
@@ -149,8 +155,8 @@ export const useSignalRConnection = (
     const handleBeforeUnload = () => {
       signalRService.disconnect();
       supabaseService.disconnect();
-      updateUserOnlineStatus(userId.toString(), false);
-      broadcastUserStatus(userId.toString(), false);
+      updateUserOnlineStatus(userId, false);
+      broadcastUserStatus(userId, false);
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -168,11 +174,11 @@ export const useSignalRConnection = (
         .catch(err => console.error('Error disconnecting from Supabase:', err));
         
       // Update user status in database
-      updateUserOnlineStatus(userId.toString(), false)
+      updateUserOnlineStatus(userId, false)
         .catch(err => console.error('Error updating user offline status:', err));
         
       // Broadcast offline status
-      broadcastUserStatus(userId.toString(), false)
+      broadcastUserStatus(userId, false)
         .catch(err => console.error('Error broadcasting offline status:', err));
         
       // Remove event listener
