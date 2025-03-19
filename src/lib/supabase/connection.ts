@@ -81,13 +81,6 @@ export const enableRealtimeSubscription = async (tableName: string): Promise<boo
 };
 
 /**
- * Enable realtime functionality for the users table
- */
-export const enableRealtimeForUsers = async (): Promise<boolean> => {
-  return enableRealtimeSubscription('users');
-};
-
-/**
  * Initialize Supabase with all required features
  * @returns Promise resolving to boolean indicating success
  */
@@ -103,7 +96,7 @@ export const initializeSupabase = async (): Promise<boolean> => {
     }
     
     // Enable realtime for users table
-    const usersRealtimeEnabled = await enableRealtimeForUsers();
+    const usersRealtimeEnabled = await enableRealtimeSubscription('users');
     
     // Enable realtime for messages table
     const messagesRealtimeEnabled = await enableRealtimeSubscription('messages');
@@ -123,7 +116,7 @@ export const initializeSupabase = async (): Promise<boolean> => {
     // Track execution time for debugging
     const endTime = performance.now();
     console.log(`Database response time: ${Math.round(endTime)}ms`);
-    console.log('Supabase initialized successfully');
+    console.log('Supabase initialization completed');
     return true;
   } catch (err) {
     console.error('Exception initializing Supabase:', err);

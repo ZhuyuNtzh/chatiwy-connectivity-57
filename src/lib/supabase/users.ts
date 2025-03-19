@@ -28,6 +28,34 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
 };
 
 /**
+ * Generate a valid UUID from any string to ensure compatibility
+ * @param input Any string or number
+ * @returns A valid UUID string
+ */
+const generateStableUUID = (input: string | number): string => {
+  // If it's already a valid UUID, return it
+  if (typeof input === 'string' && 
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input)) {
+    return input;
+  }
+  
+  // Otherwise generate a deterministic UUID using crypto API
+  const str = input.toString();
+  
+  // Simple algorithm to create a stable UUID-like string
+  // Note: This is NOT a proper UUID but will work for our demo
+  const namespace = '00000000-0000-0000-0000-000000000000';
+  return namespace.replace(/[0]/g, (c, i) => {
+    if (i < str.length) {
+      // Use character code as hex digit
+      const code = str.charCodeAt(i % str.length);
+      return (code % 16).toString(16);
+    }
+    return c;
+  });
+};
+
+/**
  * Register a new user in the database
  * @param userId The user's ID to register
  * @param username The username to register
@@ -40,21 +68,15 @@ export const registerUser = async (
   role: string = 'standard'
 ): Promise<boolean> => {
   try {
-    // Ensure userId is a valid UUID, if it's not, generate one
-    let validUserId: string;
+    // Generate a valid UUID for the user
+    const validUserId = generateStableUUID(userId);
     
-    if (typeof userId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
-      validUserId = userId;
-    } else {
-      // For non-UUID values, generate a deterministic UUID based on the username
-      validUserId = crypto.randomUUID();
-      console.log(`Generated UUID ${validUserId} for user ${username} as the provided ID was not a valid UUID`);
-    }
+    console.log(`Registering/updating user ${username} with ID ${validUserId}`);
     
     // First check if user already exists
     const { data: existingUser, error: checkError } = await supabase
       .from('users')
-      .select('id')
+      .select('id, username')
       .eq('username', username)
       .maybeSingle();
     
@@ -63,9 +85,37 @@ export const registerUser = async (
       return false;
     }
     
-    // If user exists, just return true
+    // If user with same username exists, just return true
     if (existingUser) {
-      console.log(`User ${username} already registered with ID ${existingUser.id}`);
+      console.log(`User with username ${username} already registered with ID ${existingUser.id}`);
+      return true;
+    }
+    
+    // Check if user with same ID exists
+    const { data: existingUserId, error: checkIdError } = await supabase
+      .from('users')
+      .select('username')
+      .eq('id', validUserId)
+      .maybeSingle();
+    
+    if (checkIdError) {
+      console.error('Error checking existing user ID:', checkIdError);
+    }
+    
+    // If user with same ID exists, update their username
+    if (existingUserId) {
+      console.log(`User with ID ${validUserId} already exists with username ${existingUserId.username}, updating to ${username}`);
+      
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ username, role })
+        .eq('id', validUserId);
+      
+      if (updateError) {
+        console.error('Error updating user:', updateError);
+        return false;
+      }
+      
       return true;
     }
     
@@ -77,8 +127,6 @@ export const registerUser = async (
       is_online: true,
       last_active: new Date().toISOString()
     };
-    
-    console.log(`Registering new user with data:`, userData);
     
     const { error: insertError } = await supabase
       .from('users')
@@ -111,16 +159,10 @@ export const updateUserOnlineStatus = async (
   isOnline: boolean
 ): Promise<boolean> => {
   try {
-    // Convert userId to string if it's a number
-    const userIdStr = typeof userId === 'number' ? userId.toString() : userId;
+    // Generate a valid UUID for the user
+    const validUserId = generateStableUUID(userId);
     
-    // Validate the userId is a UUID
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userIdStr)) {
-      console.error(`Invalid UUID format for userId: ${userIdStr}`);
-      return false;
-    }
-    
-    console.log(`Updating online status for user ID ${userIdStr} to ${isOnline}`);
+    console.log(`Updating online status for user ID ${validUserId} to ${isOnline}`);
     
     const { error } = await supabase
       .from('users')
@@ -128,14 +170,14 @@ export const updateUserOnlineStatus = async (
         is_online: isOnline,
         last_active: new Date().toISOString()
       })
-      .eq('id', userIdStr);
+      .eq('id', validUserId);
     
     if (error) {
       console.error('Error updating user online status:', error);
       return false;
     }
     
-    console.log(`User ${userIdStr} online status updated to ${isOnline}`);
+    console.log(`User ${validUserId} online status updated to ${isOnline}`);
     return true;
   } catch (err) {
     console.error('Exception updating user online status:', err);

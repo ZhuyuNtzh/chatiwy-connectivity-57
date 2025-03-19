@@ -101,15 +101,13 @@ const Header = () => {
             >
               <LogOut className="h-5 w-5" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
+            <div 
               onClick={toggleDarkMode}
-              className="transition-all duration-300 hover:bg-white/20"
+              className="cursor-pointer p-2 rounded-full hover:bg-white/10 transition-all"
               aria-label="Toggle dark mode"
             >
               {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </Button>
+            </div>
             
             {!hideExtraButtons && (
               <Button
@@ -125,15 +123,13 @@ const Header = () => {
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
+            <div 
               onClick={toggleDarkMode}
-              className="transition-all duration-300 hover:bg-white/20"
+              className="cursor-pointer p-2 rounded-full hover:bg-white/10 transition-all"
               aria-label="Toggle dark mode"
             >
               {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </Button>
+            </div>
             
             {location.pathname === '/' && (
               <Button

@@ -76,15 +76,13 @@ const Header = ({
             </div>
           </div>
           
-          <Button
-            variant="ghost"
-            size="icon"
+          <div
             onClick={toggleDarkMode}
-            className="ml-1 md:ml-2"
+            className="ml-1 md:ml-2 p-2 cursor-pointer rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
             aria-label="Toggle dark mode"
           >
             {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button>
+          </div>
           
           <Button
             variant="ghost"

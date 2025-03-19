@@ -1,6 +1,8 @@
+
 import { supabase } from './client';
 import { toast } from 'sonner';
 import { enableRealtimeSubscription } from './connection';
+import { generateStableUUID } from './utils';
 
 /**
  * Enable realtime functionality for all tables needed for chat
@@ -92,15 +94,18 @@ export const subscribeToConversation = (
  * @returns The channel object for unsubscribing later
  */
 export const setupUserPresence = (
-  userId: string,
+  userId: string | number,
   onUserStatusChange: (userId: string, isOnline: boolean) => void
 ) => {
-  if (!userId) {
+  // Convert to valid UUID if needed
+  const validUserId = generateStableUUID(userId);
+  
+  if (!validUserId) {
     console.error('Invalid user ID for presence tracking');
     return null;
   }
 
-  console.log(`Setting up presence for user ${userId}`);
+  console.log(`Setting up presence for user ${validUserId}`);
   
   // Create a unique channel name with timestamp to avoid conflicts
   const channelName = `online-users:${Date.now()}`;
@@ -109,7 +114,7 @@ export const setupUserPresence = (
   const presenceChannel = supabase.channel(channelName, {
     config: {
       presence: {
-        key: userId,
+        key: validUserId,
       },
     },
   });
@@ -122,20 +127,20 @@ export const setupUserPresence = (
       
       // Process each user in the presence state
       Object.keys(state).forEach(key => {
-        if (key !== userId) {
+        if (key !== validUserId) {
           onUserStatusChange(key, true);
         }
       });
     })
     .on('presence', { event: 'join' }, ({ key, newPresences }) => {
       console.log('User came online:', key, newPresences);
-      if (key !== userId) {
+      if (key !== validUserId) {
         onUserStatusChange(key, true);
       }
     })
     .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
       console.log('User went offline:', key, leftPresences);
-      if (key !== userId) {
+      if (key !== validUserId) {
         onUserStatusChange(key, false);
       }
     });
@@ -148,10 +153,10 @@ export const setupUserPresence = (
         // Track the user's presence once subscribed
         await presenceChannel.track({
           online_at: new Date().toISOString(),
-          user_id: userId,
-          username: userId // Fallback, will be replaced with actual username later
+          user_id: validUserId,
+          username: validUserId // Fallback, will be replaced with actual username later
         });
-        console.log(`User presence tracking activated for: ${userId}`);
+        console.log(`User presence tracking activated for: ${validUserId}`);
       } catch (error) {
         console.error('Error tracking presence:', error);
       }
@@ -174,16 +179,19 @@ export const setupUserPresence = (
  * @param isOnline Whether the user is online or offline
  */
 export const broadcastUserStatus = async (
-  userId: string,
+  userId: string | number,
   isOnline: boolean
 ): Promise<boolean> => {
-  if (!userId) {
+  // Convert to valid UUID if needed
+  const validUserId = generateStableUUID(userId);
+  
+  if (!validUserId) {
     console.error('Invalid user ID for status broadcast');
     return false;
   }
   
   try {
-    console.log(`Broadcasting user status: ${userId} is ${isOnline ? 'online' : 'offline'}`);
+    console.log(`Broadcasting user status: ${validUserId} is ${isOnline ? 'online' : 'offline'}`);
     
     // Update the user's online status in the database
     const { error } = await supabase
@@ -192,14 +200,14 @@ export const broadcastUserStatus = async (
         is_online: isOnline,
         last_active: new Date().toISOString()
       })
-      .eq('id', userId);
+      .eq('id', validUserId);
     
     if (error) {
       console.error('Error updating user online status:', error);
       return false;
     }
     
-    console.log(`Broadcasted user status: ${userId} is ${isOnline ? 'online' : 'offline'}`);
+    console.log(`Broadcasted user status: ${validUserId} is ${isOnline ? 'online' : 'offline'}`);
     return true;
   } catch (err) {
     console.error('Exception broadcasting user status:', err);
