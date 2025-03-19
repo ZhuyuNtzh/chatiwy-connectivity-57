@@ -4,7 +4,7 @@ export { supabase } from './client';
 export { 
   checkSupabaseConnection, 
   initializeSupabase, 
-  enableRealtimeForUsers 
+  enableRealtimeSubscription 
 } from './connection';
 export { 
   subscribeToConversation, 
