@@ -11,7 +11,8 @@ export {
   subscribeToConversation, 
   setupUserPresence,
   broadcastUserStatus,
-  setupConnectionHeartbeat
+  setupConnectionHeartbeat,
+  subscribeToTableChanges
 } from './supabase/realtime';
 export { 
   isUsernameTaken, 
@@ -21,3 +22,7 @@ export {
   subscribeToOnlineUsers,
   setupRealtimeSubscription
 } from './supabase/users';
+export {
+  generateStableUUID,
+  generateUniqueUUID
+} from './supabase/utils';

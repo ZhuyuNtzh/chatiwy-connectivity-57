@@ -11,11 +11,18 @@ export {
   setupUserPresence, 
   broadcastUserStatus,
   setupConnectionHeartbeat,
-  enableRealtimeForChat
+  enableRealtimeForChat,
+  subscribeToTableChanges
 } from './realtime';
 export { 
   isUsernameTaken, 
   registerUser, 
   updateUserOnlineStatus, 
-  getOnlineUsers 
+  getOnlineUsers,
+  subscribeToOnlineUsers,
+  setupRealtimeSubscription
 } from './users';
+export {
+  generateStableUUID,
+  generateUniqueUUID
+} from './utils';

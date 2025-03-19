@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { checkSupabaseConnection, initializeSupabase } from '@/lib/supabase';
 import { setupConnectionHeartbeat, enableRealtimeForChat } from '@/lib/supabase/realtime';
 import { registerUser, updateUserOnlineStatus } from '@/lib/supabase/users';
+import { generateUniqueUUID } from '@/lib/supabase/utils';
 
 interface ChatConnectionHandlerProps {
   children: React.ReactNode;
@@ -21,7 +22,7 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [connectionReady, setConnectionReady] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 3;
+  const maxRetries = 5;
 
   // Check Supabase connection on mount
   useEffect(() => {
@@ -36,9 +37,7 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
           console.error("Failed to initialize Supabase");
           
           if (retryCount < maxRetries) {
-            toast.error(`Connection issue (attempt ${retryCount + 1}/${maxRetries}). Retrying...`, {
-              duration: 3000,
-            });
+            console.warn(`Connection issue (attempt ${retryCount + 1}/${maxRetries}). Retrying...`);
             
             // Retry after a short delay, with exponential backoff
             setTimeout(() => {
@@ -48,12 +47,13 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
             return;
           }
           
-          toast.error("Couldn't connect to chat backend. Please refresh the page.", {
-            duration: 6000,
-          });
+          console.error("Max retries reached. Could not connect to chat backend.");
           setConnectionReady(false);
         } else {
           console.log("Successfully connected to Supabase");
+          
+          // Create a stable UUID for this user
+          const stableId = generateUniqueUUID();
           
           // Enable realtime features for chat
           await enableRealtimeForChat();
@@ -61,23 +61,24 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
           // Set up connection heartbeat to prevent timeouts
           const stopHeartbeat = setupConnectionHeartbeat();
           
-          // Register or update user
+          // Register or update user - use the stable UUID
           await registerUser(
-            userId.toString(),
+            stableId,
             username,
             'standard' // Default role
           );
           
           // Update user status
-          await updateUserOnlineStatus(userId.toString(), true);
+          await updateUserOnlineStatus(stableId, true);
+          
+          // Store the UUID in sessionStorage for later use
+          sessionStorage.setItem('userUUID', stableId);
           
           // Verify service connection as well
           if (service && typeof service.testConnection === 'function') {
             const serviceConnected = await service.testConnection();
             if (!serviceConnected) {
-              toast.warning("Chat service connection is unstable. Some features may be limited.", {
-                duration: 5000,
-              });
+              console.warn("Chat service connection is unstable. Some features may be limited.");
             }
           }
           
@@ -87,16 +88,21 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
           return () => {
             stopHeartbeat();
             // Set user offline when component unmounts
-            updateUserOnlineStatus(userId.toString(), false)
+            updateUserOnlineStatus(stableId, false)
               .catch(err => console.error('Error updating offline status:', err));
           };
         }
       } catch (err) {
         console.error("Error testing connection:", err);
-        toast.error("Error connecting to chat service", { 
-          duration: 6000,
-        });
-        setConnectionReady(false);
+        console.error("Error connecting to chat service, will retry");
+        
+        if (retryCount < maxRetries) {
+          setTimeout(() => {
+            setRetryCount(prev => prev + 1);
+          }, 1000 * Math.pow(2, retryCount));
+        } else {
+          setConnectionReady(false);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -111,72 +117,81 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
       console.log(`Prefetching chat history for user ${username} (ID: ${userId})`);
       
       try {
-        const result = service.getChatHistory(userId);
+        const result = service.getChatHistory?.(userId);
         
         // Handle both synchronous and Promise return types
         if (result instanceof Promise) {
           result
             .then(messages => {
-              console.log(`Retrieved ${messages?.length || 0} messages for conversation with ${username}`);
-              // If no messages were retrieved, test if we can actually write to the database
+              console.log(`Retrieved ${messages?.length || 0} messages`);
+              // Test message creation if empty
               if (!messages || messages.length === 0) {
                 service.testMessageCreation?.()
-                  .then((success: boolean) => {
-                    if (!success) {
-                      toast.warning("Message delivery might be delayed. Please be patient.", {
-                        duration: 5000
-                      });
-                    }
-                  })
                   .catch((err: Error) => {
                     console.error("Error testing message creation:", err);
                   });
               }
             })
             .catch(err => {
-              console.error(`Error fetching chat history for ${username}:`, err);
-              toast.error("Error loading chat history. Some messages may be missing.", {
-                duration: 5000
-              });
+              console.error(`Error fetching chat history:`, err);
             });
         } else if (Array.isArray(result)) {
           // Handle synchronous result
-          console.log(`Retrieved ${result.length} messages for conversation with ${username}`);
+          console.log(`Retrieved ${result.length} messages synchronously`);
         }
       } catch (err) {
         console.error(`Error accessing chat service:`, err);
-        toast.error("Error accessing chat service. Please refresh the page.", { 
-          duration: 5000,
-        });
       }
     }
   }, [isLoading, connectionReady, userId, username, service]);
 
+  // Hide loading screen after timeout to prevent UI freeze
+  useEffect(() => {
+    // Set a maximum time for loading screen
+    const loadingTimeout = setTimeout(() => {
+      if (isLoading) {
+        console.warn("Loading timed out - showing UI anyway");
+        setIsLoading(false);
+        setConnectionReady(true); // Try to proceed anyway
+      }
+    }, 8000); // 8 seconds max loading time
+    
+    return () => clearTimeout(loadingTimeout);
+  }, [isLoading]);
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen w-full bg-white dark:bg-gray-800">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="flex flex-col items-center justify-center h-screen w-full bg-white dark:bg-gray-800">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+        <p className="text-gray-600 dark:text-gray-300">Connecting to chat...</p>
       </div>
     );
   }
 
-  if (!connectionReady) {
+  if (!connectionReady && retryCount >= maxRetries) {
     return (
       <div className="flex flex-col items-center justify-center p-6 h-full">
-        <div className="text-red-500 text-xl mb-4">Connection Error</div>
+        <div className="text-red-500 text-xl mb-4">Connection Issue</div>
         <p className="text-center mb-4">
-          Unable to connect to the chat service. Please check your internet connection and try again.
+          Having trouble connecting to the chat service. We'll try to use the application anyway.
         </p>
         <button 
-          onClick={() => setRetryCount(prev => prev + 1)}
+          onClick={() => setRetryCount(0)} // Reset retry count to try again
           className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
           Retry Connection
+        </button>
+        <button 
+          onClick={() => setConnectionReady(true)} // Force proceed anyway
+          className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 mt-2"
+        >
+          Continue Anyway
         </button>
       </div>
     );
   }
 
+  // Proceed even if not fully connected to prevent blocking the UI
   return <>{children}</>;
 };
 

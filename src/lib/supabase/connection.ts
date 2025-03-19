@@ -11,7 +11,7 @@ export const checkSupabaseConnection = async (): Promise<boolean> => {
   try {
     console.log('Testing Supabase connection...');
     
-    // Simple query to test connection
+    // Perform a simple query to test connection
     const { data, error } = await supabase
       .from('users')
       .select('count', { count: 'exact', head: true });
@@ -20,7 +20,7 @@ export const checkSupabaseConnection = async (): Promise<boolean> => {
       console.error('Error connecting to Supabase:', error);
       
       if (!connectionState.connectionWarningShown) {
-        toast.error('Error connecting to database. Please check your internet connection.', {
+        toast.error('Connection issue detected. Trying to reconnect...', {
           duration: 5000,
         });
         connectionState.connectionWarningShown = true;
@@ -39,6 +39,9 @@ export const checkSupabaseConnection = async (): Promise<boolean> => {
       connectionState.connectionSuccessShown = true;
     }
     
+    // Reset connection warning flag
+    connectionState.connectionWarningShown = false;
+    
     return true;
   } catch (err) {
     console.error('Exception testing connection:', err);
@@ -53,8 +56,11 @@ export const enableRealtimeSubscription = async (tableName: string): Promise<boo
   try {
     console.log(`Enabling realtime for ${tableName} table...`);
     
+    // Generate a unique channel ID
+    const channelId = `realtime_${tableName}_${Date.now()}`;
+    
     // Use channel subscription for realtime updates
-    const channel = supabase.channel(`realtime_${tableName}`)
+    const channel = supabase.channel(channelId)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -67,6 +73,13 @@ export const enableRealtimeSubscription = async (tableName: string): Promise<boo
         if (status === 'SUBSCRIBED') {
           console.log(`Successfully subscribed to realtime changes for ${tableName}`);
           connectionState.realtimeEnabled = true;
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error(`Error subscribing to realtime changes for ${tableName}`);
+          // Try to resubscribe
+          setTimeout(() => {
+            console.log(`Attempting to resubscribe to ${tableName}`);
+            channel.subscribe();
+          }, 3000);
         }
       });
     
@@ -82,10 +95,11 @@ export const enableRealtimeSubscription = async (tableName: string): Promise<boo
 };
 
 /**
- * Initialize Supabase with all required features
+ * Initialize Supabase with all required features, with retry
+ * @param retries Number of retries allowed
  * @returns Promise resolving to boolean indicating success
  */
-export const initializeSupabase = async (): Promise<boolean> => {
+export const initializeSupabase = async (retries = 3): Promise<boolean> => {
   try {
     console.log('Initializing Supabase...');
     
@@ -93,6 +107,14 @@ export const initializeSupabase = async (): Promise<boolean> => {
     const isConnected = await checkSupabaseConnection();
     if (!isConnected) {
       console.error('Failed to connect to Supabase');
+      
+      if (retries > 0) {
+        console.log(`Retrying connection (${retries} attempts left)...`);
+        // Wait 2 seconds before retrying
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return initializeSupabase(retries - 1);
+      }
+      
       return false;
     }
     
@@ -105,14 +127,28 @@ export const initializeSupabase = async (): Promise<boolean> => {
     // Enable realtime for conversations table
     const convsRealtimeEnabled = await enableRealtimeSubscription('conversations');
     
-    console.log(`Realtime status - Users: ${usersRealtimeEnabled}, Messages: ${messagesRealtimeEnabled}, Conversations: ${convsRealtimeEnabled}`);
+    // Enable realtime for conversation_participants table
+    const partsRealtimeEnabled = await enableRealtimeSubscription('conversation_participants');
     
-    if (!usersRealtimeEnabled || !messagesRealtimeEnabled || !convsRealtimeEnabled) {
-      console.error('Error enabling realtime for tables');
+    console.log(`Realtime status - Users: ${usersRealtimeEnabled}, Messages: ${messagesRealtimeEnabled}, Conversations: ${convsRealtimeEnabled}, Participants: ${partsRealtimeEnabled}`);
+    
+    const allEnabled = usersRealtimeEnabled && messagesRealtimeEnabled && convsRealtimeEnabled && partsRealtimeEnabled;
+    
+    if (!allEnabled) {
+      console.warn('Some tables failed to enable realtime. Will continue with partial functionality.');
       
-      // Continue anyway but log the error
-      console.warn('Continuing with partial realtime functionality');
+      // Try again for failed tables in the background
+      setTimeout(() => {
+        console.log('Retrying enabling realtime for tables in background...');
+        if (!usersRealtimeEnabled) enableRealtimeSubscription('users');
+        if (!messagesRealtimeEnabled) enableRealtimeSubscription('messages');
+        if (!convsRealtimeEnabled) enableRealtimeSubscription('conversations');
+        if (!partsRealtimeEnabled) enableRealtimeSubscription('conversation_participants');
+      }, 5000);
     }
+    
+    // Set up automatic reconnection
+    setupReconnectionCheck();
     
     // Track execution time for debugging
     const endTime = performance.now();
@@ -121,6 +157,29 @@ export const initializeSupabase = async (): Promise<boolean> => {
     return true;
   } catch (err) {
     console.error('Exception initializing Supabase:', err);
+    
+    if (retries > 0) {
+      console.log(`Retrying initialization (${retries} attempts left)...`);
+      // Wait before retrying with exponential backoff
+      const delay = 2000 * Math.pow(2, 3 - retries);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return initializeSupabase(retries - 1);
+    }
+    
     return false;
   }
+};
+
+/**
+ * Set up automatic reconnection check
+ */
+const setupReconnectionCheck = () => {
+  // Set up a timer to periodically check connection
+  setInterval(async () => {
+    const isConnected = await checkSupabaseConnection();
+    if (!isConnected) {
+      console.warn('Connection check failed. Attempting to reinitialize...');
+      initializeSupabase(1); // Try once
+    }
+  }, 60000); // Check every minute
 };

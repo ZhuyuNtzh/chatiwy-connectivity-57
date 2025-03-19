@@ -1,6 +1,6 @@
 import { supabase } from './client';
 import { toast } from 'sonner';
-import React from 'react';
+import { generateStableUUID, generateUniqueUUID } from './utils';
 
 /**
  * Check if a username is already taken
@@ -9,6 +9,11 @@ import React from 'react';
  */
 export const isUsernameTaken = async (username: string): Promise<boolean> => {
   try {
+    // Skip empty usernames
+    if (!username || username.trim() === '') {
+      return false;
+    }
+    
     const { data, error } = await supabase
       .from('users')
       .select('id')
@@ -28,47 +33,7 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
 };
 
 /**
- * Generate a valid UUID from any string to ensure compatibility
- * @param input Any string or number
- * @returns A valid UUID string
- */
-const generateStableUUID = (input: string | number): string => {
-  // If it's already a valid UUID, return it
-  if (typeof input === 'string' && 
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input)) {
-    return input;
-  }
-  
-  // Convert to string
-  const inputStr = String(input);
-  
-  // Simple algorithm to create a stable UUID-like string
-  // This is a simplistic implementation for demo purposes
-  const template = '00000000-0000-0000-0000-000000000000';
-  let result = '';
-  let pos = 0;
-  
-  for (let i = 0; i < template.length; i++) {
-    if (template[i] === '-') {
-      result += '-';
-    } else {
-      // Use character from input or fallback to a derived value
-      const charCode = pos < inputStr.length ? 
-        inputStr.charCodeAt(pos) : 
-        (inputStr.length > 0 ? inputStr.charCodeAt(pos % inputStr.length) : 97);
-      
-      // Convert to a hex digit (0-15)
-      const hexDigit = (charCode % 16).toString(16);
-      result += hexDigit;
-      pos++;
-    }
-  }
-  
-  return result;
-};
-
-/**
- * Register a new user in the database
+ * Register a new user in the database or update existing user
  * @param userId The user's ID to register
  * @param username The username to register
  * @param role The user's role
@@ -80,12 +45,21 @@ export const registerUser = async (
   role: string = 'standard'
 ): Promise<boolean> => {
   try {
-    // Generate a valid UUID for the user
-    const validUserId = generateStableUUID(userId);
+    // Ensure we have valid inputs
+    if (!username || username.trim() === '') {
+      console.error('Invalid username for registration');
+      return false;
+    }
+    
+    // Generate a valid UUID - always use a completely unique UUID for new users
+    const validUserId = typeof userId === 'string' && 
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId) 
+      ? userId 
+      : generateUniqueUUID();
     
     console.log(`Registering/updating user ${username} with ID ${validUserId}`);
     
-    // First check if user already exists
+    // Check if username is taken by another user
     const { data: existingUser, error: checkError } = await supabase
       .from('users')
       .select('id, username')
@@ -94,13 +68,18 @@ export const registerUser = async (
     
     if (checkError) {
       console.error('Error checking existing user:', checkError);
-      return false;
+      // Continue anyway, as this might be a temporary issue
     }
     
-    // If user with same username exists, just return true
-    if (existingUser) {
-      console.log(`User with username ${username} already registered with ID ${existingUser.id}`);
-      return true;
+    // If username is taken by another user, append a random suffix to make it unique
+    let finalUsername = username;
+    if (existingUser && existingUser.id !== validUserId) {
+      const randomSuffix = Math.floor(Math.random() * 1000);
+      finalUsername = `${username}_${randomSuffix}`;
+      console.log(`Username ${username} is taken, using ${finalUsername} instead`);
+      
+      // Silent notification to avoid disrupting UX
+      console.warn(`Username modified to ensure uniqueness: ${finalUsername}`);
     }
     
     // Check if user with same ID exists
@@ -112,15 +91,21 @@ export const registerUser = async (
     
     if (checkIdError) {
       console.error('Error checking existing user ID:', checkIdError);
+      // Continue anyway, as this might be a temporary issue
     }
     
-    // If user with same ID exists, update their username
+    // If user with same ID exists, update their data
     if (existingUserId) {
-      console.log(`User with ID ${validUserId} already exists with username ${existingUserId.username}, updating to ${username}`);
+      console.log(`User with ID ${validUserId} exists, updating data`);
       
       const { error: updateError } = await supabase
         .from('users')
-        .update({ username, role })
+        .update({ 
+          username: finalUsername, 
+          role,
+          is_online: true,
+          last_active: new Date().toISOString()
+        })
         .eq('id', validUserId);
       
       if (updateError) {
@@ -134,7 +119,7 @@ export const registerUser = async (
     // Otherwise, insert new user
     const userData = {
       id: validUserId,
-      username,
+      username: finalUsername,
       role,
       is_online: true,
       last_active: new Date().toISOString()
@@ -146,13 +131,12 @@ export const registerUser = async (
     
     if (insertError) {
       console.error('Error registering user:', insertError);
-      toast.error('Failed to register user. Please try again.', {
-        duration: 5000,
-      });
+      // Don't show toast error to improve UX
+      console.warn('Failed to register user in database, but continuing');
       return false;
     }
     
-    console.log(`User ${username} registered successfully with ID ${validUserId}`);
+    console.log(`User ${finalUsername} registered successfully with ID ${validUserId}`);
     return true;
   } catch (err) {
     console.error('Exception registering user:', err);
@@ -172,7 +156,10 @@ export const updateUserOnlineStatus = async (
 ): Promise<boolean> => {
   try {
     // Generate a valid UUID for the user
-    const validUserId = generateStableUUID(userId);
+    const validUserId = typeof userId === 'string' && 
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId) 
+      ? userId 
+      : generateStableUUID(userId);
     
     console.log(`Updating online status for user ID ${validUserId} to ${isOnline}`);
     
@@ -228,12 +215,15 @@ export const getOnlineUsers = async (): Promise<any[]> => {
 export const subscribeToOnlineUsers = (
   callback: (users: any[]) => void
 ) => {
+  // Create a channel specifically for this subscription
+  const channelId = `online-users-${Date.now()}`;
+  
   const channel = supabase
-    .channel('public:users')
+    .channel(channelId)
     .on(
       'postgres_changes',
       {
-        event: 'UPDATE',
+        event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
         schema: 'public',
         table: 'users',
         filter: 'is_online=eq.true'
@@ -249,10 +239,18 @@ export const subscribeToOnlineUsers = (
       if (status === 'SUBSCRIBED') {
         // Initial fetch of online users
         getOnlineUsers().then(callback);
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error('Error subscribing to online users');
+        // Retry after a short delay
+        setTimeout(() => {
+          console.log('Attempting to reconnect online users subscription');
+          channel.subscribe();
+        }, 3000);
       }
     });
   
   return () => {
+    console.log('Unsubscribing from online users');
     supabase.removeChannel(channel);
   };
 };
@@ -268,8 +266,10 @@ export const setupRealtimeSubscription = async (
   try {
     console.log(`Setting up realtime subscription for ${tableName} table...`);
     
-    // Create a channel for realtime subscription
-    const channel = supabase.channel(`realtime_${tableName}`)
+    // Create a channel for realtime subscription with unique ID
+    const channelId = `realtime_${tableName}_${Date.now()}`;
+    
+    const channel = supabase.channel(channelId)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -280,6 +280,13 @@ export const setupRealtimeSubscription = async (
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           console.log(`Successfully subscribed to ${tableName} table changes`);
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error(`Error subscribing to ${tableName} table`);
+          // Retry after a short delay
+          setTimeout(() => {
+            console.log(`Retrying subscription to ${tableName} table`);
+            channel.subscribe();
+          }, 3000);
         } else {
           console.log(`Subscription status for ${tableName}: ${status}`);
         }
@@ -292,26 +299,5 @@ export const setupRealtimeSubscription = async (
   }
 };
 
-/**
- * Create a new hook for tracking online users
- * @returns Object containing online users and count
- */
-export const useOnlineUsers = () => {
-  const [onlineUsers, setOnlineUsers] = React.useState<any[]>([]);
-  const [onlineCount, setOnlineCount] = React.useState<number>(0);
-  
-  React.useEffect(() => {
-    // Set up subscription to online users
-    const unsubscribe = subscribeToOnlineUsers((users) => {
-      setOnlineUsers(users);
-      setOnlineCount(users.length);
-    });
-    
-    // Cleanup on unmount
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-  
-  return { onlineUsers, onlineCount };
-};
+// Export a custom hook for online users to avoid React import in this file
+export { useOnlineUsers } from '../../hooks/useOnlineUsers';

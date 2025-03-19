@@ -2,7 +2,7 @@
 import { supabase } from './client';
 import { toast } from 'sonner';
 import { enableRealtimeSubscription } from './connection';
-import { generateStableUUID } from './utils';
+import { generateStableUUID, generateUniqueUUID } from './utils';
 
 /**
  * Enable realtime functionality for all tables needed for chat
@@ -20,7 +20,12 @@ export const enableRealtimeForChat = async (): Promise<boolean> => {
     // Enable for conversations
     const convsResult = await enableRealtimeSubscription('conversations');
     
-    if (!usersResult || !messagesResult || !convsResult) {
+    // Enable for conversation participants
+    const partResult = await enableRealtimeSubscription('conversation_participants');
+    
+    const allSuccess = usersResult && messagesResult && convsResult && partResult;
+    
+    if (!allSuccess) {
       console.error('Error enabling realtime for some tables');
       return false;
     }
@@ -74,13 +79,14 @@ export const subscribeToConversation = (
         console.log(`Successfully subscribed to conversation: ${conversationId}`);
       } else if (status === 'CHANNEL_ERROR') {
         console.error(`Error subscribing to conversation: ${conversationId}`);
-        toast.error('Connection issue. Trying to reconnect...');
+        console.warn('Connection issue. Trying to reconnect...');
         
-        // Automatically attempt to resubscribe after a delay
+        // Automatically attempt to resubscribe after a delay with exponential backoff
+        const retryDelay = 2000 + Math.random() * 3000; // Between 2-5 seconds
         setTimeout(() => {
           console.log(`Attempting to resubscribe to conversation: ${conversationId}`);
           channel.subscribe();
-        }, 3000);
+        }, retryDelay);
       }
     });
     
@@ -97,18 +103,13 @@ export const setupUserPresence = (
   userId: string | number,
   onUserStatusChange: (userId: string, isOnline: boolean) => void
 ) => {
-  // Convert to valid UUID if needed
-  const validUserId = generateStableUUID(userId);
+  // Always generate a completely unique ID for presence
+  const validUserId = generateUniqueUUID();
   
-  if (!validUserId) {
-    console.error('Invalid user ID for presence tracking');
-    return null;
-  }
-
   console.log(`Setting up presence for user ${validUserId}`);
   
   // Create a unique channel name with timestamp to avoid conflicts
-  const channelName = `online-users:${Date.now()}`;
+  const channelName = `online-users:${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   
   // Create a presence channel for online users
   const presenceChannel = supabase.channel(channelName, {
@@ -182,15 +183,13 @@ export const broadcastUserStatus = async (
   userId: string | number,
   isOnline: boolean
 ): Promise<boolean> => {
-  // Convert to valid UUID if needed
-  const validUserId = generateStableUUID(userId);
-  
-  if (!validUserId) {
-    console.error('Invalid user ID for status broadcast');
-    return false;
-  }
-  
   try {
+    // Generate a valid UUID if needed, or use a unique one
+    const validUserId = typeof userId === 'string' && 
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId) 
+      ? userId 
+      : generateUniqueUUID();
+    
     console.log(`Broadcasting user status: ${validUserId} is ${isOnline ? 'online' : 'offline'}`);
     
     // Update the user's online status in the database
@@ -229,11 +228,57 @@ export const setupConnectionHeartbeat = (): (() => void) => {
       
       if (error) {
         console.warn('Heartbeat error:', error);
+      } else {
+        console.log('Heartbeat successful');
       }
     } catch (err) {
       console.error('Error in connection heartbeat:', err);
     }
-  }, 30000); // 30 seconds
+  }, 20000); // 20 seconds
   
-  return () => clearInterval(heartbeatInterval);
+  return () => {
+    console.log('Stopping connection heartbeat');
+    clearInterval(heartbeatInterval);
+  };
+};
+
+/**
+ * Subscribe to all changes for a table
+ * @param tableName Table to subscribe to
+ * @param onData Callback when data changes
+ * @returns Function to unsubscribe
+ */
+export const subscribeToTableChanges = (
+  tableName: string,
+  onData: (data: any, eventType: string) => void
+) => {
+  const channelId = `${tableName}_changes_${Date.now()}`;
+  
+  const channel = supabase
+    .channel(channelId)
+    .on(
+      'postgres_changes',
+      {
+        event: '*', // Listen to all events
+        schema: 'public',
+        table: tableName
+      },
+      (payload) => {
+        console.log(`${tableName} change:`, payload);
+        onData(payload.new || payload.old, payload.eventType);
+      }
+    )
+    .subscribe((status) => {
+      console.log(`${tableName} changes subscription: ${status}`);
+      if (status === 'CHANNEL_ERROR') {
+        // Retry subscription
+        setTimeout(() => {
+          channel.subscribe();
+        }, 3000);
+      }
+    });
+    
+  return () => {
+    supabase.removeChannel(channel);
+  };
 };
