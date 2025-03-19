@@ -20,9 +20,9 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     }
   },
   global: {
-    fetch: (...args) => {
+    fetch: (input: RequestInfo | URL, init?: RequestInit) => {
       // Add custom fetch retry logic or timeout handling
-      return fetch(...args).catch(err => {
+      return fetch(input, init).catch(err => {
         console.error("Network error in Supabase request:", err);
         toast.error("Network error. Please check your connection.");
         throw err;
