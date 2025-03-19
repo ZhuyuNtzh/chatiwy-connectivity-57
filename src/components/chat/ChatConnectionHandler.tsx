@@ -41,8 +41,8 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
         onContinueAnyway={handleContinueAnyway}
       />
       
-      {/* Proceed even if not fully connected to prevent blocking the UI */}
-      {(connectionReady || (retryCount >= maxRetries && !isLoading)) && children}
+      {/* Only show children when connection is ready and username is valid */}
+      {connectionReady && !usernameTaken && !validationError && children}
     </>
   );
 };

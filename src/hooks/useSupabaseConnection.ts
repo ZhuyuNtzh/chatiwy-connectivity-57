@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { initializeSupabase } from '@/lib/supabase';
 import { setupConnectionHeartbeat, enableRealtimeForChat } from '@/lib/supabase/realtime';
-import { registerUser, updateUserOnlineStatus, isUsernameTaken } from '@/lib/supabase/users';
+import { registerUser, updateUserOnlineStatus } from '@/lib/supabase/users';
+import { isUsernameTaken } from '@/lib/supabase/users/userQueries';
 import { generateUniqueUUID } from '@/lib/supabase/utils';
 
 interface UseSupabaseConnectionProps {
@@ -39,7 +40,8 @@ export const useSupabaseConnection = ({ userId, username, service }: UseSupabase
           return;
         }
         
-        console.log(`Attempting to connect with username: ${username}`);
+        const normalizedUsername = username.trim();
+        console.log(`Attempting to connect with username: ${normalizedUsername}`);
         
         // First initialize Supabase to make sure connection is working
         const isConnected = await initializeSupabase();
@@ -47,20 +49,26 @@ export const useSupabaseConnection = ({ userId, username, service }: UseSupabase
           throw new Error("Failed to initialize Supabase connection");
         }
         
-        // Check if username is already taken
-        const taken = await isUsernameTaken(username);
-        if (taken && (existingUsername !== username)) {
-          console.error(`Username ${username} is already taken`);
-          toast.error(`Username "${username}" is already taken. Please choose another username.`);
-          setUsernameTaken(true);
-          setIsLoading(false);
-          return;
+        // Check if username is already taken, but only if it's a new user or changing username
+        if (existingUsername !== normalizedUsername) {
+          const taken = await isUsernameTaken(normalizedUsername);
+          if (taken) {
+            console.error(`Username ${normalizedUsername} is already taken`);
+            toast.error(`Username "${normalizedUsername}" is already taken. Please choose another username.`);
+            setUsernameTaken(true);
+            setIsLoading(false);
+            return;
+          }
         }
         
         // Create a stable UUID for this user
         // If we already have a UUID in localStorage, use it
-        const stableId = existingUUID && existingUsername === username ? 
-          existingUUID : generateUniqueUUID();
+        let stableId = existingUUID;
+        
+        // If we don't have a UUID, or the username has changed, generate a new one
+        if (!stableId || existingUsername !== normalizedUsername) {
+          stableId = generateUniqueUUID();
+        }
         
         console.log(`Using user ID: ${stableId}`);
         
@@ -73,17 +81,21 @@ export const useSupabaseConnection = ({ userId, username, service }: UseSupabase
         const stopHeartbeat = setupConnectionHeartbeat();
         
         // Register or update user
-        console.log(`Registering user ${username} with ID ${stableId}...`);
+        console.log(`Registering user ${normalizedUsername} with ID ${stableId}...`);
         const registrationSuccess = await registerUser(
           stableId,
-          username,
+          normalizedUsername,
           'standard' // Default role
         );
         
         if (!registrationSuccess) {
           console.error("Failed to register user");
-          toast.error("Failed to register user. Please try again.");
-          setUsernameTaken(true);
+          
+          // Only set usernameTaken if that's likely the issue
+          if (!usernameTaken) {
+            setUsernameTaken(true);
+          }
+          
           setIsLoading(false);
           return;
         }
@@ -92,9 +104,9 @@ export const useSupabaseConnection = ({ userId, username, service }: UseSupabase
         console.log("Updating user online status...");
         await updateUserOnlineStatus(stableId, true);
         
-        // Store the UUID in localStorage for later use
+        // Store the UUID and username in localStorage for later use
         localStorage.setItem('userUUID', stableId);
-        localStorage.setItem('username', username);
+        localStorage.setItem('username', normalizedUsername);
         console.log(`User UUID stored in local storage: ${stableId}`);
         
         // Verify service connection as well

@@ -13,13 +13,13 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
       return true; // Treat empty usernames as taken
     }
     
-    const normalizedUsername = username.trim();
+    const normalizedUsername = username.trim().toLowerCase(); // Normalize to lowercase
     console.log(`Checking if username "${normalizedUsername}" is taken...`);
     
     const { data, error, count } = await supabase
       .from('users')
       .select('username', { count: 'exact' })
-      .eq('username', normalizedUsername)
+      .ilike('username', normalizedUsername) // Case-insensitive comparison
       .limit(1);
     
     if (error) {

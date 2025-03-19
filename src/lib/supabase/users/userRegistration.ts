@@ -1,6 +1,7 @@
 
 import { supabase } from '../client';
 import { toast } from 'sonner';
+import { isUsernameTaken } from './userQueries';
 
 /**
  * Register a new user in the database
@@ -21,13 +22,23 @@ export const registerUser = async (
       return false;
     }
     
-    console.log(`Attempting to register user ${username} with ID ${userId}`);
+    // First check if username is taken
+    const normalizedUsername = username.trim();
+    const isTaken = await isUsernameTaken(normalizedUsername);
+    
+    if (isTaken) {
+      console.error(`Username "${normalizedUsername}" is already taken by another user`);
+      toast.error(`Username "${normalizedUsername}" is already taken. Please choose another username.`);
+      return false;
+    }
+    
+    console.log(`Attempting to register user ${normalizedUsername} with ID ${userId}`);
     
     const { data, error } = await supabase
       .from('users')
       .insert({
         id: userId,
-        username: username.trim(),
+        username: normalizedUsername,
         role,
         is_online: true,
         last_active: new Date().toISOString()
@@ -40,7 +51,7 @@ export const registerUser = async (
       
       // Check for duplicate username error
       if (error.code === '23505' || error.message.includes('unique constraint')) {
-        toast.error(`Username "${username}" is already taken. Please choose another username.`);
+        toast.error(`Username "${normalizedUsername}" is already taken. Please choose another username.`);
         return false;
       }
       
@@ -61,7 +72,7 @@ export const registerUser = async (
       return false;
     }
     
-    console.log(`User ${username} registered successfully with ID ${userId}`);
+    console.log(`User ${normalizedUsername} registered successfully with ID ${userId}`);
     return true;
   } catch (err) {
     console.error('Exception registering user:', err);
