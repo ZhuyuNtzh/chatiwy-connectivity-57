@@ -10,8 +10,7 @@ export {
   enableRealtimeForUsers as enableRealtimeForChat, 
   subscribeToConversation, 
   setupUserPresence,
-  broadcastUserStatus,
-  enableRealtimeForChat
+  broadcastUserStatus
 } from './supabase/realtime';
 export { 
   isUsernameTaken, 
