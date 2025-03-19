@@ -15,7 +15,7 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
     const { data, error } = await supabase
       .from('users')
       .select('id, username')
-      .eq('username', username)
+      .ilike('username', username)  // Case-insensitive check
       .limit(1);
       
     if (error) {
@@ -24,12 +24,11 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
         duration: 4000
       });
       
-      // In case of error, assume not taken to allow user to try again
-      // but warn them about potential issues
-      toast.warning('Username validation was inconclusive. There might be issues with your account.', {
+      // In case of error, assume taken to be safe
+      toast.warning('Username validation inconclusive. Please try a different username.', {
         duration: 5000
       });
-      return false;
+      return true;
     }
     
     const isTaken = Array.isArray(data) && data.length > 0;
@@ -48,7 +47,8 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
     toast.error('Network error checking username. Please check your connection.', {
       duration: 5000
     });
-    return false;
+    // Assume taken to be safe
+    return true;
   }
 };
 
@@ -97,6 +97,14 @@ export const registerUser = async (userId: string, username: string, role: strin
       }
     }
     
+    // If this is a new user, check if username is taken
+    if (!existingUser) {
+      const isTaken = await isUsernameTaken(username);
+      if (isTaken) {
+        return false;
+      }
+    }
+    
     // Now we can upsert the user record
     const { error } = await supabase
       .from('users')
@@ -106,6 +114,8 @@ export const registerUser = async (userId: string, username: string, role: strin
         role,
         is_online: true,
         last_active: new Date().toISOString()
+      }, {
+        onConflict: 'id'  // Only update if ID matches
       });
       
     if (error) {

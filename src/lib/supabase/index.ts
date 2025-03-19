@@ -1,6 +1,21 @@
 
 // Export all Supabase-related functions from a single file
 export { supabase } from './client';
-export { checkSupabaseConnection } from './connection';
-export { enableRealtimeForUsers, subscribeToConversation, setupUserPresence } from './realtime';
-export { isUsernameTaken, registerUser, updateUserOnlineStatus, getOnlineUsers } from './users';
+export { 
+  checkSupabaseConnection, 
+  initializeSupabase, 
+  enableRealtimeForUsers 
+} from './connection';
+export { 
+  subscribeToConversation, 
+  setupUserPresence, 
+  broadcastUserStatus,
+  setupConnectionHeartbeat,
+  enableRealtimeForChat
+} from './realtime';
+export { 
+  isUsernameTaken, 
+  registerUser, 
+  updateUserOnlineStatus, 
+  getOnlineUsers 
+} from './users';

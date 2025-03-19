@@ -1,4 +1,3 @@
-
 import { supabase } from './client';
 import { toast } from 'sonner';
 
@@ -10,7 +9,6 @@ export const enableRealtimeForUsers = async (): Promise<boolean> => {
     console.log('Enabling realtime for users table...');
     
     // Use explicit type casting to handle Supabase RPC typing issues
-    // TypeScript doesn't recognize custom RPC functions, so we use a type assertion
     const { error } = await (supabase.rpc as any)(
       'enable_realtime_subscription',
       { table_name: 'users' }
@@ -39,8 +37,18 @@ export const subscribeToConversation = (
   conversationId: string,
   onMessage: (message: any) => void
 ) => {
+  if (!conversationId) {
+    console.error('Invalid conversation ID for subscription');
+    return null;
+  }
+
+  console.log(`Setting up subscription for conversation ${conversationId}`);
+  
+  // Create a unique channel name to prevent conflicts
+  const channelId = `conversation:${conversationId}:${Date.now()}`;
+  
   const channel = supabase
-    .channel(`conversation:${conversationId}`)
+    .channel(channelId)
     .on(
       'postgres_changes',
       {
@@ -55,12 +63,18 @@ export const subscribeToConversation = (
       }
     )
     .subscribe((status) => {
-      console.log(`Conversation subscription status: ${status}`);
+      console.log(`Conversation subscription status: ${status} for ${conversationId}`);
       if (status === 'SUBSCRIBED') {
         console.log(`Successfully subscribed to conversation: ${conversationId}`);
       } else if (status === 'CHANNEL_ERROR') {
         console.error(`Error subscribing to conversation: ${conversationId}`);
         toast.error('Connection issue. Trying to reconnect...');
+        
+        // Automatically attempt to resubscribe after a delay
+        setTimeout(() => {
+          console.log(`Attempting to resubscribe to conversation: ${conversationId}`);
+          channel.subscribe();
+        }, 3000);
       }
     });
     
@@ -77,8 +91,18 @@ export const setupUserPresence = (
   userId: string,
   onUserStatusChange: (userId: string, isOnline: boolean) => void
 ) => {
+  if (!userId) {
+    console.error('Invalid user ID for presence tracking');
+    return null;
+  }
+
+  console.log(`Setting up presence for user ${userId}`);
+  
+  // Create a unique channel name with timestamp to avoid conflicts
+  const channelName = `online-users:${Date.now()}`;
+  
   // Create a presence channel for online users
-  const presenceChannel = supabase.channel('online-users', {
+  const presenceChannel = supabase.channel(channelName, {
     config: {
       presence: {
         key: userId,
@@ -90,7 +114,7 @@ export const setupUserPresence = (
   presenceChannel
     .on('presence', { event: 'sync' }, () => {
       const state = presenceChannel.presenceState();
-      console.log('Current online users:', state);
+      console.log('Current online users (sync):', state);
       
       // Process each user in the presence state
       Object.keys(state).forEach(key => {
@@ -99,14 +123,14 @@ export const setupUserPresence = (
         }
       });
     })
-    .on('presence', { event: 'join' }, ({ key }) => {
-      console.log('User came online:', key);
+    .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+      console.log('User came online:', key, newPresences);
       if (key !== userId) {
         onUserStatusChange(key, true);
       }
     })
-    .on('presence', { event: 'leave' }, ({ key }) => {
-      console.log('User went offline:', key);
+    .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+      console.log('User went offline:', key, leftPresences);
       if (key !== userId) {
         onUserStatusChange(key, false);
       }
@@ -116,12 +140,17 @@ export const setupUserPresence = (
   presenceChannel.subscribe(async (status) => {
     console.log(`Presence channel status: ${status}`);
     if (status === 'SUBSCRIBED') {
-      // Track the user's presence once subscribed
-      await presenceChannel.track({
-        online_at: new Date().toISOString(),
-        username: userId
-      });
-      console.log(`User presence tracking activated for: ${userId}`);
+      try {
+        // Track the user's presence once subscribed
+        await presenceChannel.track({
+          online_at: new Date().toISOString(),
+          user_id: userId,
+          username: userId // Fallback, will be replaced with actual username later
+        });
+        console.log(`User presence tracking activated for: ${userId}`);
+      } catch (error) {
+        console.error('Error tracking presence:', error);
+      }
     } else if (status === 'CHANNEL_ERROR') {
       console.error('Error subscribing to presence channel');
       // Retry connection after a short delay
@@ -144,7 +173,14 @@ export const broadcastUserStatus = async (
   userId: string,
   isOnline: boolean
 ): Promise<boolean> => {
+  if (!userId) {
+    console.error('Invalid user ID for status broadcast');
+    return false;
+  }
+  
   try {
+    console.log(`Broadcasting user status: ${userId} is ${isOnline ? 'online' : 'offline'}`);
+    
     // Update the user's online status in the database
     const { error } = await supabase
       .from('users')
@@ -200,4 +236,27 @@ export const enableRealtimeForChat = async (): Promise<boolean> => {
     console.error('Exception enabling realtime for chat:', err);
     return false;
   }
+};
+
+/**
+ * Set up basic heartbeat to ensure the connection stays alive
+ * @returns A function to stop the heartbeat interval
+ */
+export const setupConnectionHeartbeat = (): (() => void) => {
+  const heartbeatInterval = setInterval(async () => {
+    try {
+      // Ping the database with a minimal query to keep connection alive
+      const { error } = await supabase
+        .from('users')
+        .select('count', { count: 'exact', head: true });
+      
+      if (error) {
+        console.warn('Heartbeat error:', error);
+      }
+    } catch (err) {
+      console.error('Error in connection heartbeat:', err);
+    }
+  }, 30000); // 30 seconds
+  
+  return () => clearInterval(heartbeatInterval);
 };

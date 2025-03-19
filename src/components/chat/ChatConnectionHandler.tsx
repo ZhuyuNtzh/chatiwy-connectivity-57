@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { checkSupabaseConnection, initializeSupabase } from '@/lib/supabase';
+import { setupConnectionHeartbeat } from '@/lib/supabase/realtime';
 import ChatLoading from './ChatLoading';
 
 interface ChatConnectionHandlerProps {
@@ -35,11 +36,11 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
           console.error("Failed to initialize Supabase");
           
           if (retryCount < maxRetries) {
-            toast.error("Connection issue. Retrying...", {
+            toast.error(`Connection issue (attempt ${retryCount + 1}/${maxRetries}). Retrying...`, {
               duration: 3000,
             });
             
-            // Retry after a short delay, with backoff
+            // Retry after a short delay, with exponential backoff
             setTimeout(() => {
               setRetryCount(prev => prev + 1);
             }, 1000 * Math.pow(2, retryCount));
@@ -53,7 +54,24 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
           setConnectionReady(false);
         } else {
           console.log("Successfully connected to Supabase");
+          
+          // Set up connection heartbeat to prevent timeouts
+          const stopHeartbeat = setupConnectionHeartbeat();
+          
+          // Verify service connection as well
+          if (service && typeof service.testConnection === 'function') {
+            const serviceConnected = await service.testConnection();
+            if (!serviceConnected) {
+              toast.warning("Chat service connection is unstable. Some features may be limited.", {
+                duration: 5000,
+              });
+            }
+          }
+          
           setConnectionReady(true);
+          
+          // Clean up heartbeat on unmount
+          return () => stopHeartbeat();
         }
       } catch (err) {
         console.error("Error testing connection:", err);
@@ -67,27 +85,51 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
     };
     
     connectToSupabase();
-  }, [retryCount]);
+  }, [retryCount, service]);
   
   // Force prefetch chat history to ensure connection works
   useEffect(() => {
-    if (!isLoading && connectionReady) {
+    if (!isLoading && connectionReady && userId && username) {
       console.log(`Prefetching chat history for user ${username} (ID: ${userId})`);
       
-      const result = service.getChatHistory(userId);
-      
-      // Handle both synchronous and Promise return types
-      if (result instanceof Promise) {
-        result
-          .then(messages => {
-            console.log(`Retrieved ${messages.length} messages for conversation with ${username}`);
-          })
-          .catch(err => {
-            console.error(`Error fetching chat history for ${username}:`, err);
-          });
-      } else if (Array.isArray(result)) {
-        // Handle synchronous result
-        console.log(`Retrieved ${result.length} messages for conversation with ${username}`);
+      try {
+        const result = service.getChatHistory(userId);
+        
+        // Handle both synchronous and Promise return types
+        if (result instanceof Promise) {
+          result
+            .then(messages => {
+              console.log(`Retrieved ${messages?.length || 0} messages for conversation with ${username}`);
+              // If no messages were retrieved, test if we can actually write to the database
+              if (!messages || messages.length === 0) {
+                service.testMessageCreation()
+                  .then((success: boolean) => {
+                    if (!success) {
+                      toast.warning("Message delivery might be delayed. Please be patient.", {
+                        duration: 5000
+                      });
+                    }
+                  })
+                  .catch((err: Error) => {
+                    console.error("Error testing message creation:", err);
+                  });
+              }
+            })
+            .catch(err => {
+              console.error(`Error fetching chat history for ${username}:`, err);
+              toast.error("Error loading chat history. Some messages may be missing.", {
+                duration: 5000
+              });
+            });
+        } else if (Array.isArray(result)) {
+          // Handle synchronous result
+          console.log(`Retrieved ${result.length} messages for conversation with ${username}`);
+        }
+      } catch (err) {
+        console.error(`Error accessing chat service:`, err);
+        toast.error("Error accessing chat service. Please refresh the page.", { 
+          duration: 5000,
+        });
       }
     }
   }, [isLoading, connectionReady, userId, username, service]);
