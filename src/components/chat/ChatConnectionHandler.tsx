@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useSupabaseConnection } from '@/hooks/useSupabaseConnection';
 import ConnectionStatus from './connection/ConnectionStatus';
+import { toast } from 'sonner';
 
 interface ChatConnectionHandlerProps {
   children: React.ReactNode;
@@ -16,6 +17,8 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
   username,
   service
 }) => {
+  const [forceRerender, setForceRerender] = useState(0);
+  
   const {
     isLoading,
     connectionReady,
@@ -25,7 +28,12 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
     maxRetries,
     handleRetry,
     handleContinueAnyway
-  } = useSupabaseConnection({ userId, username, service });
+  } = useSupabaseConnection({ 
+    userId, 
+    username, 
+    service,
+    key: forceRerender // Add a key to force hook re-execution
+  });
 
   // When username is taken, show error but don't render children
   if (usernameTaken) {
@@ -38,8 +46,15 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
         validationError={null}
         usernameTaken={true}
         username={username}
-        onRetry={handleRetry}
-        onContinueAnyway={handleContinueAnyway}
+        onRetry={() => {
+          // Force re-execution of the hook with a new key
+          setForceRerender(prev => prev + 1);
+          handleRetry();
+        }}
+        onContinueAnyway={() => {
+          toast.warning("You're continuing with a username that may be taken. Some features might not work correctly.");
+          handleContinueAnyway();
+        }}
       />
     );
   }
@@ -55,7 +70,11 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
         validationError={validationError}
         usernameTaken={false}
         username={username}
-        onRetry={handleRetry}
+        onRetry={() => {
+          // Force re-execution of the hook with a new key
+          setForceRerender(prev => prev + 1);
+          handleRetry();
+        }}
         onContinueAnyway={handleContinueAnyway}
       />
     );
@@ -72,7 +91,11 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
           validationError={null}
           usernameTaken={false}
           username={username}
-          onRetry={handleRetry}
+          onRetry={() => {
+            // Force re-execution of the hook with a new key
+            setForceRerender(prev => prev + 1);
+            handleRetry();
+          }}
           onContinueAnyway={handleContinueAnyway}
         />
       ) : null}

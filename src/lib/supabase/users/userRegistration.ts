@@ -1,4 +1,3 @@
-
 import { supabase } from '../client';
 import { toast } from 'sonner';
 import { isUsernameTaken } from './userQueries';
@@ -24,63 +23,59 @@ export const registerUser = async (
     
     // First check if username is taken
     const normalizedUsername = username.trim();
+    
     try {
-      const isTaken = await isUsernameTaken(normalizedUsername);
+      // Try to register directly since the database constraint will catch duplication
+      console.log(`Attempting to register user ${normalizedUsername} with ID ${userId}`);
       
-      if (isTaken) {
-        console.error(`Username "${normalizedUsername}" is already taken by another user`);
-        toast.error(`Username "${normalizedUsername}" is already taken. Please choose another username.`);
-        return false;
-      }
-    } catch (checkError) {
-      console.error('Error checking username availability:', checkError);
-      // Continue with registration attempt anyway
-    }
-    
-    console.log(`Attempting to register user ${normalizedUsername} with ID ${userId}`);
-    
-    const { data, error } = await supabase
-      .from('users')
-      .insert({
-        id: userId,
-        username: normalizedUsername,
-        role,
-        is_online: true,
-        last_active: new Date().toISOString()
-      })
-      .select('id, username')
-      .single();
-    
-    if (error) {
-      console.error('Error registering user:', error);
+      const { data, error } = await supabase
+        .from('users')
+        .insert({
+          id: userId,
+          username: normalizedUsername,
+          role,
+          is_online: true,
+          last_active: new Date().toISOString()
+        })
+        .select('id, username')
+        .single();
       
-      // Check for duplicate username error
-      if (error.code === '23505' || error.message.includes('unique constraint')) {
-        toast.error(`Username "${normalizedUsername}" is already taken. Please choose another username.`);
-        return false;
-      }
-      
-      // Check for RLS policy error
-      if (error.code === '42501') {
-        console.error('RLS policy violation - make sure the SQL script has been executed');
-        toast.error('Server error with RLS policy. Please try again or contact support.');
+      if (error) {
+        console.error('Error registering user:', error);
+        
+        // Check for duplicate username error
+        if (error.code === '23505' || error.message.includes('duplicate key value')) {
+          console.error(`Username "${normalizedUsername}" is already taken due to unique constraint violation`);
+          toast.error(`Username "${normalizedUsername}" is already taken. Please choose another username.`);
+          return false;
+        }
+        
+        // Check for RLS policy error
+        if (error.code === '42501') {
+          console.error('RLS policy violation - make sure the SQL script has been executed');
+          toast.error('Server error with RLS policy. Please try again or contact support.');
+          return false;
+        }
+        
+        toast.error('Failed to register user. Please try again.');
         return false;
       }
       
-      toast.error('Failed to register user. Please try again.');
+      if (!data) {
+        console.error('No data returned from user registration');
+        toast.error('Failed to register user. Please try again.');
+        return false;
+      }
+      
+      console.log(`User ${normalizedUsername} registered successfully with ID ${userId}`);
+      return true;
+    } catch (err) {
+      console.error('Exception registering user:', err);
+      toast.error('An unexpected error occurred. Please try again.');
       return false;
     }
-    
-    if (!data) {
-      console.error('No data returned from user registration');
-      toast.error('Failed to register user. Please try again.');
-      return false;
-    }
-    
-    console.log(`User ${normalizedUsername} registered successfully with ID ${userId}`);
-    return true;
   } catch (err) {
-    console.error('Exception registering user:', err);
+    console.error('Exception in outer registration process:', err);
     toast.error('An unexpected error occurred. Please try again.');
     return false;
   }

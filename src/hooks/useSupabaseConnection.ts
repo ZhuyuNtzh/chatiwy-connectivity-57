@@ -11,9 +11,10 @@ interface UseSupabaseConnectionProps {
   userId: number | string;
   username: string;
   service: any;
+  key?: number; // Optional key to force re-execution
 }
 
-export const useSupabaseConnection = ({ userId, username, service }: UseSupabaseConnectionProps) => {
+export const useSupabaseConnection = ({ userId, username, service, key = 0 }: UseSupabaseConnectionProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [connectionReady, setConnectionReady] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
@@ -22,6 +23,12 @@ export const useSupabaseConnection = ({ userId, username, service }: UseSupabase
   const maxRetries = 5;
 
   useEffect(() => {
+    // Reset states when key changes
+    setIsLoading(true);
+    setConnectionReady(false);
+    setUsernameTaken(false);
+    setValidationError(null);
+
     // Check for existing session
     const existingUUID = localStorage.getItem('userUUID');
     const existingUsername = localStorage.getItem('username');
@@ -49,9 +56,25 @@ export const useSupabaseConnection = ({ userId, username, service }: UseSupabase
           throw new Error("Failed to initialize Supabase connection");
         }
         
-        // Check if username is already taken, but only if it's a new user or changing username
-        if (existingUsername !== normalizedUsername) {
+        // Create a stable UUID for this user
+        // If we already have a UUID in localStorage and username hasn't changed, use it
+        let stableId = existingUUID;
+        let shouldCheckUsername = true;
+        
+        // If we have an existing UUID and username matches, skip username check
+        if (existingUUID && existingUsername === normalizedUsername) {
+          console.log(`Using existing UUID ${existingUUID} for username ${normalizedUsername}`);
+          shouldCheckUsername = false;
+        } else {
+          // Generate a new UUID for new users or changed usernames
+          stableId = generateUniqueUUID();
+          console.log(`Generated new UUID ${stableId} for username ${normalizedUsername}`);
+        }
+        
+        // Check if username is already taken, but only for new users or username changes
+        if (shouldCheckUsername) {
           try {
+            console.log(`Checking if username ${normalizedUsername} is taken...`);
             const taken = await isUsernameTaken(normalizedUsername);
             if (taken) {
               console.error(`Username ${normalizedUsername} is already taken`);
@@ -60,19 +83,11 @@ export const useSupabaseConnection = ({ userId, username, service }: UseSupabase
               setIsLoading(false);
               return;
             }
+            console.log(`Username ${normalizedUsername} is available`);
           } catch (checkError) {
             console.error("Error checking if username is taken:", checkError);
             // Continue with registration attempt anyway, we'll get a DB constraint error if it's taken
           }
-        }
-        
-        // Create a stable UUID for this user
-        // If we already have a UUID in localStorage, use it
-        let stableId = existingUUID;
-        
-        // If we don't have a UUID, or the username has changed, generate a new one
-        if (!stableId || existingUsername !== normalizedUsername) {
-          stableId = generateUniqueUUID();
         }
         
         console.log(`Using user ID: ${stableId}`);
@@ -95,20 +110,19 @@ export const useSupabaseConnection = ({ userId, username, service }: UseSupabase
         
         if (!registrationSuccess) {
           // This could be due to the username being taken or other registration issues
-          // If username is taken, the registration function will have already shown a toast
-          
-          // Check if the username check failed but the registration shows it's taken
-          if (!usernameTaken) {
-            const takenCheck = await isUsernameTaken(normalizedUsername);
-            if (takenCheck) {
-              setUsernameTaken(true);
-              setIsLoading(false);
-              return;
-            }
+          const takenCheck = await isUsernameTaken(normalizedUsername);
+          if (takenCheck) {
+            console.error(`Registration failed because username ${normalizedUsername} is taken`);
+            setUsernameTaken(true);
+            setIsLoading(false);
+            return;
           }
           
-          // If it's not a taken username, then it's another registration error
-          console.warn("Registration had issues but we'll try to continue");
+          // If it's not a taken username, but registration still failed
+          console.error("Registration failed for non-username reasons");
+          setValidationError("Registration failed. Please try again with a different username.");
+          setIsLoading(false);
+          return;
         }
         
         // Update user status
@@ -164,7 +178,7 @@ export const useSupabaseConnection = ({ userId, username, service }: UseSupabase
       setIsLoading(false);
       setValidationError("Please provide a username");
     }
-  }, [retryCount, service, userId, username]);
+  }, [retryCount, service, userId, username, key]); // Added key to dependency array
 
   // Hide loading screen after timeout to prevent UI freeze
   useEffect(() => {

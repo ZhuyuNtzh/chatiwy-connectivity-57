@@ -1,4 +1,3 @@
-
 import { supabase } from '../client';
 
 /**
@@ -16,23 +15,32 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
     const normalizedUsername = username.trim().toLowerCase(); // Normalize to lowercase
     console.log(`Checking if username "${normalizedUsername}" is taken...`);
     
+    // Use ilike for case-insensitive comparison
     const { data, error, count } = await supabase
       .from('users')
-      .select('username', { count: 'exact' })
-      .ilike('username', normalizedUsername) // Case-insensitive comparison
+      .select('id, username', { count: 'exact' })
+      .ilike('username', normalizedUsername) 
       .limit(1);
     
     if (error) {
       console.error('Error checking username:', error);
-      throw error;
+      // Don't throw, but return false to allow registration attempt
+      // The unique constraint will catch it if it's truly a duplicate
+      return false;
     }
     
     const isTaken = (count || 0) > 0;
-    console.log(`Username "${normalizedUsername}" is ${isTaken ? 'taken' : 'available'}`);
+    console.log(`Username "${normalizedUsername}" is ${isTaken ? 'taken' : 'available'} (found ${count} matches)`);
+    
+    if (isTaken && data && data.length > 0) {
+      console.log(`Username taken by user with ID: ${data[0].id}`);
+    }
+    
     return isTaken;
   } catch (err) {
     console.error('Exception checking username:', err);
-    throw err; // Let caller handle the error properly
+    // Don't block registration on username check failure
+    return false;
   }
 };
 
