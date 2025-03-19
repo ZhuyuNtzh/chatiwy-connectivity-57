@@ -27,6 +27,8 @@ export const useSupabaseConnection = ({ userId, username, service }: UseSupabase
     
     const connectToSupabase = async () => {
       setIsLoading(true);
+      setUsernameTaken(false);
+      setValidationError(null);
       
       try {
         // Validate that username is provided
@@ -47,7 +49,7 @@ export const useSupabaseConnection = ({ userId, username, service }: UseSupabase
         
         // Check if username is already taken
         const taken = await isUsernameTaken(username);
-        if (taken) {
+        if (taken && (existingUsername !== username)) {
           console.error(`Username ${username} is already taken`);
           toast.error(`Username "${username}" is already taken. Please choose another username.`);
           setUsernameTaken(true);
@@ -90,9 +92,10 @@ export const useSupabaseConnection = ({ userId, username, service }: UseSupabase
         console.log("Updating user online status...");
         await updateUserOnlineStatus(stableId, true);
         
-        // Store the UUID in sessionStorage for later use
-        sessionStorage.setItem('userUUID', stableId);
-        console.log(`User UUID stored in session: ${stableId}`);
+        // Store the UUID in localStorage for later use
+        localStorage.setItem('userUUID', stableId);
+        localStorage.setItem('username', username);
+        console.log(`User UUID stored in local storage: ${stableId}`);
         
         // Verify service connection as well
         if (service && typeof service.testConnection === 'function') {

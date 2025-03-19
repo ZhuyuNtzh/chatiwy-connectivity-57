@@ -1,131 +1,106 @@
 
 import { supabase } from '../client';
-import { generateStableUUID } from '../utils';
-import { isUsernameTaken } from './userQueries';
+import { toast } from 'sonner';
 
 /**
- * Register a new user or update existing user
- * @param userId UUID for the user
- * @param username Username for display
- * @param role User role (standard, vip, admin)
- * @returns Promise<boolean> indicating success
+ * Register a new user in the database
+ * @param userId Unique identifier for the user
+ * @param username The user's displayed name
+ * @param role The user's role in the system
+ * @returns boolean indicating if registration was successful
  */
 export const registerUser = async (
-  userId: string | number,
+  userId: string,
   username: string,
   role: string = 'standard'
 ): Promise<boolean> => {
   try {
-    // Generate a valid UUID if needed
-    const validUserId = typeof userId === 'string' ? 
-      (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId) ? 
-        userId : 
-        generateStableUUID(userId)) : 
-      generateStableUUID(userId.toString());
-    
-    console.log(`Registering user with ID: ${validUserId} and username: ${username}`);
-    
-    // Check if username is available first
-    const isTaken = await isUsernameTaken(username);
-    if (isTaken) {
-      console.error(`Username ${username} is already taken`);
+    if (!userId || !username || username.trim() === '') {
+      console.error('Invalid user data provided for registration');
+      toast.error('Please provide both user ID and username');
       return false;
     }
     
-    // Check if user already exists
-    const { data: existingUser, error: fetchError } = await supabase
+    console.log(`Attempting to register user ${username} with ID ${userId}`);
+    
+    const { data, error } = await supabase
       .from('users')
-      .select('*')
-      .eq('id', validUserId)
-      .maybeSingle();
-    
-    if (fetchError) {
-      console.error('Error checking existing user:', fetchError);
-      throw fetchError;
-    }
-    
-    // If user exists, update
-    if (existingUser) {
-      console.log(`User ${username} already exists, updating online status`);
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ 
-          is_online: true,
-          last_active: new Date().toISOString()
-        })
-        .eq('id', validUserId);
-      
-      if (updateError) {
-        console.error('Error updating user:', updateError);
-        throw updateError;
-      }
-      return true;
-    }
-    
-    // Create new user using upsert with onConflict to handle race conditions
-    const { error: insertError } = await supabase
-      .from('users')
-      .upsert([{ 
-        id: validUserId,
-        username,
+      .insert({
+        id: userId,
+        username: username.trim(),
         role,
         is_online: true,
         last_active: new Date().toISOString()
-      }], { 
-        onConflict: 'id',
-        ignoreDuplicates: false
-      });
+      })
+      .select('id, username')
+      .single();
     
-    if (insertError) {
-      console.error('Error creating user:', insertError);
-      throw insertError;
+    if (error) {
+      console.error('Error registering user:', error);
+      
+      // Check for duplicate username error
+      if (error.code === '23505' || error.message.includes('unique constraint')) {
+        toast.error(`Username "${username}" is already taken. Please choose another username.`);
+        return false;
+      }
+      
+      // Check for RLS policy error
+      if (error.code === '42501') {
+        console.error('RLS policy violation - make sure the SQL script has been executed');
+        toast.error('Server error with RLS policy. Please try again or contact support.');
+        return false;
+      }
+      
+      toast.error('Failed to register user. Please try again.');
+      return false;
     }
     
-    console.log(`User ${username} registered successfully with ID: ${validUserId}`);
+    if (!data) {
+      console.error('No data returned from user registration');
+      toast.error('Failed to register user. Please try again.');
+      return false;
+    }
     
-    // Store the UUID in localStorage for persistence
-    localStorage.setItem('userUUID', validUserId);
-    localStorage.setItem('username', username);
-    
+    console.log(`User ${username} registered successfully with ID ${userId}`);
     return true;
   } catch (err) {
     console.error('Exception registering user:', err);
+    toast.error('An unexpected error occurred. Please try again.');
     return false;
   }
 };
 
 /**
- * Update a user's online status
- * @param userId The user's UUID
- * @param isOnline Whether the user is online
+ * Update user's online status
+ * @param userId User ID to update
+ * @param isOnline Boolean flag for online status
  */
 export const updateUserOnlineStatus = async (
-  userId: string | number,
+  userId: string,
   isOnline: boolean
 ): Promise<boolean> => {
   try {
-    const validUserId = typeof userId === 'string' ? 
-      (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId) ? 
-        userId : 
-        generateStableUUID(userId)) : 
-      generateStableUUID(userId.toString());
+    if (!userId) {
+      console.error('No user ID provided for status update');
+      return false;
+    }
     
     const { error } = await supabase
       .from('users')
       .update({ 
-        is_online: isOnline,
-        last_active: new Date().toISOString()
+        is_online: isOnline, 
+        last_active: new Date().toISOString() 
       })
-      .eq('id', validUserId);
+      .eq('id', userId);
     
     if (error) {
-      console.error('Error updating user online status:', error);
+      console.error('Error updating online status:', error);
       return false;
     }
     
     return true;
   } catch (err) {
-    console.error('Exception updating user online status:', err);
+    console.error('Exception updating online status:', err);
     return false;
   }
 };
