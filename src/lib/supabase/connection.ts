@@ -87,7 +87,7 @@ export const initializeSupabase = async (): Promise<boolean> => {
       'enable_realtime_subscription',
       { table_name: 'messages' }
     ).then(
-      (res: any) => !res.error,
+      (res: { error: any }) => !res.error,
       () => false
     );
     
@@ -95,7 +95,7 @@ export const initializeSupabase = async (): Promise<boolean> => {
       'enable_realtime_subscription',
       { table_name: 'conversations' }
     ).then(
-      (res: any) => !res.error,
+      (res: { error: any }) => !res.error,
       () => false
     );
     
