@@ -1,5 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
+import { toast } from 'sonner';
 
 // Get Supabase URL and key from environment or use fallback for development
 const supabaseUrl = 'https://esqrfcjfctloaukvfjom.supabase.co';
@@ -9,12 +10,17 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true,  // Keep session alive between page refreshes
-    autoRefreshToken: true // Automatically refresh token before it expires
+    autoRefreshToken: true, // Automatically refresh token before it expires
+    detectSessionInUrl: true, // Detect if a session is in the URL and automatically store it
+    storage: localStorage // Use localStorage for session storage
   },
   realtime: {
     params: {
       eventsPerSecond: 10 // Increase events per second limit
     }
+  },
+  db: {
+    schema: 'public' // Ensure we're using public schema
   }
 });
 
@@ -28,15 +34,28 @@ export const connectionState = {
   maxReconnectAttempts: 5
 };
 
-// Listen for realtime presence changes globally
-supabase.channel('global_presence')
+// Configure realtime channel for better connection
+supabase.realtime.setAuth(supabaseKey);
+
+// Initialize a global channel for presence
+export const globalChannel = supabase.channel('global_presence', {
+  config: {
+    presence: {
+      key: 'user-presence', // Used to identify this specific presence
+    },
+  },
+});
+
+// Set up presence tracking
+globalChannel
   .on('presence', { event: 'sync' }, () => {
-    console.log('Presence synchronized');
+    const state = globalChannel.presenceState();
+    console.log('Presence synchronized:', state);
   })
-  .on('presence', { event: 'join' }, () => {
-    console.log('User joined presence');
+  .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+    console.log('User joined presence:', key, newPresences);
   })
-  .on('presence', { event: 'leave' }, () => {
-    console.log('User left presence');
+  .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+    console.log('User left presence:', key, leftPresences);
   })
   .subscribe();

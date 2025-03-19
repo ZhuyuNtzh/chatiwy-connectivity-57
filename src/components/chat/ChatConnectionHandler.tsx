@@ -3,12 +3,14 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { checkSupabaseConnection, initializeSupabase } from '@/lib/supabase';
 import { setupConnectionHeartbeat, enableRealtimeForChat } from '@/lib/supabase/realtime';
-import { registerUser, updateUserOnlineStatus } from '@/lib/supabase/users';
+import { registerUser, updateUserOnlineStatus, isUsernameTaken } from '@/lib/supabase/users';
 import { generateUniqueUUID } from '@/lib/supabase/utils';
+import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ChatConnectionHandlerProps {
   children: React.ReactNode;
-  userId: number;
+  userId: number | string;
   username: string;
   service: any;
 }
@@ -22,6 +24,7 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [connectionReady, setConnectionReady] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [usernameTaken, setUsernameTaken] = useState(false);
   const maxRetries = 5;
 
   // Check Supabase connection on mount
@@ -30,6 +33,18 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
       setIsLoading(true);
       
       try {
+        // Check if username is already taken
+        if (username) {
+          const taken = await isUsernameTaken(username);
+          if (taken) {
+            console.error(`Username ${username} is already taken`);
+            toast.error(`Username "${username}" is already taken. Please choose another username.`);
+            setUsernameTaken(true);
+            setIsLoading(false);
+            return;
+          }
+        }
+        
         // Initialize Supabase with all necessary features
         const isConnected = await initializeSupabase();
         
@@ -38,6 +53,7 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
           
           if (retryCount < maxRetries) {
             console.warn(`Connection issue (attempt ${retryCount + 1}/${maxRetries}). Retrying...`);
+            toast.warning(`Connection issue. Retrying... (${retryCount + 1}/${maxRetries})`);
             
             // Retry after a short delay, with exponential backoff
             setTimeout(() => {
@@ -48,6 +64,7 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
           }
           
           console.error("Max retries reached. Could not connect to chat backend.");
+          toast.error("Could not connect to chat service. Please try again later.");
           setConnectionReady(false);
         } else {
           console.log("Successfully connected to Supabase");
@@ -62,11 +79,18 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
           const stopHeartbeat = setupConnectionHeartbeat();
           
           // Register or update user - use the stable UUID
-          await registerUser(
+          const registrationSuccess = await registerUser(
             stableId,
             username,
             'standard' // Default role
           );
+          
+          if (!registrationSuccess) {
+            console.error("Failed to register user");
+            setUsernameTaken(true);
+            setIsLoading(false);
+            return;
+          }
           
           // Update user status
           await updateUserOnlineStatus(stableId, true);
@@ -79,10 +103,12 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
             const serviceConnected = await service.testConnection();
             if (!serviceConnected) {
               console.warn("Chat service connection is unstable. Some features may be limited.");
+              toast.warning("Chat service connection is unstable. Some features may be limited.");
             }
           }
           
           setConnectionReady(true);
+          toast.success("Connected to chat service");
           
           // Clean up heartbeat on unmount
           return () => {
@@ -94,7 +120,7 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
         }
       } catch (err) {
         console.error("Error testing connection:", err);
-        console.error("Error connecting to chat service, will retry");
+        toast.error("Error connecting to chat service, will retry");
         
         if (retryCount < maxRetries) {
           setTimeout(() => {
@@ -108,42 +134,12 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
       }
     };
     
-    connectToSupabase();
-  }, [retryCount, service, userId, username]);
-  
-  // Force prefetch chat history to ensure connection works
-  useEffect(() => {
-    if (!isLoading && connectionReady && userId && username) {
-      console.log(`Prefetching chat history for user ${username} (ID: ${userId})`);
-      
-      try {
-        const result = service.getChatHistory?.(userId);
-        
-        // Handle both synchronous and Promise return types
-        if (result instanceof Promise) {
-          result
-            .then(messages => {
-              console.log(`Retrieved ${messages?.length || 0} messages`);
-              // Test message creation if empty
-              if (!messages || messages.length === 0) {
-                service.testMessageCreation?.()
-                  .catch((err: Error) => {
-                    console.error("Error testing message creation:", err);
-                  });
-              }
-            })
-            .catch(err => {
-              console.error(`Error fetching chat history:`, err);
-            });
-        } else if (Array.isArray(result)) {
-          // Handle synchronous result
-          console.log(`Retrieved ${result.length} messages synchronously`);
-        }
-      } catch (err) {
-        console.error(`Error accessing chat service:`, err);
-      }
+    if (username) {
+      connectToSupabase();
+    } else {
+      setIsLoading(false);
     }
-  }, [isLoading, connectionReady, userId, username, service]);
+  }, [retryCount, service, userId, username]);
 
   // Hide loading screen after timeout to prevent UI freeze
   useEffect(() => {
@@ -159,10 +155,27 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
     return () => clearTimeout(loadingTimeout);
   }, [isLoading]);
 
+  if (usernameTaken) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen w-full bg-white dark:bg-gray-800 p-6">
+        <div className="text-red-500 text-xl mb-4">Username Already Taken</div>
+        <p className="text-center mb-6">
+          The username "{username}" is already in use. Please choose a different username.
+        </p>
+        <Button 
+          onClick={() => window.location.href = '/'}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Go Back
+        </Button>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen w-full bg-white dark:bg-gray-800">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
         <p className="text-gray-600 dark:text-gray-300">Connecting to chat...</p>
       </div>
     );
@@ -175,18 +188,18 @@ const ChatConnectionHandler: React.FC<ChatConnectionHandlerProps> = ({
         <p className="text-center mb-4">
           Having trouble connecting to the chat service. We'll try to use the application anyway.
         </p>
-        <button 
+        <Button 
           onClick={() => setRetryCount(0)} // Reset retry count to try again
           className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
           Retry Connection
-        </button>
-        <button 
+        </Button>
+        <Button 
           onClick={() => setConnectionReady(true)} // Force proceed anyway
           className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 mt-2"
         >
           Continue Anyway
-        </button>
+        </Button>
       </div>
     );
   }

@@ -14,20 +14,21 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
       return false;
     }
     
-    const { data, error } = await supabase
+    const { data, error, count } = await supabase
       .from('users')
-      .select('id')
-      .eq('username', username)
-      .maybeSingle();
+      .select('id', { count: 'exact' })
+      .eq('username', username);
     
     if (error) {
       console.error('Error checking username:', error);
+      toast.error('Error checking username availability');
       return false;
     }
     
-    return !!data;
+    return count ? count > 0 : false;
   } catch (err) {
     console.error('Exception checking username:', err);
+    toast.error('Error checking username availability');
     return false;
   }
 };
@@ -48,6 +49,7 @@ export const registerUser = async (
     // Ensure we have valid inputs
     if (!username || username.trim() === '') {
       console.error('Invalid username for registration');
+      toast.error('Username cannot be empty');
       return false;
     }
     
@@ -59,27 +61,12 @@ export const registerUser = async (
     
     console.log(`Registering/updating user ${username} with ID ${validUserId}`);
     
-    // Check if username is taken by another user
-    const { data: existingUser, error: checkError } = await supabase
-      .from('users')
-      .select('id, username')
-      .eq('username', username)
-      .maybeSingle();
-    
-    if (checkError) {
-      console.error('Error checking existing user:', checkError);
-      // Continue anyway, as this might be a temporary issue
-    }
-    
-    // If username is taken by another user, append a random suffix to make it unique
-    let finalUsername = username;
-    if (existingUser && existingUser.id !== validUserId) {
-      const randomSuffix = Math.floor(Math.random() * 1000);
-      finalUsername = `${username}_${randomSuffix}`;
-      console.log(`Username ${username} is taken, using ${finalUsername} instead`);
-      
-      // Silent notification to avoid disrupting UX
-      console.warn(`Username modified to ensure uniqueness: ${finalUsername}`);
+    // First check if username is taken by someone else
+    const isTaken = await isUsernameTaken(username);
+    if (isTaken) {
+      console.error(`Username ${username} is already taken`);
+      toast.error(`Username ${username} is already taken. Please choose another.`);
+      return false;
     }
     
     // Check if user with same ID exists
@@ -91,7 +78,8 @@ export const registerUser = async (
     
     if (checkIdError) {
       console.error('Error checking existing user ID:', checkIdError);
-      // Continue anyway, as this might be a temporary issue
+      toast.error('Error during registration process');
+      return false;
     }
     
     // If user with same ID exists, update their data
@@ -101,7 +89,7 @@ export const registerUser = async (
       const { error: updateError } = await supabase
         .from('users')
         .update({ 
-          username: finalUsername, 
+          username: username, 
           role,
           is_online: true,
           last_active: new Date().toISOString()
@@ -110,16 +98,18 @@ export const registerUser = async (
       
       if (updateError) {
         console.error('Error updating user:', updateError);
+        toast.error('Error updating user data');
         return false;
       }
       
+      toast.success(`Welcome back, ${username}!`);
       return true;
     }
     
     // Otherwise, insert new user
     const userData = {
       id: validUserId,
-      username: finalUsername,
+      username: username,
       role,
       is_online: true,
       last_active: new Date().toISOString()
@@ -130,16 +120,23 @@ export const registerUser = async (
       .insert(userData);
     
     if (insertError) {
-      console.error('Error registering user:', insertError);
-      // Don't show toast error to improve UX
-      console.warn('Failed to register user in database, but continuing');
+      // Check if it's a unique constraint violation
+      if (insertError.message.includes('unique constraint')) {
+        console.error('Username already taken:', insertError);
+        toast.error(`Username ${username} is already taken. Please choose another.`);
+      } else {
+        console.error('Error registering user:', insertError);
+        toast.error('Failed to register user. Please try again.');
+      }
       return false;
     }
     
-    console.log(`User ${finalUsername} registered successfully with ID ${validUserId}`);
+    console.log(`User ${username} registered successfully with ID ${validUserId}`);
+    toast.success(`Welcome to the chat, ${username}!`);
     return true;
   } catch (err) {
     console.error('Exception registering user:', err);
+    toast.error('An unexpected error occurred during registration');
     return false;
   }
 };
@@ -173,6 +170,7 @@ export const updateUserOnlineStatus = async (
     
     if (error) {
       console.error('Error updating user online status:', error);
+      toast.error('Error updating online status');
       return false;
     }
     
@@ -180,6 +178,7 @@ export const updateUserOnlineStatus = async (
     return true;
   } catch (err) {
     console.error('Exception updating user online status:', err);
+    toast.error('Error updating online status');
     return false;
   }
 };
@@ -197,12 +196,15 @@ export const getOnlineUsers = async (): Promise<any[]> => {
     
     if (error) {
       console.error('Error fetching online users:', error);
+      toast.error('Error fetching online users');
       return [];
     }
     
+    console.log(`Found ${data?.length || 0} online users`);
     return data || [];
   } catch (err) {
     console.error('Exception fetching online users:', err);
+    toast.error('Error fetching online users');
     return [];
   }
 };
@@ -241,6 +243,7 @@ export const subscribeToOnlineUsers = (
         getOnlineUsers().then(callback);
       } else if (status === 'CHANNEL_ERROR') {
         console.error('Error subscribing to online users');
+        toast.error('Error connecting to user presence system');
         // Retry after a short delay
         setTimeout(() => {
           console.log('Attempting to reconnect online users subscription');
@@ -296,6 +299,32 @@ export const setupRealtimeSubscription = async (
   } catch (err) {
     console.error(`Exception setting up realtime for ${tableName}:`, err);
     return false;
+  }
+};
+
+/**
+ * Get all users
+ * @returns Promise resolving to array of all users
+ */
+export const getAllUsers = async (): Promise<any[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .order('username', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching all users:', error);
+      toast.error('Error fetching user list');
+      return [];
+    }
+    
+    console.log(`Found ${data?.length || 0} total users`);
+    return data || [];
+  } catch (err) {
+    console.error('Exception fetching all users:', err);
+    toast.error('Error fetching user list');
+    return [];
   }
 };
 
