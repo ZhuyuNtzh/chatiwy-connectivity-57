@@ -37,7 +37,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   onClose, 
   isAdminView = false 
 }) => {
-  const { userRole } = useUser();
+  const { userRole, currentUser } = useUser();
   
   // Use correct service based on flag
   const service = USE_SUPABASE ? supabaseService : signalRService;

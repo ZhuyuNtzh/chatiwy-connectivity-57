@@ -101,21 +101,22 @@ export const subscribeToConversation = (
  */
 export const setupUserPresence = (
   userId: string | number,
+  username: string,
   onUserStatusChange: (userId: string, isOnline: boolean) => void
 ) => {
-  // Always generate a completely unique ID for presence
-  const validUserId = generateUniqueUUID();
+  // Convert userId to string if it's a number
+  const userIdStr = typeof userId === 'number' ? userId.toString() : userId;
   
-  console.log(`Setting up presence for user ${validUserId}`);
+  console.log(`Setting up presence for user ${userIdStr} (${username})`);
   
   // Create a unique channel name with timestamp to avoid conflicts
-  const channelName = `online-users:${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const channelName = `presence:${Date.now()}`;
   
   // Create a presence channel for online users
   const presenceChannel = supabase.channel(channelName, {
     config: {
       presence: {
-        key: validUserId,
+        key: userIdStr,
       },
     },
   });
@@ -128,20 +129,20 @@ export const setupUserPresence = (
       
       // Process each user in the presence state
       Object.keys(state).forEach(key => {
-        if (key !== validUserId) {
+        if (key !== userIdStr) {
           onUserStatusChange(key, true);
         }
       });
     })
     .on('presence', { event: 'join' }, ({ key, newPresences }) => {
       console.log('User came online:', key, newPresences);
-      if (key !== validUserId) {
+      if (key !== userIdStr) {
         onUserStatusChange(key, true);
       }
     })
     .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
       console.log('User went offline:', key, leftPresences);
-      if (key !== validUserId) {
+      if (key !== userIdStr) {
         onUserStatusChange(key, false);
       }
     });
@@ -151,13 +152,27 @@ export const setupUserPresence = (
     console.log(`Presence channel status: ${status}`);
     if (status === 'SUBSCRIBED') {
       try {
-        // Track the user's presence once subscribed
+        // Track the user's presence only once we're confirmed as subscribed
         await presenceChannel.track({
           online_at: new Date().toISOString(),
-          user_id: validUserId,
-          username: validUserId // Fallback, will be replaced with actual username later
+          user_id: userIdStr,
+          username: username
         });
-        console.log(`User presence tracking activated for: ${validUserId}`);
+        console.log(`User presence tracking activated for: ${userIdStr} (${username})`);
+        
+        // Also update the database to reflect online status 
+        // This is a belt-and-suspenders approach for clients that don't use presence
+        const { error } = await supabase
+          .from('users')
+          .update({ 
+            is_online: true,
+            last_active: new Date().toISOString()
+          })
+          .eq('id', userIdStr);
+          
+        if (error) {
+          console.error('Error updating user online status in database:', error);
+        }
       } catch (error) {
         console.error('Error tracking presence:', error);
       }

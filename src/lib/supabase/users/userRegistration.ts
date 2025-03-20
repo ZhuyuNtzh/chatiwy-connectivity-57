@@ -3,7 +3,7 @@ import { supabase } from '../client';
 import { toast } from 'sonner';
 
 /**
- * Register a new user in the database - with simplified approach for unique usernames
+ * Register a new user in the database - with improved approach for unique usernames
  * @param userId Unique identifier for the user
  * @param username The user's displayed name
  * @param role The user's role in the system
@@ -24,6 +24,9 @@ export const registerUser = async (
       console.error('Invalid username provided for registration');
       return {success: false, username: username, message: 'Missing username'};
     }
+    
+    // Clean the username - trim whitespace (also handled by DB trigger)
+    const cleanUsername = username.trim();
     
     // First check if this user ID already exists
     const { data: existingUserData, error: userCheckError } = await supabase
@@ -61,24 +64,22 @@ export const registerUser = async (
     }
     
     // For new users, check if we need to create a unique username
-    // Check if the original username already exists
+    // Use case-insensitive check for username conflict
     const { data: usernameCheck, error: usernameCheckError } = await supabase
       .from('users')
       .select('username')
-      .eq('username', username.trim())
+      .ilike('username', cleanUsername)
       .maybeSingle();
     
-    let finalUsername = username.trim();
+    let finalUsername = cleanUsername;
     
-    // If username exists, create a unique one - but only if it truly exists
+    // If username exists (case-insensitive), create a unique one
     if (usernameCheck) {
       // Generate a unique username by appending timestamp
-      // Use a shorter suffix to make it less obvious
-      const baseUsername = username.trim();
-      const timestamp = Date.now() % 1000; // Last 3 digits of timestamp
-      finalUsername = `${baseUsername}${timestamp}`;
+      const timestamp = Date.now() % 10000; // Last 4 digits of timestamp
+      finalUsername = `${cleanUsername}${timestamp}`;
       
-      console.log(`Username "${baseUsername}" already exists, using "${finalUsername}" instead`);
+      console.log(`Username "${cleanUsername}" already exists, using "${finalUsername}" instead`);
     }
     
     console.log(`Registering user with username: ${finalUsername} and ID ${userId}`);
@@ -99,8 +100,9 @@ export const registerUser = async (
     if (error) {
       console.error('Error registering user:', error);
       
-      // If there's still an error, try one more time with an even more unique name
-      const retryUsername = `${finalUsername}${Math.floor(Math.random() * 100)}`;
+      // Try one more time with an even more unique name if there's still an error
+      // This could happen if there's a race condition or case-sensitivity issue
+      const retryUsername = `${finalUsername}_${Math.floor(Math.random() * 100)}`;
       console.log(`Final attempt with retry username: ${retryUsername}`);
       
       const { data: retryData, error: retryError } = await supabase

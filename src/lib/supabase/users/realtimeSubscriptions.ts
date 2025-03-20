@@ -1,4 +1,3 @@
-
 import { supabase } from '../client';
 
 /**
@@ -33,8 +32,54 @@ export const subscribeToOnlineUsers = (callback: (users: any[]) => void) => {
   // Fetch initial data
   fetchOnlineUsers();
   
-  // Create a realtime subscription for user changes
-  const subscription = supabase
+  // Set up a presence channel for tracking online users
+  const presenceChannel = supabase.channel('online_users_presence', {
+    config: {
+      presence: {
+        key: 'online_users',
+      },
+    },
+  });
+  
+  // Handle presence state changes
+  presenceChannel
+    .on('presence', { event: 'sync' }, () => {
+      // When presence syncs, fetch the latest users from the database
+      // This ensures we have complete user data, not just presence data
+      fetchOnlineUsers();
+    })
+    .on('presence', { event: 'join' }, async ({ key, newPresences }) => {
+      console.log('User presence join:', key, newPresences);
+      // When a user joins, fetch the latest online users
+      fetchOnlineUsers();
+    })
+    .on('presence', { event: 'leave' }, async ({ key, leftPresences }) => {
+      console.log('User presence leave:', key, leftPresences);
+      // When a user leaves, fetch the latest online users
+      fetchOnlineUsers();
+    })
+    .subscribe((status) => {
+      console.log('Online users presence channel status:', status);
+      if (status === 'SUBSCRIBED') {
+        console.log('Successfully subscribed to online users presence');
+        
+        // Track our monitoring presence to keep the channel alive
+        presenceChannel.track({
+          type: 'monitor',
+          online_at: new Date().toISOString()
+        });
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error('Error subscribing to online users presence');
+        // Try to resubscribe after a delay
+        setTimeout(() => {
+          console.log('Attempting to resubscribe to online users presence');
+          presenceChannel.subscribe();
+        }, 5000);
+      }
+    });
+  
+  // Also set up a traditional database change subscription as a fallback
+  const dbChannel = supabase
     .channel('online_users_channel')
     .on('postgres_changes', 
       {
@@ -67,24 +112,22 @@ export const subscribeToOnlineUsers = (callback: (users: any[]) => void) => {
       }
     )
     .subscribe((status) => {
-      console.log('Online users subscription status:', status);
-      if (status === 'SUBSCRIBED') {
-        console.log('Successfully subscribed to online users changes');
-      } else if (status === 'CHANNEL_ERROR') {
-        console.error('Error subscribing to online users changes');
+      console.log('Online users DB subscription status:', status);
+      if (status === 'CHANNEL_ERROR') {
+        console.error('Error subscribing to online users DB changes');
         // Try to resubscribe after a delay
         setTimeout(() => {
-          console.log('Attempting to resubscribe to online users channel');
-          // We can't call subscribe again on a failed channel, so we'll create a new one
-          subscribeToOnlineUsers(callback);
+          console.log('Attempting to resubscribe to online users DB channel');
+          dbChannel.subscribe();
         }, 5000);
       }
     });
   
-  // Return an unsubscribe function
+  // Return an unsubscribe function that cleans up both channels
   return () => {
     console.log('Unsubscribing from online users');
-    subscription.unsubscribe();
+    supabase.removeChannel(presenceChannel);
+    supabase.removeChannel(dbChannel);
   };
 };
 
@@ -127,8 +170,48 @@ export const setupRealtimeSubscription = (
   // Check current status
   checkCurrentStatus();
   
-  // Create a realtime subscription for this specific user using channel name that won't conflict
-  const subscription = supabase
+  // Set up a presence channel specifically for this user
+  const presenceChannel = supabase.channel(`presence_user_${userId}`, {
+    config: {
+      presence: {
+        key: userId,
+      },
+    },
+  });
+  
+  // Handle presence state changes
+  presenceChannel
+    .on('presence', { event: 'sync' }, () => {
+      const state = presenceChannel.presenceState();
+      const isUserPresent = state[userId] && state[userId].length > 0;
+      console.log(`User ${userId} presence sync: ${isUserPresent ? 'online' : 'offline'}`);
+      callback(isUserPresent);
+    })
+    .on('presence', { event: 'join' }, ({ key }) => {
+      if (key === userId) {
+        console.log(`User ${userId} joined presence: online`);
+        callback(true);
+      }
+    })
+    .on('presence', { event: 'leave' }, ({ key }) => {
+      if (key === userId) {
+        console.log(`User ${userId} left presence: offline`);
+        callback(false);
+      }
+    })
+    .subscribe((status) => {
+      console.log(`User ${userId} presence subscription: ${status}`);
+      if (status === 'CHANNEL_ERROR') {
+        // Try to resubscribe after a delay
+        setTimeout(() => {
+          console.log(`Attempting to resubscribe to user ${userId} presence`);
+          presenceChannel.subscribe();
+        }, 5000);
+      }
+    });
+  
+  // Also create a database subscription as a fallback
+  const dbChannel = supabase
     .channel(`user_status_${userId}_${Date.now()}`)
     .on('postgres_changes', 
       {
@@ -148,23 +231,20 @@ export const setupRealtimeSubscription = (
       }
     )
     .subscribe((status) => {
-      console.log(`User ${userId} subscription status:`, status);
-      if (status === 'SUBSCRIBED') {
-        console.log(`Successfully subscribed to user ${userId} status changes`);
-      } else if (status === 'CHANNEL_ERROR') {
-        console.error(`Error subscribing to user ${userId} status changes`);
+      console.log(`User ${userId} DB subscription status:`, status);
+      if (status === 'CHANNEL_ERROR') {
         // Try to resubscribe after a delay
         setTimeout(() => {
-          console.log(`Attempting to resubscribe to user ${userId} status changes`);
-          // We can't call subscribe again on a failed channel, so we'll try again
-          setupRealtimeSubscription(userId, callback);
+          console.log(`Attempting to resubscribe to user ${userId} DB changes`);
+          dbChannel.subscribe();
         }, 5000);
       }
     });
   
-  // Return an unsubscribe function
+  // Return an unsubscribe function that cleans up both channels
   return () => {
     console.log(`Unsubscribing from user ${userId}`);
-    subscription.unsubscribe();
+    supabase.removeChannel(presenceChannel);
+    supabase.removeChannel(dbChannel);
   };
 };

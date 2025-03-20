@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { initializeSupabase } from '@/lib/supabase';
 import { setupConnectionHeartbeat, enableRealtimeForChat } from '@/lib/supabase/realtime';
 import { registerUser, updateUserOnlineStatus } from '@/lib/supabase/users';
-import { isUsernameTaken, getUserByUsername, generateUniqueUsername } from '@/lib/supabase/users/userQueries';
 import { generateUniqueUUID } from '@/lib/supabase/utils';
 
 interface UseSupabaseConnectionProps {
