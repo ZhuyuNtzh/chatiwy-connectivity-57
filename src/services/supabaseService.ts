@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { ChatMessage } from "./signalR/types";
 import { setupUserPresence } from "@/lib/supabase/realtime";
@@ -36,7 +35,8 @@ class SupabaseService {
       await supabaseCore.updateOnlineStatus(userId, true);
       
       this.presenceChannel = supabaseUsers.setupRealtimePresence(
-        userId, 
+        userId,
+        username,
         (changedUserId, isOnline) => {
           const numericId = parseInt(changedUserId);
           if (!isNaN(numericId)) {

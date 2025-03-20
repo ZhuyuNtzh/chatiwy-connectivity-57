@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { UserProfile } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
@@ -50,7 +49,7 @@ export const useSignalRConnection = (
         crypto.randomUUID() : // Generate a UUID if we have a number
         currentUser.id.toString()) : // Use the ID as is if it's a string
       crypto.randomUUID(); // Generate a UUID if we don't have an ID
-    
+  
     const username = currentUser.username;
     const userRole = currentUser.role || 'standard';
 

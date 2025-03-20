@@ -10,11 +10,12 @@ export const supabaseUsers = {
   /**
    * Set up realtime presence for user status
    */
-  setupRealtimePresence(userId: string, onUserStatusChange: (userId: string, isOnline: boolean) => void) {
+  setupRealtimePresence(userId: string, username: string, onUserStatusChange: (userId: string, isOnline: boolean) => void) {
     if (!userId) return null;
     
     return setupUserPresence(
       userId, 
+      username,
       onUserStatusChange
     );
   },

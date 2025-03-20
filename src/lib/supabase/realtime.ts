@@ -96,6 +96,7 @@ export const subscribeToConversation = (
 /**
  * Sets up a realtime channel for user presence
  * @param userId The current user's ID
+ * @param username The current user's username
  * @param onUserStatusChange Callback when a user's status changes
  * @returns The channel object for unsubscribing later
  */
