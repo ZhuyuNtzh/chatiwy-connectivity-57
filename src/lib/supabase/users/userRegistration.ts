@@ -1,60 +1,84 @@
 
 import { supabase } from '../client';
 import { toast } from 'sonner';
-import { isUsernameTaken, getUserByUsername } from './userQueries';
+import { isUsernameTaken, getUserByUsername, generateUniqueUsername } from './userQueries';
 
 /**
  * Register a new user in the database
  * @param userId Unique identifier for the user
  * @param username The user's displayed name
  * @param role The user's role in the system
- * @returns boolean indicating if registration was successful
+ * @returns Promise with registration result {success, username, message}
  */
 export const registerUser = async (
   userId: string,
   username: string,
   role: string = 'standard'
-): Promise<boolean> => {
+): Promise<{success: boolean, username: string, message?: string}> => {
   try {
-    if (!userId || !username || username.trim() === '') {
-      console.error('Invalid user data provided for registration');
-      toast.error('Please provide both user ID and username');
-      return false;
+    if (!userId) {
+      console.error('Invalid user ID provided for registration');
+      return {success: false, username: username, message: 'Missing user ID'};
     }
     
-    // First check if username is taken
-    const normalizedUsername = username.trim();
+    if (!username || username.trim() === '') {
+      console.error('Invalid username provided for registration');
+      return {success: false, username: username, message: 'Missing username'};
+    }
     
-    try {
-      // Check for existing user with this username (now case-insensitive due to the DB index)
-      const existingUser = await getUserByUsername(normalizedUsername);
+    // Check if this user ID already exists
+    const { data: existingUserData, error: userCheckError } = await supabase
+      .from('users')
+      .select('username, is_online')
+      .eq('id', userId)
+      .maybeSingle();
       
-      if (existingUser) {
-        // If the existing user has the same ID as the current user, just update online status
-        if (existingUser.id === userId) {
-          console.log(`User ${normalizedUsername} is reconnecting with ID ${userId}`);
-          const success = await updateUserOnlineStatus(userId, true);
-          return success;
-        } else {
-          console.error(`Username "${normalizedUsername}" is already taken by user ID ${existingUser.id}`);
-          toast.error(`Username "${normalizedUsername}" is already taken. Please choose another username.`);
-          return false;
+    if (userCheckError) {
+      console.error('Error checking existing user:', userCheckError);
+    }
+      
+    // If the user exists, just update their online status
+    if (existingUserData) {
+      console.log(`User ID ${userId} already exists with username "${existingUserData.username}", updating online status`);
+      const success = await updateUserOnlineStatus(userId, true);
+      return {
+        success: success, 
+        username: existingUserData.username,
+        message: 'User reconnected'
+      };
+    }
+    
+    // Try to normalize the username
+    let finalUsername = username.trim();
+    
+    // Check if username is taken by someone else
+    try {
+      const existingUser = await getUserByUsername(finalUsername);
+      
+      if (existingUser && existingUser.id !== userId) {
+        console.log(`Username "${finalUsername}" is taken, generating a unique alternative...`);
+        finalUsername = await generateUniqueUsername(finalUsername);
+        
+        if (finalUsername !== username) {
+          console.log(`Using alternative username: ${finalUsername}`);
+          // Only notify if username was actually changed
+          toast.info(`Username "${username}" was taken. Using "${finalUsername}" instead.`);
         }
       }
     } catch (checkError) {
       console.error("Error checking if username is taken:", checkError);
-      // Continue with registration attempt - the database constraint will catch duplicates
     }
     
-    console.log(`Attempting to register user ${normalizedUsername} with ID ${userId}`);
+    console.log(`Attempting to register user ${finalUsername} with ID ${userId}`);
     
+    // Now try to insert the user with the potentially modified username
     try {
       const { data, error } = await supabase
         .from('users')
         .upsert(
           {
             id: userId,
-            username: normalizedUsername,
+            username: finalUsername,
             role,
             is_online: true,
             last_active: new Date().toISOString()
@@ -70,34 +94,79 @@ export const registerUser = async (
       if (error) {
         console.error('Error registering user:', error);
         
-        // Handle specific error cases
+        // If there's still a username conflict, try one more time with timestamp
         if (error.code === '23505' && error.message.includes('username')) {
-          console.error(`Username "${normalizedUsername}" is already taken due to unique constraint violation`);
-          toast.error(`Username "${normalizedUsername}" is already taken. Please choose another username.`);
-          return false;
+          const timestampUsername = `${finalUsername}${Date.now() % 10000}`;
+          console.log(`Final attempt with timestamp username: ${timestampUsername}`);
+          
+          const { data: retryData, error: retryError } = await supabase
+            .from('users')
+            .upsert(
+              {
+                id: userId,
+                username: timestampUsername,
+                role,
+                is_online: true,
+                last_active: new Date().toISOString()
+              },
+              { 
+                onConflict: 'id', 
+                ignoreDuplicates: false 
+              }
+            )
+            .select('id, username')
+            .single();
+            
+          if (retryError) {
+            console.error('Error on retry registration:', retryError);
+            return {
+              success: false, 
+              username: finalUsername, 
+              message: 'Failed to register user after multiple attempts'
+            };
+          }
+          
+          toast.info(`Using username "${timestampUsername}" instead of "${username}"`);
+          return {
+            success: true, 
+            username: timestampUsername, 
+            message: 'Registered with modified username'
+          };
         }
         
         if (error.code === '42501') {
           console.error('RLS policy violation');
-          toast.error('Server error with permissions. Please try again or contact support.');
-          return false;
+          return {
+            success: false, 
+            username: finalUsername, 
+            message: 'Server permission error'
+          };
         }
         
-        toast.error('Failed to register user. Please try again.');
-        return false;
+        return {
+          success: false, 
+          username: finalUsername, 
+          message: 'Registration error'
+        };
       }
       
-      console.log(`User ${normalizedUsername} registered successfully with ID ${userId}`);
-      return true;
+      console.log(`User ${finalUsername} registered successfully with ID ${userId}`);
+      return {success: true, username: finalUsername};
     } catch (regError) {
       console.error('Exception registering user:', regError);
-      toast.error('An unexpected error occurred. Please try again.');
-      return false;
+      return {
+        success: false, 
+        username: finalUsername, 
+        message: 'Unexpected registration error'
+      };
     }
   } catch (err) {
     console.error('Exception in registration process:', err);
-    toast.error('An unexpected error occurred. Please try again.');
-    return false;
+    return {
+      success: false, 
+      username: username, 
+      message: 'Unexpected error'
+    };
   }
 };
 

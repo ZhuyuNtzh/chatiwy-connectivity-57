@@ -1,10 +1,10 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { initializeSupabase } from '@/lib/supabase';
 import { setupConnectionHeartbeat, enableRealtimeForChat } from '@/lib/supabase/realtime';
 import { registerUser, updateUserOnlineStatus } from '@/lib/supabase/users';
-import { isUsernameTaken, getUserByUsername } from '@/lib/supabase/users/userQueries';
+import { isUsernameTaken, getUserByUsername, generateUniqueUsername } from '@/lib/supabase/users/userQueries';
 import { generateUniqueUUID } from '@/lib/supabase/utils';
 
 interface UseSupabaseConnectionProps {
@@ -20,7 +20,57 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
   const [retryCount, setRetryCount] = useState(0);
   const [usernameTaken, setUsernameTaken] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [actualUsername, setActualUsername] = useState<string | null>(null);
   const maxRetries = 5;
+
+  // Function to attempt registration with retry logic
+  const attemptRegistration = useCallback(async (userUUID: string, attemptedUsername: string) => {
+    console.log(`Attempting registration for UUID ${userUUID} with username ${attemptedUsername}`);
+    
+    try {
+      // First initialize Supabase to make sure connection is working
+      const isConnected = await initializeSupabase();
+      if (!isConnected) {
+        throw new Error("Failed to initialize Supabase connection");
+      }
+      
+      // Enable realtime features
+      await enableRealtimeForChat();
+      
+      // Set up heartbeat
+      const stopHeartbeat = setupConnectionHeartbeat();
+      
+      // Try to register user - this will generate a unique username if needed
+      const registrationResult = await registerUser(
+        userUUID,
+        attemptedUsername,
+        'standard'
+      );
+      
+      if (!registrationResult.success) {
+        console.error(`Registration failed: ${registrationResult.message}`);
+        setValidationError(registrationResult.message || "Registration failed");
+        stopHeartbeat();
+        return { success: false, username: attemptedUsername };
+      }
+      
+      // Store the potentially modified username
+      console.log(`Registration succeeded with username: ${registrationResult.username}`);
+      
+      // Update local storage
+      localStorage.setItem('userUUID', userUUID);
+      localStorage.setItem('username', registrationResult.username);
+      
+      return { 
+        success: true, 
+        username: registrationResult.username,
+        stopHeartbeat
+      };
+    } catch (error) {
+      console.error("Registration attempt failed:", error);
+      return { success: false, username: attemptedUsername };
+    }
+  }, []);
 
   useEffect(() => {
     // Reset states when key changes
@@ -28,6 +78,7 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
     setConnectionReady(false);
     setUsernameTaken(false);
     setValidationError(null);
+    setActualUsername(null);
 
     // Check for existing session
     const existingUUID = localStorage.getItem('userUUID');
@@ -50,126 +101,63 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
         const normalizedUsername = username.trim();
         console.log(`Attempting to connect with username: ${normalizedUsername}`);
         
-        // First initialize Supabase to make sure connection is working
-        const isConnected = await initializeSupabase();
-        if (!isConnected) {
-          throw new Error("Failed to initialize Supabase connection");
-        }
+        // Determine UUID strategy
+        let userUUID: string;
+        let usernameToRegister: string;
         
-        // Determine if we should use existing UUID or generate a new one
-        let stableId: string;
-        let shouldCheckUsername = true;
-        
-        // If we have an existing UUID and username matches, use that ID
-        if (existingUUID && existingUsername === normalizedUsername) {
-          console.log(`Using existing UUID ${existingUUID} for username ${normalizedUsername}`);
-          stableId = existingUUID;
-          shouldCheckUsername = false; // Skip username check for existing users reconnecting
+        // If we're reconnecting with the same username, use the existing UUID
+        if (existingUUID && existingUsername && existingUsername.toLowerCase() === normalizedUsername.toLowerCase()) {
+          console.log(`Reconnecting with existing UUID ${existingUUID} for username ${normalizedUsername}`);
+          userUUID = existingUUID;
+          usernameToRegister = existingUsername; // Use the exact case from before
         } else {
-          // Generate a new UUID for new users or changed usernames
-          stableId = generateUniqueUUID();
-          console.log(`Generated new UUID ${stableId} for username ${normalizedUsername}`);
+          // For new connections or changed usernames, generate a new UUID
+          userUUID = generateUniqueUUID();
+          usernameToRegister = normalizedUsername;
+          console.log(`Generated new UUID ${userUUID} for username ${usernameToRegister}`);
         }
         
-        // Check if username is already taken
-        if (shouldCheckUsername) {
-          try {
-            console.log(`Checking if username ${normalizedUsername} is taken...`);
-            const existingUser = await getUserByUsername(normalizedUsername);
-            
-            if (existingUser) {
-              console.error(`Username ${normalizedUsername} is already taken by user ID ${existingUser.id}`);
-              setUsernameTaken(true);
-              setIsLoading(false);
-              return;
-            }
-            
-            console.log(`Username ${normalizedUsername} is available`);
-          } catch (checkError) {
-            console.error("Error checking if username is taken:", checkError);
-            // Continue with registration attempt, we'll handle duplicate errors there
-          }
-        }
+        // Attempt registration
+        const registrationResult = await attemptRegistration(userUUID, usernameToRegister);
         
-        console.log(`Using user ID: ${stableId}`);
-        
-        // Enable realtime features for chat
-        console.log("Enabling realtime features for chat...");
-        await enableRealtimeForChat();
-        
-        // Set up connection heartbeat to prevent timeouts
-        console.log("Setting up connection heartbeat...");
-        const stopHeartbeat = setupConnectionHeartbeat();
-        
-        // Register or update user
-        console.log(`Registering user ${normalizedUsername} with ID ${stableId}...`);
-        try {
-          const registrationSuccess = await registerUser(
-            stableId,
-            normalizedUsername,
-            'standard' // Default role
-          );
-          
-          if (!registrationSuccess) {
-            // One more direct check if the username exists with a different ID
-            try {
-              const existingUser = await getUserByUsername(normalizedUsername);
-              
-              if (existingUser && existingUser.id !== stableId) {
-                console.error(`Username ${normalizedUsername} is taken by user ID ${existingUser.id}`);
-                setUsernameTaken(true);
-                setIsLoading(false);
-                stopHeartbeat();
-                return;
-              }
-            } catch (err) {
-              console.error("Error double-checking username:", err);
-            }
-            
-            // If registration failed for non-username reasons
-            setValidationError("Registration failed. Please try again with a different username.");
-            setIsLoading(false);
-            stopHeartbeat();
-            return;
-          }
-        } catch (regError) {
-          console.error("Registration error:", regError);
-          setValidationError("Error during registration. Please try again.");
+        if (!registrationResult.success) {
           setIsLoading(false);
-          stopHeartbeat();
           return;
         }
         
-        // Store the UUID and username in localStorage for later use
-        localStorage.setItem('userUUID', stableId);
-        localStorage.setItem('username', normalizedUsername);
-        console.log(`User UUID and username stored in local storage`);
+        // Update the actual username that was used (may be different if there was a conflict)
+        setActualUsername(registrationResult.username);
         
-        // Verify service connection as well
+        // Success - we're ready to go
+        setConnectionReady(true);
+        
+        // If the username was changed due to conflict, inform the user
+        if (registrationResult.username !== normalizedUsername) {
+          toast.info(`Using username "${registrationResult.username}" instead of "${normalizedUsername}"`);
+        } else {
+          toast.success("Connected to chat service");
+        }
+        
+        // Verify service connection
         if (service && typeof service.testConnection === 'function') {
-          console.log("Testing chat service connection...");
           const serviceConnected = await service.testConnection();
           if (!serviceConnected) {
             console.warn("Chat service connection is unstable. Some features may be limited.");
             toast.warning("Chat service connection is unstable. Some features may be limited.");
-          } else {
-            console.log("Chat service connection successful");
           }
         }
         
-        setConnectionReady(true);
-        toast.success("Connected to chat service");
-        
-        // Clean up heartbeat on unmount
+        // Clean up heartbeat when component unmounts
         return () => {
           console.log("Cleaning up Supabase connection");
-          stopHeartbeat();
+          if (registrationResult.stopHeartbeat) registrationResult.stopHeartbeat();
+          
           // Set user offline when component unmounts
-          updateUserOnlineStatus(stableId, false)
+          updateUserOnlineStatus(userUUID, false)
             .catch(err => console.error('Error updating offline status:', err));
         };
       } catch (err) {
-        console.error("Error testing connection:", err);
+        console.error("Error connecting:", err);
         toast.error("Error connecting to chat service, will retry");
         
         if (retryCount < maxRetries) {
@@ -197,10 +185,10 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
         console.warn("Loading timed out - showing UI anyway");
         setIsLoading(false);
       }
-    }, 8000); // 8 seconds max loading time
+    }, 10000); // 10 seconds max loading time
     
     return () => clearTimeout(loadingTimeout);
-  }, [retryCount, service, userId, username, key]); // Added key to dependency array
+  }, [retryCount, service, userId, username, key, attemptRegistration, maxRetries]);
 
   const handleRetry = () => {
     console.log("User initiated retry, resetting retry count");
@@ -220,6 +208,7 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
     validationError,
     maxRetries,
     handleRetry,
-    handleContinueAnyway
+    handleContinueAnyway,
+    actualUsername: actualUsername || username // Return the potentially modified username
   };
 };

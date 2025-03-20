@@ -1,5 +1,6 @@
 
 import { supabase } from '../client';
+import { toast } from 'sonner';
 
 /**
  * Check if a username is already taken
@@ -13,20 +14,19 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
       return true; // Treat empty usernames as taken
     }
     
-    const normalizedUsername = username.trim(); // We don't need toLowerCase() since the DB index is case-insensitive now
+    const normalizedUsername = username.trim();
     console.log(`Checking if username "${normalizedUsername}" is taken...`);
     
-    // Use ilike for case-insensitive comparison
+    // First try exact match
     const { data, error, count } = await supabase
       .from('users')
       .select('id, username', { count: 'exact' })
-      .ilike('username', normalizedUsername) 
+      .ilike('username', normalizedUsername)
       .limit(1);
     
     if (error) {
       console.error('Error checking username:', error);
-      // Return true on error to be safe
-      return true;
+      return true; // Return true on error to be safe
     }
     
     const isTaken = (count || 0) > 0;
@@ -39,9 +39,47 @@ export const isUsernameTaken = async (username: string): Promise<boolean> => {
     return isTaken;
   } catch (err) {
     console.error('Exception checking username:', err);
-    // Return true on error to be safe
-    return true;
+    return true; // Return true on error to be safe
   }
+};
+
+/**
+ * Generate a unique username variation if the original is taken
+ * @param baseUsername The original username to start with
+ * @returns Promise<string> A unique available username
+ */
+export const generateUniqueUsername = async (baseUsername: string): Promise<string> => {
+  // Try the original first
+  const originalUsername = baseUsername.trim();
+  const isOriginalTaken = await isUsernameTaken(originalUsername);
+  
+  if (!isOriginalTaken) {
+    return originalUsername;
+  }
+  
+  // If original is taken, try adding random numbers
+  let attempts = 0;
+  const maxAttempts = 10; // Limit attempts to prevent infinite loops
+  
+  while (attempts < maxAttempts) {
+    const randomSuffix = Math.floor(Math.random() * 9000) + 1000; // 1000-9999
+    const newUsername = `${originalUsername}${randomSuffix}`;
+    const isTaken = await isUsernameTaken(newUsername);
+    
+    if (!isTaken) {
+      console.log(`Generated unique username: ${newUsername}`);
+      return newUsername;
+    }
+    
+    attempts++;
+  }
+  
+  // If all attempts fail, use timestamp-based suffix which should be unique
+  const timestampSuffix = Date.now() % 10000;
+  const finalUsername = `${originalUsername}${timestampSuffix}`;
+  console.log(`Using timestamp-based unique username: ${finalUsername}`);
+  
+  return finalUsername;
 };
 
 /**
@@ -107,7 +145,7 @@ export const getUserByUsername = async (username: string): Promise<any | null> =
       return null;
     }
 
-    const normalizedUsername = username.trim(); // We don't need toLowerCase() since the DB index is case-insensitive now
+    const normalizedUsername = username.trim();
     console.log(`Looking up user with username "${normalizedUsername}"...`);
     
     // Use ilike for case-insensitive matching
@@ -116,7 +154,7 @@ export const getUserByUsername = async (username: string): Promise<any | null> =
       .select('*')
       .ilike('username', normalizedUsername)
       .limit(1)
-      .maybeSingle(); // Use maybeSingle instead of single to avoid errors when not found
+      .maybeSingle();
     
     if (error) {
       console.error('Error looking up user by username:', error);
@@ -132,6 +170,44 @@ export const getUserByUsername = async (username: string): Promise<any | null> =
     return data;
   } catch (err) {
     console.error('Exception looking up user by username:', err);
+    return null;
+  }
+};
+
+/**
+ * Get a user by their ID
+ * @param userId The user ID to look for
+ * @returns Promise<any> The user object or null
+ */
+export const getUserById = async (userId: string): Promise<any | null> => {
+  try {
+    if (!userId) {
+      console.error('Invalid user ID provided for lookup');
+      return null;
+    }
+
+    console.log(`Looking up user with ID "${userId}"...`);
+    
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error looking up user by ID:', error);
+      return null;
+    }
+    
+    if (data) {
+      console.log(`Found user with ID "${userId}":`, data);
+    } else {
+      console.log(`No user found with ID "${userId}"`);
+    }
+    
+    return data;
+  } catch (err) {
+    console.error('Exception looking up user by ID:', err);
     return null;
   }
 };
