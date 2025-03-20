@@ -25,7 +25,7 @@ export const registerUser = async (
       return {success: false, username: username, message: 'Missing username'};
     }
     
-    // Clean the username - trim whitespace (also handled by DB trigger)
+    // Clean the username - our database trigger will handle this server-side too
     const cleanUsername = username.trim();
     
     // First check if this user ID already exists
@@ -64,7 +64,7 @@ export const registerUser = async (
     }
     
     // For new users, check if we need to create a unique username
-    // Use case-insensitive check for username conflict
+    // Use case-insensitive check for username conflict via SQL function
     const { data: usernameCheck, error: usernameCheckError } = await supabase
       .from('users')
       .select('username')

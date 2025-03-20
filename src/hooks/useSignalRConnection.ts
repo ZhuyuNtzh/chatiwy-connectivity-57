@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { UserProfile } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
@@ -67,7 +68,7 @@ export const useSignalRConnection = (
         // Also update the user's online status in Supabase
         await updateUserOnlineStatus(userId, true);
         
-        // Register user if needed
+        // Register user if needed - providing the required third argument
         await registerUser(
           userId, 
           username, 
@@ -100,7 +101,7 @@ export const useSignalRConnection = (
         // Enable realtime for all required tables
         await enableRealtimeForChat();
         
-        // Register user in Supabase
+        // Register user in Supabase - providing the required third argument
         await registerUser(
           userId,
           username, 

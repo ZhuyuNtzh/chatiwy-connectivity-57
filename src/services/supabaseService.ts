@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { ChatMessage } from "./signalR/types";
 import { setupUserPresence, subscribeToConversation } from "@/lib/supabase/realtime";
@@ -422,7 +423,7 @@ class SupabaseService {
         .from('users')
         .select('username')
         .eq('id', userId.toString())
-        .single();
+        .maybeSingle();
         
       if (userError || !reportedUser) {
         console.error('Error fetching reported user:', userError);
