@@ -48,11 +48,7 @@ const VipProfileStep = ({
         setCountries(sortedCountries);
       } catch (error) {
         console.error('Error fetching countries:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load countries list",
-          variant: "destructive"
-        });
+        toast.error("Failed to load countries list");
       } finally {
         setIsLoading(false);
       }

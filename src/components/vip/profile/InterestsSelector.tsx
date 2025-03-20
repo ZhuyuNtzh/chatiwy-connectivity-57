@@ -2,7 +2,7 @@
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Check } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 interface InterestsSelectorProps {
   selectedInterests: string[];
@@ -30,11 +30,7 @@ const InterestsSelector = ({
       // Add interest if not at max
       onChange([...selectedInterests, interest]);
     } else {
-      toast({
-        title: "Maximum interests reached",
-        description: `You can select up to ${maxInterests} interests as a VIP member`,
-        variant: "destructive"
-      });
+      toast.error(`You can select up to ${maxInterests} interests as a VIP member`);
     }
   };
   
