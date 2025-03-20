@@ -1,13 +1,11 @@
-
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useUser } from '@/contexts/UserContext';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Eye, EyeOff } from 'lucide-react';
@@ -15,7 +13,6 @@ import { useAuthActions } from '@/hooks/useAuthActions';
 
 const Login = () => {
   const { isDarkMode } = useTheme();
-  const navigate = useNavigate();
   const { handleLogin } = useAuthActions();
   
   const [identifier, setIdentifier] = useState(''); // Can be email or nickname
@@ -29,12 +26,16 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     
+    // Generate a stable user ID for this login
+    const userUUID = crypto.randomUUID();
+    
     // VIP test account
     if (
       (identifier === 'vip@chatwii.com' || identifier === 'VIPTester') && 
       password === 'viptest123'
     ) {
       const userData = {
+        id: userUUID, // Add stable UUID
         username: 'VIPTester',
         role: 'vip',
         isVip: true,
@@ -57,6 +58,7 @@ const Login = () => {
       
       // For demo purposes, let's assume login successful
       const userData = {
+        id: userUUID, // Add stable UUID
         username: identifier.includes('@') ? identifier.split('@')[0] : identifier,
         role: 'vip',
         isVip: true,

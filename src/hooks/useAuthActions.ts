@@ -27,7 +27,9 @@ export const useAuthActions = () => {
     
     // Clear any username from localStorage to prevent reuse issues
     localStorage.removeItem('username');
-    localStorage.removeItem('userUUID');
+    
+    // DO NOT clear userUUID as we want to maintain a stable identity
+    // This prevents username spam on reconnection
     
     navigate('/feedback'); // Redirect to feedback page
   };
@@ -36,7 +38,18 @@ export const useAuthActions = () => {
     return false; // Return false to indicate logout dialog should be closed
   };
   
-  const handleLogin = (userData, role = 'vip') => {
+  const handleLogin = (userData: any, role = 'vip') => {
+    // Store userUUID if provided, otherwise generate one
+    // This ensures we have a stable identity for this user
+    if (userData.id && !localStorage.getItem('userUUID')) {
+      localStorage.setItem('userUUID', userData.id.toString());
+    }
+    
+    // Store username to ensure consistent display
+    if (userData.username) {
+      localStorage.setItem('username', userData.username);
+    }
+    
     // Set user data
     setCurrentUser(userData);
     setIsLoggedIn(true);

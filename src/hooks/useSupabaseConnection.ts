@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { initializeSupabase } from '@/lib/supabase';
@@ -100,10 +101,30 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
         const normalizedUsername = username.trim();
         console.log(`Attempting to connect with username: ${normalizedUsername}`);
         
-        // Generate a new unique UUID for each connection
-        // Since we've removed username uniqueness constraints, we'll generate a new UUID for safety
-        let userUUID = generateUniqueUUID();
-        console.log(`Generated new UUID ${userUUID} for username ${normalizedUsername}`);
+        // Try to use existing UUID from localStorage if available
+        // This prevents creating new users on reconnection
+        let userUUID = existingUUID;
+        
+        if (!userUUID) {
+          // Only generate a new UUID if we don't have one saved
+          userUUID = generateUniqueUUID();
+          console.log(`Generated new UUID ${userUUID} for username ${normalizedUsername}`);
+        } else {
+          console.log(`Using existing UUID ${userUUID} for username ${normalizedUsername}`);
+          
+          // If we have existing username and it's different, use that instead
+          // to prevent unnecessary username changes
+          if (existingUsername && existingUsername !== normalizedUsername) {
+            console.log(`Using existing username ${existingUsername} instead of ${normalizedUsername}`);
+            
+            // Update user online status for existing user
+            await updateUserOnlineStatus(userUUID, true);
+            setActualUsername(existingUsername);
+            setConnectionReady(true);
+            setIsLoading(false);
+            return;
+          }
+        }
         
         // Attempt registration - the actual username will get a timestamp appended
         const registrationResult = await attemptRegistration(userUUID, normalizedUsername);
@@ -171,7 +192,7 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
     }, 10000); // 10 seconds max loading time
     
     return () => clearTimeout(loadingTimeout);
-  }, [retryCount, service, userId, username, key, attemptRegistration, maxRetries]);
+  }, [retryCount, service, userId, username, key, attemptRegistration, maxRetries, existingUUID, existingUsername]);
 
   const handleRetry = () => {
     console.log("User initiated retry, resetting retry count");

@@ -70,12 +70,13 @@ export const registerUser = async (
     
     let finalUsername = username.trim();
     
-    // If username exists, create a unique one
+    // If username exists, create a unique one - but only if it truly exists
     if (usernameCheck) {
       // Generate a unique username by appending timestamp
+      // Use a shorter suffix to make it less obvious
       const baseUsername = username.trim();
-      const timestamp = Date.now() % 10000;
-      finalUsername = `${baseUsername}_${timestamp}`;
+      const timestamp = Date.now() % 1000; // Last 3 digits of timestamp
+      finalUsername = `${baseUsername}${timestamp}`;
       
       console.log(`Username "${baseUsername}" already exists, using "${finalUsername}" instead`);
     }
@@ -99,7 +100,7 @@ export const registerUser = async (
       console.error('Error registering user:', error);
       
       // If there's still an error, try one more time with an even more unique name
-      const retryUsername = `${finalUsername}_${Math.floor(Math.random() * 1000)}`;
+      const retryUsername = `${finalUsername}${Math.floor(Math.random() * 100)}`;
       console.log(`Final attempt with retry username: ${retryUsername}`);
       
       const { data: retryData, error: retryError } = await supabase
@@ -134,7 +135,7 @@ export const registerUser = async (
     }
     
     console.log(`User ${finalUsername} registered successfully with ID ${userId}`);
-    if (finalUsername !== username) {
+    if (finalUsername !== username && finalUsername !== username.trim()) {
       toast.info(`Using username "${finalUsername}" instead of "${username}"`);
     }
     return {success: true, username: finalUsername};
