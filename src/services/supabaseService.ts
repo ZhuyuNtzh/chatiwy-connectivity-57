@@ -181,13 +181,13 @@ class SupabaseService {
     if (!this.userId) throw new Error('User not initialized');
     
     try {
+      console.log(`Ensuring conversation exists between users ${this.userId} and ${otherUserId}`);
+      
       // First check if a conversation already exists between these users
+      // We now use a simpler query to avoid the recursion issue
       const { data: existingConversations, error: findError } = await supabase
         .from('conversation_participants')
-        .select(`
-          conversation_id,
-          conversation: conversation_id(*)
-        `)
+        .select('conversation_id')
         .eq('user_id', this.userId);
       
       if (findError) {
@@ -197,24 +197,26 @@ class SupabaseService {
       
       if (existingConversations && existingConversations.length > 0) {
         // For each conversation this user is in, check if the other user is also in it
-        for (const conversation of existingConversations) {
+        for (const participant of existingConversations) {
           const { data: otherParticipant, error: participantError } = await supabase
             .from('conversation_participants')
-            .select('*')
-            .eq('conversation_id', conversation.conversation_id)
+            .select('user_id')
+            .eq('conversation_id', participant.conversation_id)
             .eq('user_id', otherUserId)
             .maybeSingle();
           
           if (!participantError && otherParticipant) {
             // Found existing conversation with both users
-            this.currentUserConversation = conversation.conversation_id;
-            this.subscribeToMessages(conversation.conversation_id);
-            return conversation.conversation_id;
+            this.currentUserConversation = participant.conversation_id;
+            this.subscribeToMessages(participant.conversation_id);
+            console.log(`Found existing conversation: ${participant.conversation_id}`);
+            return participant.conversation_id;
           }
         }
       }
       
       // No existing conversation found, create a new one
+      console.log('No existing conversation found, creating new one');
       const { data: newConversation, error: createError } = await supabase
         .from('conversations')
         .insert({})
@@ -225,6 +227,8 @@ class SupabaseService {
         console.error('Error creating conversation:', createError);
         throw createError || new Error('Failed to create conversation');
       }
+      
+      console.log(`Created new conversation: ${newConversation.id}`);
       
       // Add both users as participants
       const participantsPromises = [
@@ -246,6 +250,7 @@ class SupabaseService {
       
       this.currentUserConversation = newConversation.id;
       this.subscribeToMessages(newConversation.id);
+      console.log(`Successfully created conversation ${newConversation.id} between users ${this.userId} and ${otherUserId}`);
       return newConversation.id;
     } catch (err) {
       console.error('Error ensuring conversation exists:', err);

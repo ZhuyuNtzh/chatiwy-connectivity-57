@@ -60,33 +60,34 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
         let stableId: string;
         let shouldCheckUsername = true;
         
-        // If we have an existing UUID and username matches, skip username check
+        // If we have an existing UUID and username matches, use that ID
         if (existingUUID && existingUsername === normalizedUsername) {
           console.log(`Using existing UUID ${existingUUID} for username ${normalizedUsername}`);
           stableId = existingUUID;
-          shouldCheckUsername = false;
+          shouldCheckUsername = false; // Skip username check for existing users reconnecting
         } else {
           // Generate a new UUID for new users or changed usernames
           stableId = generateUniqueUUID();
           console.log(`Generated new UUID ${stableId} for username ${normalizedUsername}`);
         }
         
-        // Check if username is already taken, but only for new users or username changes
+        // Check if username is already taken
         if (shouldCheckUsername) {
           try {
             console.log(`Checking if username ${normalizedUsername} is taken...`);
-            const taken = await isUsernameTaken(normalizedUsername);
-            if (taken) {
-              console.error(`Username ${normalizedUsername} is already taken`);
-              toast.error(`Username "${normalizedUsername}" is already taken. Please choose another username.`);
+            const existingUser = await getUserByUsername(normalizedUsername);
+            
+            if (existingUser) {
+              console.error(`Username ${normalizedUsername} is already taken by user ID ${existingUser.id}`);
               setUsernameTaken(true);
               setIsLoading(false);
               return;
             }
+            
             console.log(`Username ${normalizedUsername} is available`);
           } catch (checkError) {
             console.error("Error checking if username is taken:", checkError);
-            // Continue with registration attempt anyway, we'll get a DB constraint error if it's taken
+            // Continue with registration attempt, we'll handle duplicate errors there
           }
         }
         
@@ -110,26 +111,26 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
           );
           
           if (!registrationSuccess) {
-            // Check if the username exists but with a different user ID
-            const existingUser = await getUserByUsername(normalizedUsername);
-            
-            if (existingUser && existingUser.id !== stableId) {
-              console.error(`Username ${normalizedUsername} is taken by user with ID ${existingUser.id}`);
-              setUsernameTaken(true);
-              setIsLoading(false);
-              stopHeartbeat();
-              return;
-            } else if (existingUser && existingUser.id === stableId) {
-              // Same user reconnecting, just update status
-              console.log(`User ${normalizedUsername} already exists with same ID ${stableId}, updating status`);
-              await updateUserOnlineStatus(stableId, true);
-            } else {
-              // If registration failed for non-username reasons
-              setValidationError("Registration failed. Please try again with a different username.");
-              setIsLoading(false);
-              stopHeartbeat();
-              return;
+            // One more direct check if the username exists with a different ID
+            try {
+              const existingUser = await getUserByUsername(normalizedUsername);
+              
+              if (existingUser && existingUser.id !== stableId) {
+                console.error(`Username ${normalizedUsername} is taken by user ID ${existingUser.id}`);
+                setUsernameTaken(true);
+                setIsLoading(false);
+                stopHeartbeat();
+                return;
+              }
+            } catch (err) {
+              console.error("Error double-checking username:", err);
             }
+            
+            // If registration failed for non-username reasons
+            setValidationError("Registration failed. Please try again with a different username.");
+            setIsLoading(false);
+            stopHeartbeat();
+            return;
           }
         } catch (regError) {
           console.error("Registration error:", regError);
