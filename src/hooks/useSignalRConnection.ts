@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { UserProfile } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
@@ -108,9 +109,10 @@ export const useSignalRConnection = (
           userRole
         );
         
-        // Set up presence channel
+        // Set up presence channel - passing username as the second argument
         const presenceChannel = setupUserPresence(
           userId,
+          username,
           (changedUserId, isOnline) => {
             console.log(`User ${changedUserId} is now ${isOnline ? 'online' : 'offline'}`);
             // Update UI or perform actions when user status changes
