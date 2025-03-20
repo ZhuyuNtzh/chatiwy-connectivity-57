@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { initializeSupabase } from '@/lib/supabase';
@@ -101,51 +100,35 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
         const normalizedUsername = username.trim();
         console.log(`Attempting to connect with username: ${normalizedUsername}`);
         
-        // Determine UUID strategy
-        let userUUID: string;
-        let usernameToRegister: string;
+        // Generate a new unique UUID for each connection
+        // Since we've removed username uniqueness constraints, we'll generate a new UUID for safety
+        let userUUID = generateUniqueUUID();
+        console.log(`Generated new UUID ${userUUID} for username ${normalizedUsername}`);
         
-        // If we're reconnecting with the same username, use the existing UUID
-        if (existingUUID && existingUsername && existingUsername.toLowerCase() === normalizedUsername.toLowerCase()) {
-          console.log(`Reconnecting with existing UUID ${existingUUID} for username ${normalizedUsername}`);
-          userUUID = existingUUID;
-          usernameToRegister = existingUsername; // Use the exact case from before
-        } else {
-          // For new connections or changed usernames, generate a new UUID
-          userUUID = generateUniqueUUID();
-          usernameToRegister = normalizedUsername;
-          console.log(`Generated new UUID ${userUUID} for username ${usernameToRegister}`);
-        }
-        
-        // Attempt registration
-        const registrationResult = await attemptRegistration(userUUID, usernameToRegister);
+        // Attempt registration - the actual username will get a timestamp appended
+        const registrationResult = await attemptRegistration(userUUID, normalizedUsername);
         
         if (!registrationResult.success) {
           setIsLoading(false);
           return;
         }
         
-        // Update the actual username that was used (may be different if there was a conflict)
+        // Update the actual username that was used (with timestamp appended)
         setActualUsername(registrationResult.username);
         
         // Success - we're ready to go
         setConnectionReady(true);
         
-        // If the username was changed due to conflict, inform the user
+        // Toast the user with the modified username
         if (registrationResult.username !== normalizedUsername) {
           toast.info(`Using username "${registrationResult.username}" instead of "${normalizedUsername}"`);
         } else {
           toast.success("Connected to chat service");
         }
         
-        // Verify service connection
-        if (service && typeof service.testConnection === 'function') {
-          const serviceConnected = await service.testConnection();
-          if (!serviceConnected) {
-            console.warn("Chat service connection is unstable. Some features may be limited.");
-            toast.warning("Chat service connection is unstable. Some features may be limited.");
-          }
-        }
+        // Update local storage with the new UUID and username
+        localStorage.setItem('userUUID', userUUID);
+        localStorage.setItem('username', registrationResult.username);
         
         // Clean up heartbeat when component unmounts
         return () => {
