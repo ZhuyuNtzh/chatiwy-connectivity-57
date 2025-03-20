@@ -192,7 +192,7 @@ export const useSupabaseConnection = ({ userId, username, service, key = 0 }: Us
     }, 10000); // 10 seconds max loading time
     
     return () => clearTimeout(loadingTimeout);
-  }, [retryCount, service, userId, username, key, attemptRegistration, maxRetries, existingUUID, existingUsername]);
+  }, [retryCount, service, userId, username, key, attemptRegistration, maxRetries]);
 
   const handleRetry = () => {
     console.log("User initiated retry, resetting retry count");
