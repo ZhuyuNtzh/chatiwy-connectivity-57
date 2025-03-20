@@ -4,6 +4,7 @@ import { UserProfile } from '../contexts/UserContext';
 import { Button } from '@/components/ui/button';
 import { MessageCircle, Shield, Award } from 'lucide-react';
 import UserTypeDisplay from './UserTypeDisplay';
+import "@/styles/glow-animations.css";
 
 interface UserCardProps {
   user: UserProfile;
@@ -18,6 +19,12 @@ const UserCard = ({ user, animationDelay = 0, onClick }: UserCardProps) => {
     if (user.role === 'admin') return 'border-destructive/30 hover:border-destructive/50';
     if (user.role === 'vip') return 'border-accent/30 hover:border-accent/50';
     return 'border-muted/60 hover:border-muted';
+  };
+
+  const usernameClass = () => {
+    if (user.role === 'vip') return 'vip-username';
+    if (user.role === 'admin') return 'admin-username';
+    return '';
   };
 
   const handleStartChat = () => {
@@ -49,7 +56,7 @@ const UserCard = ({ user, animationDelay = 0, onClick }: UserCardProps) => {
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <h3 className="text-base font-medium truncate">{user.username}</h3>
+            <h3 className={`text-base font-medium truncate ${usernameClass()}`}>{user.username}</h3>
             <UserTypeDisplay role={user.role} showLabel={false} size="sm" />
           </div>
           

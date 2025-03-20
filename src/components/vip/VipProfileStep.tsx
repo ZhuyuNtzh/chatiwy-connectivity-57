@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import axios from 'axios';
 import GenderSelector from './profile/GenderSelector';
 import AvatarSelector from './profile/AvatarSelector';
@@ -65,29 +65,17 @@ const VipProfileStep = ({
     e.preventDefault();
     
     if (!formData.gender) {
-      toast({
-        title: "Missing gender",
-        description: "Please select your gender",
-        variant: "destructive"
-      });
+      toast.error("Gender selection is required");
       return;
     }
     
-    if (formData.interests.length < 1) {
-      toast({
-        title: "Interests required",
-        description: "Please select at least one interest",
-        variant: "destructive"
-      });
+    if (!formData.age) {
+      toast.error("Age selection is required");
       return;
     }
     
     if (!formData.country) {
-      toast({
-        title: "Country required",
-        description: "Please select your country",
-        variant: "destructive"
-      });
+      toast.error("Country required");
       return;
     }
     

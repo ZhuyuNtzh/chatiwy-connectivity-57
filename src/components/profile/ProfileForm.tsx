@@ -8,6 +8,7 @@ import InterestsSelector from './InterestsSelector';
 import CountryDisplay from './CountryDisplay';
 import NicknameInput from './NicknameInput';
 import { UserProfile, UserRole } from '@/contexts/UserContext';
+import { toast } from 'sonner';
 
 interface ProfileFormProps {
   nickname: string;
@@ -50,6 +51,18 @@ const ProfileForm = ({
   
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    
+    // Validate that gender is selected
+    if (!gender) {
+      toast.error("Please select your gender");
+      return;
+    }
+    
+    // Validate that age is selected
+    if (!selectedAge) {
+      toast.error("Please select your age");
+      return;
+    }
     
     // Create user profile
     const userProfile: UserProfile = {
@@ -95,8 +108,8 @@ const ProfileForm = ({
         
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
-            <Label htmlFor="age" className="text-gray-800">Age</Label>
-            <Select value={selectedAge} onValueChange={setSelectedAge}>
+            <Label htmlFor="age" className="text-gray-800">Age<span className="text-red-500 ml-1">*</span></Label>
+            <Select value={selectedAge} onValueChange={setSelectedAge} required>
               <SelectTrigger className="glass-input bg-white/70 text-gray-800">
                 <SelectValue placeholder="Select your age" />
               </SelectTrigger>
@@ -111,8 +124,8 @@ const ProfileForm = ({
           </div>
           
           <div className="space-y-1">
-            <Label htmlFor="gender" className="text-gray-800">Gender</Label>
-            <Select value={gender} onValueChange={setGender}>
+            <Label htmlFor="gender" className="text-gray-800">Gender<span className="text-red-500 ml-1">*</span></Label>
+            <Select value={gender} onValueChange={setGender} required>
               <SelectTrigger className="glass-input bg-white/70 text-gray-800">
                 <SelectValue placeholder="Select" />
               </SelectTrigger>

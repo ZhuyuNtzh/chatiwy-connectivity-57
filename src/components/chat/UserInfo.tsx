@@ -3,6 +3,7 @@ import React from 'react';
 import { User, Crown, Star } from 'lucide-react';
 import UserTypeDisplay from '@/components/UserTypeDisplay';
 import { UserRole } from '@/contexts/UserContext';
+import "@/styles/glow-animations.css";
 
 interface UserInfoProps {
   user: {
@@ -35,9 +36,9 @@ const UserInfo: React.FC<UserInfoProps> = ({ user, countryFlags }) => {
   const getUsernameClass = () => {
     switch(userRole) {
       case 'admin':
-        return 'bg-gradient-to-r from-purple-500 to-pink-500 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent';
+        return 'admin-username';
       case 'vip':
-        return 'bg-gradient-to-r from-amber-500 to-orange-500 dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent';
+        return 'vip-username';
       default:
         return '';
     }
