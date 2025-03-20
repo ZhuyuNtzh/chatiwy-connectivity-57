@@ -52,6 +52,7 @@ export const useSignalRConnection = (
       crypto.randomUUID(); // Generate a UUID if we don't have an ID
     
     const username = currentUser.username;
+    const userRole = currentUser.role || 'standard';
 
     // Connect to SignalR hub
     const connectToSignalR = async () => {
@@ -72,7 +73,7 @@ export const useSignalRConnection = (
         await registerUser(
           userId, 
           username, 
-          currentUser.role || 'standard'
+          userRole
         );
         
         // Set up connected users count change event
@@ -105,7 +106,7 @@ export const useSignalRConnection = (
         await registerUser(
           userId,
           username, 
-          currentUser.role || 'standard'
+          userRole
         );
         
         // Set up presence channel
@@ -124,7 +125,7 @@ export const useSignalRConnection = (
         const stopHeartbeat = setupConnectionHeartbeat();
         
         // Initialize Supabase service with current user
-        await supabaseService.initialize(userId, username);
+        await supabaseService.initialize(userId, username, userRole);
         console.log('Successfully connected to Supabase realtime');
         
         // Return cleanup function
