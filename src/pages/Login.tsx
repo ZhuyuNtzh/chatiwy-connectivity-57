@@ -8,14 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUser } from '@/contexts/UserContext';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Eye, EyeOff } from 'lucide-react';
+import { useAuthActions } from '@/hooks/useAuthActions';
 
 const Login = () => {
   const { isDarkMode } = useTheme();
   const navigate = useNavigate();
-  const { setCurrentUser, setIsLoggedIn, setUserRole } = useUser();
+  const { handleLogin } = useAuthActions();
   
   const [identifier, setIdentifier] = useState(''); // Can be email or nickname
   const [password, setPassword] = useState('');
@@ -33,7 +34,7 @@ const Login = () => {
       (identifier === 'vip@chatwii.com' || identifier === 'VIPTester') && 
       password === 'viptest123'
     ) {
-      setCurrentUser({
+      const userData = {
         username: 'VIPTester',
         role: 'vip',
         isVip: true,
@@ -43,16 +44,10 @@ const Login = () => {
         interests: ['orange', 'lime', 'gold'],
         avatar: 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&w=100&h=100',
         email: 'vip@chatwii.com',
-      });
-      setUserRole('vip');
-      setIsLoggedIn(true);
+      };
       
-      toast({
-        title: "VIP Login successful",
-        description: "Welcome to Chatwii VIP!",
-      });
-      
-      navigate('/settings');
+      // Use our handleLogin function
+      handleLogin(userData, 'vip');
       return;
     }
     
@@ -61,7 +56,7 @@ const Login = () => {
       setIsLoading(false);
       
       // For demo purposes, let's assume login successful
-      setCurrentUser({
+      const userData = {
         username: identifier.includes('@') ? identifier.split('@')[0] : identifier,
         role: 'vip',
         isVip: true,
@@ -70,16 +65,10 @@ const Login = () => {
         location: 'United States',
         interests: ['orange', 'lime', 'gold'],
         email: identifier.includes('@') ? identifier : `${identifier}@example.com`,
-      });
-      setUserRole('vip');
-      setIsLoggedIn(true);
+      };
       
-      toast({
-        title: "Login successful",
-        description: "Welcome back to VIP",
-      });
-      
-      navigate('/settings');
+      // Use our handleLogin function
+      handleLogin(userData, 'vip');
     }, 1000);
   };
   
@@ -93,10 +82,7 @@ const Login = () => {
       setShowForgotPassword(false);
       setForgotPasswordEmail('');
       
-      toast({
-        title: "Password reset link sent",
-        description: "Please check your email for instructions",
-      });
+      toast.success("Password reset link sent. Please check your email for instructions");
     }, 1000);
   };
   

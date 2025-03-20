@@ -60,10 +60,25 @@ export const registerUser = async (
       };
     }
     
-    // Generate a unique username by appending timestamp
-    const baseUsername = username.trim();
-    const timestamp = Date.now() % 10000;
-    const finalUsername = `${baseUsername}_${timestamp}`;
+    // For new users, check if we need to create a unique username
+    // Check if the original username already exists
+    const { data: usernameCheck, error: usernameCheckError } = await supabase
+      .from('users')
+      .select('username')
+      .eq('username', username.trim())
+      .maybeSingle();
+    
+    let finalUsername = username.trim();
+    
+    // If username exists, create a unique one
+    if (usernameCheck) {
+      // Generate a unique username by appending timestamp
+      const baseUsername = username.trim();
+      const timestamp = Date.now() % 10000;
+      finalUsername = `${baseUsername}_${timestamp}`;
+      
+      console.log(`Username "${baseUsername}" already exists, using "${finalUsername}" instead`);
+    }
     
     console.log(`Registering user with username: ${finalUsername} and ID ${userId}`);
     
@@ -84,7 +99,7 @@ export const registerUser = async (
       console.error('Error registering user:', error);
       
       // If there's still an error, try one more time with an even more unique name
-      const retryUsername = `${baseUsername}_${timestamp}_${Math.floor(Math.random() * 1000)}`;
+      const retryUsername = `${finalUsername}_${Math.floor(Math.random() * 1000)}`;
       console.log(`Final attempt with retry username: ${retryUsername}`);
       
       const { data: retryData, error: retryError } = await supabase
@@ -108,7 +123,9 @@ export const registerUser = async (
         };
       }
       
-      toast.info(`Using username "${retryUsername}" instead of "${username}"`);
+      if (retryUsername !== username) {
+        toast.info(`Using username "${retryUsername}" instead of "${username}"`);
+      }
       return {
         success: true, 
         username: retryUsername, 
@@ -117,7 +134,9 @@ export const registerUser = async (
     }
     
     console.log(`User ${finalUsername} registered successfully with ID ${userId}`);
-    toast.info(`Using username "${finalUsername}" instead of "${baseUsername}"`);
+    if (finalUsername !== username) {
+      toast.info(`Using username "${finalUsername}" instead of "${username}"`);
+    }
     return {success: true, username: finalUsername};
   } catch (err) {
     console.error('Exception in registration process:', err);
