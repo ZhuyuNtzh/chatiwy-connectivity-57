@@ -51,6 +51,8 @@ import { toast } from 'sonner';
 import ModerationPanel from '@/components/admin/ModerationPanel';
 import { signalRService } from '@/services/signalRService';
 import { userReporting } from '@/services/signalR/userReporting';
+import AdminMonitoringTab from '@/components/admin/AdminMonitoringTab';
+import { useAdmin } from '@/contexts/AdminContext';
 
 const initialMockUsers = [
   { id: 1, username: "Alice", role: "standard", isOnline: true, location: "Canada", gender: "Female", age: 28, email: "alice@example.com", isBot: false, isBanned: false },
@@ -124,6 +126,7 @@ const AdminDashboard = () => {
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showAdminSettings, setShowAdminSettings] = useState(false);
+  const [showMonitoring, setShowMonitoring] = useState(false);
   const [adminProfile, setAdminProfile] = useState({
     username: 'Admin',
     email: adminSettings.email || 'admin@chatwii.com',
@@ -167,6 +170,8 @@ const AdminDashboard = () => {
       isInitialMount.current = false;
     }
   }, [mockUsers]);
+  
+  const { adminSettings } = useAdmin();
   
   const handleToggleVisibility = () => {
     toggleAdminVisibility();
@@ -215,6 +220,10 @@ const AdminDashboard = () => {
   const handleAddBot = (newBot: any) => {
     setMockUsers(prevUsers => [...prevUsers, newBot]);
     toast.success(`Bot ${newBot.username} has been added to the system`);
+  };
+  
+  const handleMonitoringClick = () => {
+    setShowMonitoring(true);
   };
   
   useEffect(() => {
@@ -374,6 +383,27 @@ const AdminDashboard = () => {
               </p>
               <Button className="w-full" variant="outline">
                 Open Chat Moderation
+              </Button>
+            </CardContent>
+          </Card>
+          
+          <Card 
+            className="border-2 border-purple-500/20 hover:border-purple-500/50 transition-all cursor-pointer" 
+            onClick={handleMonitoringClick}
+          >
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Users className="h-5 w-5 text-purple-500" />
+                User Monitoring
+              </CardTitle>
+              <CardDescription>Real-time user activity tracking</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Monitor user activity, view message history, and take administrative actions as needed.
+              </p>
+              <Button className="w-full" variant="outline">
+                Open Monitoring Dashboard
               </Button>
             </CardContent>
           </Card>
@@ -580,6 +610,23 @@ const AdminDashboard = () => {
             <Button onClick={handleSaveAdminSettings}>
               Save Changes
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={showMonitoring} onOpenChange={setShowMonitoring}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              User Monitoring
+            </DialogTitle>
+            <DialogDescription>
+              Monitor user activity and take administrative actions
+            </DialogDescription>
+          </DialogHeader>
+          <div className="h-[calc(100vh-200px)] overflow-auto">
+            <AdminMonitoringTab />
           </div>
         </DialogContent>
       </Dialog>

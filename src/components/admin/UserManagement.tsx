@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useRef } from 'react';
 import { BannedUser } from '@/contexts/UserContext';
 import { 
@@ -72,6 +71,7 @@ import { useUser } from '@/contexts/UserContext';
 import { useVipFeatures } from '@/hooks/useVipFeatures';
 import VipFeatures from '@/components/chat/VipFeatures';
 import { useForm } from 'react-hook-form';
+import { useAdmin } from '@/contexts/AdminContext';
 
 interface UserManagementProps {
   users: any[];
@@ -81,7 +81,7 @@ interface UserManagementProps {
 }
 
 const UserManagement = ({ users, bannedUsers, onClose, onAddBot }: UserManagementProps) => {
-  const { addBannedUser, removeBannedUser, kickUser } = useUser();
+  const { kickUser, banUser, unbanUser, upgradeToVIP } = useAdmin();
   const { 
     setTempVipStatus, 
     upgradeToVip, 
@@ -113,7 +113,6 @@ const UserManagement = ({ users, bannedUsers, onClose, onAddBot }: UserManagemen
     }
   });
 
-  // Filter to only show online standard users, all VIP users, and all bot users
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
       const matchesSearch = user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -123,7 +122,7 @@ const UserManagement = ({ users, bannedUsers, onClose, onAddBot }: UserManagemen
       if (!matchesSearch) return false;
       
       if (activeTab === 'standard') {
-        return user.role === 'standard' && !user.isBot && user.isOnline; // Only show online standard users
+        return user.role === 'standard' && !user.isBot && user.isOnline;
       } else if (activeTab === 'vip') {
         return user.role === 'vip';
       } else if (activeTab === 'bots') {
@@ -136,33 +135,32 @@ const UserManagement = ({ users, bannedUsers, onClose, onAddBot }: UserManagemen
     });
   }, [users, searchTerm, activeTab, bannedUsers]);
 
-  const handleBanUser = (user: any) => {
-    const newBannedUser: BannedUser = {
-      username: user.username,
-      userId: user.id,
-      banReason: "Violation of terms of service",
-      bannedAt: new Date(),
-      banExpiresAt: new Date(Date.now() + 86400000 * 7), // 7 days from now
-      bannedBy: "admin",
-      ipAddress: "127.0.0.1"
-    };
-    
-    addBannedUser(newBannedUser);
-    toast.success(`${user.username} has been banned for 7 days`);
+  const handleBanUser = async (user: any) => {
+    const result = await banUser(user.id, user.username, "Violation of terms of service");
+    if (result.success) {
+      toast.success(`${user.username} has been banned`);
+    }
   };
   
-  const handleUnbanUser = (userId: number, username: string) => {
-    removeBannedUser(userId);
-    toast.success(`${username} has been unbanned`);
+  const handleUnbanUser = async (userId: number, username: string) => {
+    const result = await unbanUser(userId, username);
+    if (result.success) {
+      toast.success(`${username} has been unbanned`);
+    }
   };
   
-  const handleKickUser = (userId: number, username: string) => {
-    kickUser(userId);
-    toast.success(`${username} has been kicked from chat`);
+  const handleKickUser = async (userId: number, username: string) => {
+    const result = await kickUser(userId, username);
+    if (result.success) {
+      toast.success(`${username} has been kicked from chat`);
+    }
   };
   
-  const handleMakeVipPermanent = (userId: number, username: string) => {
-    upgradeToVip(userId, username, true);
+  const handleMakeVipPermanent = async (userId: number, username: string) => {
+    const result = await upgradeToVIP(userId, username, 'yearly');
+    if (result.success) {
+      toast.success(`${username} has been granted permanent VIP status`);
+    }
   };
   
   const handleMakeVipTemporary = (userId: number, username: string) => {
@@ -576,7 +574,6 @@ const UserManagement = ({ users, bannedUsers, onClose, onAddBot }: UserManagemen
         </TabsContent>
       </Tabs>
       
-      {/* Add VIP upgrade confirmation dialog */}
       <VipFeatures
         isMediaGalleryOpen={false}
         setIsMediaGalleryOpen={() => {}}
@@ -600,7 +597,6 @@ const UserManagement = ({ users, bannedUsers, onClose, onAddBot }: UserManagemen
         onConfirmVipUpgrade={confirmTempVipStatus}
       />
 
-      {/* Add Bot Dialog */}
       <Dialog open={isAddBotDialogOpen} onOpenChange={setIsAddBotDialogOpen}>
         <DialogContent>
           <DialogHeader>
