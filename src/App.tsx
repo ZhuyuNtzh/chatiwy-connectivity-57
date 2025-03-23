@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Routes, Route, BrowserRouter } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { UserProvider } from './contexts/UserContext';
 import { HelmetProvider } from 'react-helmet-async';
@@ -27,39 +27,38 @@ const queryClient = new QueryClient();
 
 function App() {
   return (
-    <BrowserRouter>
-      <HelmetProvider>
-        <UserProvider>
-          <AdminProvider>
-            <ThemeProvider>
-              <QueryClientProvider client={queryClient}>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Login />} />
-                  <Route path="/vip-register" element={<VipRegister />} />
-                  <Route path="/profile-setup" element={<ProfileSetup />} />
-                  <Route path="/user-selection" element={<UserSelection />} />
-                  <Route path="/vip-membership" element={<VipMembership />} />
-                  <Route path="/chat-interface" element={<ChatInterface />} />
-                  <Route path="/chat-history" element={<ChatHistory />} />
-                  <Route path="/feedback" element={<Feedback />} />
-                  <Route path="/settings" element={<Settings />} />
-                  
-                  <Route path="/secure-admin-access-8472" element={<AdminLogin />} />
-                  <Route path="/admin-dashboard" element={<AdminDashboard />} />
-                  <Route path="/admin-chat" element={<AdminChatInterface />} />
-                  <Route path="/admin-moderation" element={<AdminModeration />} />
-                  
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <Toaster />
-              </QueryClientProvider>
-            </ThemeProvider>
-          </AdminProvider>
-        </UserProvider>
-      </HelmetProvider>
-    </BrowserRouter>
+    // Removed BrowserRouter since it's already in main.tsx
+    <HelmetProvider>
+      <UserProvider>
+        <AdminProvider>
+          <ThemeProvider>
+            <QueryClientProvider client={queryClient}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Login />} />
+                <Route path="/vip-register" element={<VipRegister />} />
+                <Route path="/profile-setup" element={<ProfileSetup />} />
+                <Route path="/user-selection" element={<UserSelection />} />
+                <Route path="/vip-membership" element={<VipMembership />} />
+                <Route path="/chat-interface" element={<ChatInterface />} />
+                <Route path="/chat-history" element={<ChatHistory />} />
+                <Route path="/feedback" element={<Feedback />} />
+                <Route path="/settings" element={<Settings />} />
+                
+                <Route path="/secure-admin-access-8472" element={<AdminLogin />} />
+                <Route path="/admin-dashboard" element={<AdminDashboard />} />
+                <Route path="/admin-chat" element={<AdminChatInterface />} />
+                <Route path="/admin-moderation" element={<AdminModeration />} />
+                
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <Toaster />
+            </QueryClientProvider>
+          </ThemeProvider>
+        </AdminProvider>
+      </UserProvider>
+    </HelmetProvider>
   );
 }
 

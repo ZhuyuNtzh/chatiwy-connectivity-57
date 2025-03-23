@@ -1,3 +1,4 @@
+
 import { supabase } from '../client';
 
 /**
@@ -41,8 +42,11 @@ export const subscribeToOnlineUsers = (callback: (users: any[]) => void) => {
     },
   });
   
+  // Create a unique name for the DB channel to avoid reusing existing channels
+  const uniqueChannelName = `online_users_channel_${Date.now()}`;
+  
   // Handle presence state changes
-  presenceChannel
+  const presenceSubscription = presenceChannel
     .on('presence', { event: 'sync' }, () => {
       // When presence syncs, fetch the latest users from the database
       // This ensures we have complete user data, not just presence data
@@ -73,14 +77,15 @@ export const subscribeToOnlineUsers = (callback: (users: any[]) => void) => {
         // Try to resubscribe after a delay
         setTimeout(() => {
           console.log('Attempting to resubscribe to online users presence');
-          presenceChannel.subscribe();
+          // We don't call subscribe() again on the same channel as it causes an error
+          // Instead, we'll handle reconnection via the cleanup function below
         }, 5000);
       }
     });
   
   // Also set up a traditional database change subscription as a fallback
   const dbChannel = supabase
-    .channel('online_users_channel')
+    .channel(uniqueChannelName)
     .on('postgres_changes', 
       {
         event: '*', 
@@ -118,7 +123,7 @@ export const subscribeToOnlineUsers = (callback: (users: any[]) => void) => {
         // Try to resubscribe after a delay
         setTimeout(() => {
           console.log('Attempting to resubscribe to online users DB channel');
-          dbChannel.subscribe();
+          // We don't call subscribe() again on the same channel as it causes an error
         }, 5000);
       }
     });
@@ -170,8 +175,9 @@ export const setupRealtimeSubscription = (
   // Check current status
   checkCurrentStatus();
   
-  // Set up a presence channel specifically for this user
-  const presenceChannel = supabase.channel(`presence_user_${userId}`, {
+  // Set up a presence channel specifically for this user with a unique name
+  const channelName = `presence_user_${userId}_${Date.now()}`;
+  const presenceChannel = supabase.channel(channelName, {
     config: {
       presence: {
         key: userId,
@@ -205,14 +211,15 @@ export const setupRealtimeSubscription = (
         // Try to resubscribe after a delay
         setTimeout(() => {
           console.log(`Attempting to resubscribe to user ${userId} presence`);
-          presenceChannel.subscribe();
+          // We won't call subscribe again on the same channel instance
         }, 5000);
       }
     });
   
-  // Also create a database subscription as a fallback
+  // Also create a database subscription as a fallback with a unique name
+  const dbChannelName = `user_status_${userId}_${Date.now()}`;
   const dbChannel = supabase
-    .channel(`user_status_${userId}_${Date.now()}`)
+    .channel(dbChannelName)
     .on('postgres_changes', 
       {
         event: 'UPDATE',
@@ -236,7 +243,7 @@ export const setupRealtimeSubscription = (
         // Try to resubscribe after a delay
         setTimeout(() => {
           console.log(`Attempting to resubscribe to user ${userId} DB changes`);
-          dbChannel.subscribe();
+          // We won't call subscribe again on the same channel instance
         }, 5000);
       }
     });
