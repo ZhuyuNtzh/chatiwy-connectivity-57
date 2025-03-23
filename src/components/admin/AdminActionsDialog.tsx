@@ -1,27 +1,13 @@
 
-import React, { useState } from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle
-} from "@/components/ui/dialog";
+import React, { useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { Ban, Crown, AlertCircle, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Ban, Boot, Crown } from "lucide-react";
 import { toast } from "sonner";
-import { useAdminActions } from "@/hooks/useAdminActions";
+import { useAdmin } from "@/contexts/AdminContext";
 
 interface AdminActionsDialogProps {
   isOpen: boolean;
@@ -34,161 +20,197 @@ const AdminActionsDialog: React.FC<AdminActionsDialogProps> = ({
   onOpenChange,
   user
 }) => {
-  const [selectedAction, setSelectedAction] = useState<string>("");
-  const [banReason, setBanReason] = useState<string>("");
+  const [action, setAction] = useState<"kick" | "ban" | "vip" | null>(null);
+  const [banReason, setBanReason] = useState("");
   const [vipDuration, setVipDuration] = useState<"monthly" | "yearly">("monthly");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const { kickUser, banUser, upgradeToVIP } = useAdminActions();
-  
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { kickUser, banUser, upgradeToVIP } = useAdmin();
+
+  const handleActionSelect = (value: string) => {
+    setAction(value as "kick" | "ban" | "vip");
+  };
+
   const resetForm = () => {
-    setSelectedAction("");
+    setAction(null);
     setBanReason("");
     setVipDuration("monthly");
-    setIsSubmitting(false);
+    setIsLoading(false);
   };
-  
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      resetForm();
-    }
-    onOpenChange(open);
+
+  const handleClose = () => {
+    resetForm();
+    onOpenChange(false);
   };
-  
+
   const handleAction = async () => {
-    if (!user) return;
-    
-    setIsSubmitting(true);
-    
+    if (!user || !action) return;
+
+    setIsLoading(true);
+
     try {
-      switch (selectedAction) {
+      let success = false;
+      let message = "";
+
+      switch (action) {
         case "kick":
-          await kickUser(user.id, user.username);
+          success = await kickUser(user.id);
+          message = success
+            ? `${user.username} has been kicked for 24 hours`
+            : "Failed to kick user";
           break;
         case "ban":
           if (!banReason.trim()) {
-            toast.error("Please provide a reason for the ban");
-            setIsSubmitting(false);
+            toast.error("Ban reason is required");
+            setIsLoading(false);
             return;
           }
-          await banUser(user.id, user.username, banReason);
+          success = await banUser(user.id, banReason);
+          message = success
+            ? `${user.username} has been banned permanently`
+            : "Failed to ban user";
           break;
         case "vip":
-          await upgradeToVIP(user.id, user.username, vipDuration);
+          success = await upgradeToVIP(user.id, vipDuration);
+          message = success
+            ? `${user.username} has been upgraded to VIP (${vipDuration})`
+            : "Failed to upgrade user to VIP";
           break;
-        default:
-          toast.error("Please select an action");
-          setIsSubmitting(false);
-          return;
       }
-      
-      resetForm();
-      onOpenChange(false);
+
+      if (success) {
+        toast.success(message);
+        handleClose();
+      } else {
+        toast.error(message);
+      }
     } catch (error) {
       console.error("Error executing admin action:", error);
-      toast.error("Failed to execute action. Please try again.");
+      toast.error("An unexpected error occurred");
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
-  
+
+  const actionIcons = {
+    kick: <Boot className="h-5 w-5 mr-2" />,
+    ban: <Ban className="h-5 w-5 mr-2" />,
+    vip: <Crown className="h-5 w-5 mr-2" />
+  };
+
+  const actionTitles = {
+    kick: "Kick User",
+    ban: "Ban User",
+    vip: "Upgrade to VIP"
+  };
+
+  const actionDescriptions = {
+    kick: "Temporarily remove the user from the platform for 24 hours",
+    ban: "Permanently ban the user from the platform",
+    vip: "Grant the user VIP status and benefits"
+  };
+
+  if (!user) return null;
+
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Admin Action</DialogTitle>
+          <DialogTitle>
+            Take Action on {user.username}
+          </DialogTitle>
           <DialogDescription>
-            {user ? `Take administrative action on user ${user.username}` : "Please select a user"}
+            Select the appropriate action to take
           </DialogDescription>
         </DialogHeader>
-        
-        {user && (
-          <>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="action">Select Action</Label>
-                <Select value={selectedAction} onValueChange={setSelectedAction}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select an action" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="kick">
-                      <div className="flex items-center">
-                        <AlertCircle className="mr-2 h-4 w-4 text-orange-500" />
-                        <span>Kick User (24 hours)</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="ban">
-                      <div className="flex items-center">
-                        <Ban className="mr-2 h-4 w-4 text-red-500" />
-                        <span>Ban User</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="vip">
-                      <div className="flex items-center">
-                        <Crown className="mr-2 h-4 w-4 text-amber-500" />
-                        <span>Upgrade to VIP</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {selectedAction === "ban" && (
-                <div className="grid gap-2">
-                  <Label htmlFor="reason">Ban Reason</Label>
-                  <Textarea 
-                    id="reason"
-                    value={banReason}
-                    onChange={(e) => setBanReason(e.target.value)}
-                    placeholder="Please provide a reason for the ban"
-                    rows={3}
-                  />
-                </div>
-              )}
-              
-              {selectedAction === "vip" && (
-                <div className="grid gap-2">
-                  <Label>VIP Duration</Label>
-                  <RadioGroup value={vipDuration} onValueChange={(value) => setVipDuration(value as "monthly" | "yearly")}>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="monthly" id="monthly" />
-                      <Label htmlFor="monthly">1 Month</Label>
+
+        <div className="py-4">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Select Action</Label>
+              <RadioGroup 
+                value={action || ""} 
+                onValueChange={handleActionSelect}
+                className="space-y-2"
+              >
+                <div className="flex items-center space-x-2 p-2 border rounded-md hover:bg-muted">
+                  <RadioGroupItem value="kick" id="kick" />
+                  <Label htmlFor="kick" className="flex items-center cursor-pointer">
+                    {actionIcons.kick}
+                    <div>
+                      <span className="font-medium">Kick User</span>
+                      <p className="text-xs text-muted-foreground">Temporary 24-hour removal</p>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="yearly" id="yearly" />
-                      <Label htmlFor="yearly">1 Year</Label>
-                    </div>
-                  </RadioGroup>
+                  </Label>
                 </div>
-              )}
+                <div className="flex items-center space-x-2 p-2 border rounded-md hover:bg-muted">
+                  <RadioGroupItem value="ban" id="ban" />
+                  <Label htmlFor="ban" className="flex items-center cursor-pointer">
+                    {actionIcons.ban}
+                    <div>
+                      <span className="font-medium">Ban User</span>
+                      <p className="text-xs text-muted-foreground">Permanent account removal</p>
+                    </div>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 p-2 border rounded-md hover:bg-muted">
+                  <RadioGroupItem value="vip" id="vip" />
+                  <Label htmlFor="vip" className="flex items-center cursor-pointer">
+                    {actionIcons.vip}
+                    <div>
+                      <span className="font-medium">Upgrade to VIP</span>
+                      <p className="text-xs text-muted-foreground">Grant premium benefits</p>
+                    </div>
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
-            
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => handleOpenChange(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                onClick={handleAction}
-                disabled={isSubmitting || !selectedAction || (selectedAction === "ban" && !banReason.trim())}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    <span>Processing...</span>
-                  </>
-                ) : (
-                  <span>Confirm</span>
-                )}
-              </Button>
-            </DialogFooter>
-          </>
-        )}
+
+            {action === "ban" && (
+              <div className="space-y-2">
+                <Label htmlFor="banReason">Ban Reason (Required)</Label>
+                <Textarea
+                  id="banReason"
+                  placeholder="Enter reason for ban"
+                  value={banReason}
+                  onChange={(e) => setBanReason(e.target.value)}
+                />
+              </div>
+            )}
+
+            {action === "vip" && (
+              <div className="space-y-2">
+                <Label>VIP Subscription Duration</Label>
+                <RadioGroup 
+                  value={vipDuration} 
+                  onValueChange={(value) => setVipDuration(value as "monthly" | "yearly")}
+                  className="flex space-x-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="monthly" id="monthly" />
+                    <Label htmlFor="monthly">Monthly</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="yearly" id="yearly" />
+                    <Label htmlFor="yearly">Yearly</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAction}
+            disabled={isLoading || !action || (action === "ban" && !banReason.trim())}
+          >
+            {isLoading ? "Processing..." : "Confirm Action"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

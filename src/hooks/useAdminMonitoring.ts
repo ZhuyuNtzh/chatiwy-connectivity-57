@@ -31,7 +31,7 @@ export const useAdminMonitoring = () => {
     const fetchActiveUsers = () => {
       try {
         // Get all messages to generate statistics
-        const allMessages = signalRService.getAllMessages();
+        const allMessages = signalRService.getChatHistory(0); // Use 0 to get all messages
         
         // Create a map of users to their messages
         const userMap = new Map<number, ChatMessage[]>();
@@ -50,7 +50,7 @@ export const useAdminMonitoring = () => {
         const reportCounts = new Map<number, number>();
         
         reports.forEach(report => {
-          const reportedId = report.reportedUserId;
+          const reportedId = report.reportedId;
           if (!reportCounts.has(reportedId)) {
             reportCounts.set(reportedId, 0);
           }
@@ -130,7 +130,7 @@ export const useAdminMonitoring = () => {
     if (selectedUserId !== null) {
       try {
         // In a real app, this would fetch from the database
-        const allMessages = signalRService.getAllMessages();
+        const allMessages = signalRService.getChatHistory(0); // 0 to get all messages
         const userMsgs = allMessages.filter(
           msg => msg.senderId === selectedUserId || msg.receiverId === selectedUserId
         );

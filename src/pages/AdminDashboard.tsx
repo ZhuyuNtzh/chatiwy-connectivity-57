@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useUser, BannedUser } from '@/contexts/UserContext';
@@ -115,7 +116,7 @@ const AdminDashboard = () => {
     return storedStatus === 'true';
   };
 
-  const { currentUser, userRole, bannedUsers, setBannedUsers, toggleAdminVisibility, adminSettings, setAdminSettings } = useUser();
+  const { currentUser, userRole, bannedUsers, setBannedUsers, toggleAdminVisibility, setAdminSettings } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
   const { isDarkMode } = useTheme();
@@ -129,9 +130,9 @@ const AdminDashboard = () => {
   const [showMonitoring, setShowMonitoring] = useState(false);
   const [adminProfile, setAdminProfile] = useState({
     username: 'Admin',
-    email: adminSettings.email || 'admin@chatwii.com',
-    phoneNumber: adminSettings.phoneNumber || '',
-    avatarUrl: adminSettings.avatarUrl || '',
+    email: 'admin@chatwii.com',
+    phoneNumber: '',
+    avatarUrl: '',
   });
   const [fileInputRef, setFileInputRef] = useState<HTMLInputElement | null>(null);
   const [isInboxDialogOpen, setIsInboxDialogOpen] = useState(false);

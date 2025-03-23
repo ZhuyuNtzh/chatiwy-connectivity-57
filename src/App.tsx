@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Routes, Route, Router } from 'react-router-dom';
+import { Routes, Route, BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { UserProvider } from './contexts/UserContext';
 import { HelmetProvider } from 'react-helmet-async';
@@ -26,7 +27,7 @@ const queryClient = new QueryClient();
 
 function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <HelmetProvider>
         <UserProvider>
           <AdminProvider>
@@ -58,7 +59,7 @@ function App() {
           </AdminProvider>
         </UserProvider>
       </HelmetProvider>
-    </Router>
+    </BrowserRouter>
   );
 }
 

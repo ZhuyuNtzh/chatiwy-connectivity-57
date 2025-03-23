@@ -245,7 +245,28 @@ class SignalRService implements ISignalRService {
   // Chat history management
   public getChatHistory(userId: number): ChatMessage[] {
     if (!this.userId) return [];
+    
+    // If userId is 0, return all messages for the current user (for admin purposes)
+    if (userId === 0) {
+      return this.getAllMessages();
+    }
+    
     return chatStorage.getChatHistory(this.userId, userId);
+  }
+  
+  public getAllMessages(): ChatMessage[] {
+    // This method retrieves all messages from all chats for admin purposes
+    if (!this.userId) return [];
+    
+    const allChatHistory = chatStorage.getAllChatHistory(this.userId);
+    let allMessages: ChatMessage[] = [];
+    
+    // Flatten all the chat history messages into a single array
+    Object.values(allChatHistory).forEach(messages => {
+      allMessages = [...allMessages, ...messages];
+    });
+    
+    return allMessages;
   }
   
   public getAllChatHistory(): Record<number, ChatMessage[]> {

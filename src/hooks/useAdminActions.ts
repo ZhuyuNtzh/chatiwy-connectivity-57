@@ -1,242 +1,327 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { BannedUser, UserProfile } from '@/types/user';
-import { signalRService } from '@/services/signalRService';
+
+interface AdminActionLog {
+  id: string;
+  action: 'kick' | 'ban' | 'unban' | 'vip_upgrade';
+  targetUserId: number;
+  targetUsername: string;
+  adminId: number;
+  adminName: string;
+  timestamp: Date;
+  reason?: string;
+  duration?: string;
+  expiresAt?: Date;
+}
 
 export const useAdminActions = () => {
-  const [isActionInProgress, setIsActionInProgress] = useState(false);
+  const [actionLogs, setActionLogs] = useState<AdminActionLog[]>([]);
+  const [pendingActions, setPendingActions] = useState<Set<number>>(new Set());
+  const [bannedUsers, setBannedUsers] = useState<Set<number>>(new Set());
+  const [kickedUsers, setKickedUsers] = useState<Map<number, Date>>(new Map());
 
-  // Kick a user from the chat
-  const kickUser = async (userId: number, username: string) => {
-    setIsActionInProgress(true);
+  // Load action logs from localStorage on component mount
+  useEffect(() => {
+    const storedLogs = localStorage.getItem('adminActionLogs');
+    if (storedLogs) {
+      try {
+        // Parse dates properly
+        const parsedLogs = JSON.parse(storedLogs, (key, value) => {
+          if (key === 'timestamp' || key === 'expiresAt') {
+            return value ? new Date(value) : null;
+          }
+          return value;
+        });
+        setActionLogs(parsedLogs);
+        
+        // Setup initial banned and kicked users
+        const bannedIds = new Set<number>();
+        const kickedMap = new Map<number, Date>();
+        
+        parsedLogs.forEach((log: AdminActionLog) => {
+          if (log.action === 'ban') {
+            bannedIds.add(log.targetUserId);
+          } else if (log.action === 'unban') {
+            bannedIds.delete(log.targetUserId);
+          } else if (log.action === 'kick' && log.expiresAt && new Date(log.expiresAt) > new Date()) {
+            kickedMap.set(log.targetUserId, new Date(log.expiresAt));
+          }
+        });
+        
+        setBannedUsers(bannedIds);
+        setKickedUsers(kickedMap);
+      } catch (error) {
+        console.error('Error parsing admin action logs from localStorage:', error);
+      }
+    }
+  }, []);
+
+  // Periodically check and clean up expired kicked users
+  useEffect(() => {
+    const checkExpiredKicks = () => {
+      const now = new Date();
+      const expired: number[] = [];
+      
+      kickedUsers.forEach((expiresAt, userId) => {
+        if (expiresAt <= now) {
+          expired.push(userId);
+        }
+      });
+      
+      if (expired.length > 0) {
+        const newKickedUsers = new Map(kickedUsers);
+        expired.forEach(userId => newKickedUsers.delete(userId));
+        setKickedUsers(newKickedUsers);
+      }
+    };
+    
+    const interval = setInterval(checkExpiredKicks, 60000); // Check every minute
+    
+    return () => clearInterval(interval);
+  }, [kickedUsers]);
+
+  // Save action logs to localStorage when they change
+  useEffect(() => {
+    if (actionLogs.length > 0) {
+      localStorage.setItem('adminActionLogs', JSON.stringify(actionLogs));
+    }
+  }, [actionLogs]);
+
+  const generateLogId = () => {
+    return Date.now().toString(36) + Math.random().toString(36).substring(2);
+  };
+
+  const logAdminAction = (actionLog: Omit<AdminActionLog, 'id'>) => {
+    const newLog = {
+      ...actionLog,
+      id: generateLogId()
+    };
+    
+    setActionLogs(prevLogs => [newLog, ...prevLogs]);
+    return newLog.id;
+  };
+
+  const kickUser = async (userId: number): Promise<boolean> => {
+    if (pendingActions.has(userId)) {
+      toast.error('Action already in progress for this user');
+      return false;
+    }
+    
     try {
-      console.log(`Admin action: Kicking user ${username} (ID: ${userId})`);
+      setPendingActions(prev => new Set(prev).add(userId));
       
-      // In a real app, this would make an API call
-      // For now, we'll use sessionStorage to simulate the kicked state
-      sessionStorage.setItem(`kicked_${userId}`, 'true');
-      sessionStorage.setItem(`kicked_${userId}_until`, new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
+      // In a real implementation, this would make an API call
+      // Mock implementation with a delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Log the admin action
+      // Set kick expiration to 24 hours from now
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+      
+      // Get username from mock data
+      const username = `User${userId}`;
+      
+      // Log the action
       logAdminAction({
         action: 'kick',
         targetUserId: userId,
         targetUsername: username,
+        adminId: 999, // Mock admin ID
+        adminName: 'Admin',
         timestamp: new Date(),
-        duration: '24 hours'
+        duration: '24 hours',
+        expiresAt
       });
       
-      toast.success(`${username} has been kicked for 24 hours`);
-      return { success: true, message: `${username} has been kicked for 24 hours` };
+      // Update kicked users
+      setKickedUsers(prev => {
+        const newMap = new Map(prev);
+        newMap.set(userId, expiresAt);
+        return newMap;
+      });
+      
+      return true;
     } catch (error) {
       console.error('Error kicking user:', error);
-      toast.error(`Failed to kick ${username}`);
-      return { success: false, message: `Failed to kick ${username}` };
+      return false;
     } finally {
-      setIsActionInProgress(false);
+      setPendingActions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(userId);
+        return newSet;
+      });
     }
   };
 
-  // Ban a user permanently
-  const banUser = async (userId: number, username: string, reason: string): Promise<{success: boolean, message: string}> => {
-    setIsActionInProgress(true);
+  const banUser = async (userId: number, reason: string): Promise<boolean> => {
+    if (pendingActions.has(userId)) {
+      toast.error('Action already in progress for this user');
+      return false;
+    }
+    
     try {
-      console.log(`Admin action: Banning user ${username} (ID: ${userId}). Reason: ${reason}`);
+      setPendingActions(prev => new Set(prev).add(userId));
       
-      // Create a new banned user entry
-      const bannedUser: BannedUser = {
-        userId,
-        username,
-        banReason: reason,
-        bannedAt: new Date(),
-        bannedBy: 'admin'
-      };
+      // In a real implementation, this would make an API call
+      // Mock implementation with a delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // In a real app, this would make an API call
-      // For now, we'll use localStorage to persist the banned status
-      const bannedUsers = JSON.parse(localStorage.getItem('bannedUsers') || '[]');
-      bannedUsers.push(bannedUser);
-      localStorage.setItem('bannedUsers', JSON.stringify(bannedUsers));
+      // Get username from mock data
+      const username = `User${userId}`;
       
-      // Update the signalR blocked users
-      signalRService.blockUser(userId);
-      
-      // Log the admin action
+      // Log the action
       logAdminAction({
         action: 'ban',
         targetUserId: userId,
         targetUsername: username,
+        adminId: 999, // Mock admin ID
+        adminName: 'Admin',
         timestamp: new Date(),
         reason
       });
       
-      toast.success(`${username} has been banned permanently`);
-      return { success: true, message: `${username} has been banned permanently` };
-    } catch (error) {
-      console.error('Error banning user:', error);
-      toast.error(`Failed to ban ${username}`);
-      return { success: false, message: `Failed to ban ${username}` };
-    } finally {
-      setIsActionInProgress(false);
-    }
-  };
-
-  // Upgrade a user to VIP
-  const upgradeToVIP = async (
-    userId: number, 
-    username: string, 
-    duration: 'monthly' | 'yearly'
-  ): Promise<{success: boolean, message: string}> => {
-    setIsActionInProgress(true);
-    try {
-      // Calculate expiration date
-      const expirationDate = new Date();
-      if (duration === 'monthly') {
-        expirationDate.setMonth(expirationDate.getMonth() + 1);
-      } else {
-        expirationDate.setFullYear(expirationDate.getFullYear() + 1);
-      }
-      
-      console.log(`Admin action: Upgrading ${username} (ID: ${userId}) to VIP until ${expirationDate.toISOString()}`);
-      
-      // In a real app, this would make an API call
-      // For now, use localStorage to simulate VIP status
-      localStorage.setItem(`vipStatus_${userId}`, JSON.stringify({
-        username,
-        isPermanent: false,
-        expiryDate: expirationDate.toISOString()
-      }));
-      
-      // Log the admin action
-      logAdminAction({
-        action: 'vip_upgrade',
-        targetUserId: userId,
-        targetUsername: username,
-        timestamp: new Date(),
-        duration,
-        expiresAt: expirationDate
+      // Update banned users
+      setBannedUsers(prev => {
+        const newSet = new Set(prev);
+        newSet.add(userId);
+        return newSet;
       });
       
-      toast.success(`${username} has been upgraded to VIP until ${expirationDate.toLocaleDateString()}`);
-      return { 
-        success: true, 
-        message: `${username} has been upgraded to VIP until ${expirationDate.toLocaleDateString()}` 
-      };
+      return true;
     } catch (error) {
-      console.error('Error upgrading user to VIP:', error);
-      toast.error(`Failed to upgrade ${username} to VIP`);
-      return { success: false, message: `Failed to upgrade ${username} to VIP` };
+      console.error('Error banning user:', error);
+      return false;
     } finally {
-      setIsActionInProgress(false);
+      setPendingActions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(userId);
+        return newSet;
+      });
     }
   };
 
-  // Unban a user
-  const unbanUser = async (userId: number, username: string): Promise<{success: boolean, message: string}> => {
-    setIsActionInProgress(true);
+  const unbanUser = async (userId: number): Promise<boolean> => {
+    if (pendingActions.has(userId)) {
+      toast.error('Action already in progress for this user');
+      return false;
+    }
+    
     try {
-      console.log(`Admin action: Unbanning user ${username} (ID: ${userId})`);
+      setPendingActions(prev => new Set(prev).add(userId));
       
-      // In a real app, this would make an API call
-      // For now, we'll update the bannedUsers in localStorage
-      const bannedUsers = JSON.parse(localStorage.getItem('bannedUsers') || '[]');
-      const updatedBannedUsers = bannedUsers.filter((user: BannedUser) => user.userId !== userId);
-      localStorage.setItem('bannedUsers', JSON.stringify(updatedBannedUsers));
+      // In a real implementation, this would make an API call
+      // Mock implementation with a delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Update the signalR blocked users
-      signalRService.unblockUser(userId);
+      // Get username from mock data
+      const username = `User${userId}`;
       
-      // Log the admin action
+      // Log the action
       logAdminAction({
         action: 'unban',
         targetUserId: userId,
         targetUsername: username,
+        adminId: 999, // Mock admin ID
+        adminName: 'Admin',
         timestamp: new Date()
       });
       
-      toast.success(`${username} has been unbanned`);
-      return { success: true, message: `${username} has been unbanned` };
+      // Update banned users
+      setBannedUsers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(userId);
+        return newSet;
+      });
+      
+      return true;
     } catch (error) {
       console.error('Error unbanning user:', error);
-      toast.error(`Failed to unban ${username}`);
-      return { success: false, message: `Failed to unban ${username}` };
+      return false;
     } finally {
-      setIsActionInProgress(false);
+      setPendingActions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(userId);
+        return newSet;
+      });
     }
   };
 
-  // Check if a user is banned
-  const isUserBanned = (userId: number): boolean => {
-    try {
-      const bannedUsers = JSON.parse(localStorage.getItem('bannedUsers') || '[]');
-      return bannedUsers.some((user: BannedUser) => user.userId === userId);
-    } catch (error) {
-      console.error('Error checking if user is banned:', error);
+  const upgradeToVIP = async (userId: number, duration: 'monthly' | 'yearly'): Promise<boolean> => {
+    if (pendingActions.has(userId)) {
+      toast.error('Action already in progress for this user');
       return false;
     }
-  };
-
-  // Check if a user is kicked
-  const isUserKicked = (userId: number): boolean => {
+    
     try {
-      const kicked = sessionStorage.getItem(`kicked_${userId}`);
-      if (!kicked) return false;
+      setPendingActions(prev => new Set(prev).add(userId));
       
-      const kickedUntil = sessionStorage.getItem(`kicked_${userId}_until`);
-      if (kickedUntil) {
-        const expiryDate = new Date(kickedUntil);
-        if (expiryDate > new Date()) {
-          return true;
-        } else {
-          // Kick expired
-          sessionStorage.removeItem(`kicked_${userId}`);
-          sessionStorage.removeItem(`kicked_${userId}_until`);
-          return false;
-        }
+      // In a real implementation, this would make an API call
+      // Mock implementation with a delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Calculate expiration date
+      const expiresAt = new Date();
+      if (duration === 'monthly') {
+        expiresAt.setMonth(expiresAt.getMonth() + 1);
+      } else {
+        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
       }
       
-      return !!kicked;
+      // Get username from mock data
+      const username = `User${userId}`;
+      
+      // Log the action
+      logAdminAction({
+        action: 'vip_upgrade',
+        targetUserId: userId,
+        targetUsername: username,
+        adminId: 999, // Mock admin ID
+        adminName: 'Admin',
+        timestamp: new Date(),
+        duration,
+        expiresAt
+      });
+      
+      return true;
     } catch (error) {
-      console.error('Error checking if user is kicked:', error);
+      console.error('Error upgrading user to VIP:', error);
+      return false;
+    } finally {
+      setPendingActions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(userId);
+        return newSet;
+      });
+    }
+  };
+
+  const isUserBanned = (userId: number): boolean => {
+    return bannedUsers.has(userId);
+  };
+
+  const isUserKicked = (userId: number): boolean => {
+    if (!kickedUsers.has(userId)) {
       return false;
     }
+    
+    const expiresAt = kickedUsers.get(userId);
+    return expiresAt ? expiresAt > new Date() : false;
   };
 
-  // Log admin actions
-  const logAdminAction = (action: {
-    action: string;
-    targetUserId: number;
-    targetUsername: string;
-    timestamp: Date;
-    reason?: string;
-    duration?: string | 'monthly' | 'yearly';
-    expiresAt?: Date;
-  }) => {
-    try {
-      const adminActions = JSON.parse(localStorage.getItem('adminActions') || '[]');
-      adminActions.push(action);
-      localStorage.setItem('adminActions', JSON.stringify(adminActions));
-    } catch (error) {
-      console.error('Error logging admin action:', error);
-    }
+  const getAdminActionLogs = (): AdminActionLog[] => {
+    return actionLogs;
   };
 
-  // Get admin action logs
-  const getAdminActionLogs = () => {
-    try {
-      return JSON.parse(localStorage.getItem('adminActions') || '[]');
-    } catch (error) {
-      console.error('Error getting admin action logs:', error);
-      return [];
-    }
+  const isActionInProgress = (userId: number): boolean => {
+    return pendingActions.has(userId);
   };
 
   return {
     kickUser,
     banUser,
-    upgradeToVIP,
     unbanUser,
+    upgradeToVIP,
     isUserBanned,
     isUserKicked,
     isActionInProgress,
