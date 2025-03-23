@@ -10,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Loader2 } from 'lucide-react';
 
 interface DeleteConfirmationDialogProps {
   isOpen: boolean;
@@ -30,20 +31,32 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   description = "Are you sure you want to delete this entire conversation? This action cannot be undone.",
   isLoading = false
 }) => {
-  console.log('Rendering DeleteConfirmationDialog, isOpen:', isOpen);
+  console.log('Rendering DeleteConfirmationDialog, isOpen:', isOpen, 'isLoading:', isLoading);
   
   const handleConfirm = () => {
     console.log('Delete confirmation button clicked');
-    onConfirm();
+    // Only proceed if not already in progress
+    if (!isLoading) {
+      onConfirm();
+    }
   };
   
   const handleCancel = () => {
     console.log('Delete cancellation button clicked');
-    onCancel();
+    // Only proceed if not already in progress
+    if (!isLoading) {
+      onCancel();
+    }
   };
   
   const handleOpenChange = (newOpenState: boolean) => {
     console.log('Dialog open state changing from', isOpen, 'to', newOpenState);
+    // Prevent closing the dialog if deletion is in progress
+    if (isLoading) {
+      console.log('Preventing dialog state change while loading');
+      return;
+    }
+    
     if (!newOpenState && isOpen) {
       // If dialog is closing, call onCancel
       handleCancel();
@@ -65,15 +78,21 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
           <AlertDialogCancel 
             onClick={handleCancel}
             disabled={isLoading}
+            className="relative"
           >
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction 
             onClick={handleConfirm}
-            className="bg-red-600 hover:bg-red-700 text-white"
+            className="bg-red-600 hover:bg-red-700 text-white relative"
             disabled={isLoading}
           >
-            {isLoading ? 'Deleting...' : 'Delete'}
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin inline" />
+                Deleting...
+              </>
+            ) : 'Delete'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

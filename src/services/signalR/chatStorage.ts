@@ -53,12 +53,18 @@ export const chatStorage = {
       // Add message to the specific conversation history
       chatHistoryByUser[currentUserId][conversationId].push(message);
       
-      // Save to localStorage
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
-      localStorage.setItem('currentUserId', currentUserId.toString());
-      
-      // Debug info
-      console.log(`Added message to history for user ${currentUserId}, conversation ${conversationId}`, message);
+      // Save to localStorage asynchronously to prevent UI freezing
+      setTimeout(() => {
+        try {
+          localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
+          localStorage.setItem('currentUserId', currentUserId.toString());
+          
+          // Debug info
+          console.log(`Added message to history for user ${currentUserId}, conversation ${conversationId}`, message);
+        } catch (error) {
+          console.error('Error saving chat history to localStorage:', error);
+        }
+      }, 0);
     } else {
       console.log(`Prevented duplicate message for user ${currentUserId}, conversation ${conversationId}`, message);
     }
@@ -70,8 +76,14 @@ export const chatStorage = {
         msg.id === messageId ? { ...msg, isDeleted: true } : msg
       );
       
-      // Save to localStorage
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
+      // Save to localStorage asynchronously
+      setTimeout(() => {
+        try {
+          localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
+        } catch (error) {
+          console.error('Error saving deleted message state to localStorage:', error);
+        }
+      }, 0);
     }
   },
 
@@ -85,8 +97,14 @@ export const chatStorage = {
           : msg
       );
       
-      // Save to localStorage
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
+      // Save to localStorage asynchronously
+      setTimeout(() => {
+        try {
+          localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
+        } catch (error) {
+          console.error('Error saving read status to localStorage:', error);
+        }
+      }, 0);
     }
   },
 
@@ -106,7 +124,15 @@ export const chatStorage = {
     // Only clear history for the current user
     if (chatHistoryByUser[currentUserId]) {
       delete chatHistoryByUser[currentUserId];
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
+      
+      // Save to localStorage asynchronously
+      setTimeout(() => {
+        try {
+          localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
+        } catch (error) {
+          console.error('Error clearing all chat history in localStorage:', error);
+        }
+      }, 0);
     }
   },
   
@@ -114,7 +140,15 @@ export const chatStorage = {
   clearChatHistory(currentUserId: number, userId: number) {
     if (chatHistoryByUser[currentUserId] && chatHistoryByUser[currentUserId][userId]) {
       delete chatHistoryByUser[currentUserId][userId];
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
+      
+      // Save to localStorage asynchronously
+      setTimeout(() => {
+        try {
+          localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
+        } catch (error) {
+          console.error('Error clearing specific chat history in localStorage:', error);
+        }
+      }, 0);
     }
   },
 
@@ -122,7 +156,15 @@ export const chatStorage = {
   clearUserSession(currentUserId: number) {
     if (chatHistoryByUser[currentUserId]) {
       delete chatHistoryByUser[currentUserId];
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
+      
+      // Save to localStorage asynchronously
+      setTimeout(() => {
+        try {
+          localStorage.setItem('chatHistory', JSON.stringify(chatHistoryByUser));
+        } catch (error) {
+          console.error('Error clearing user session in localStorage:', error);
+        }
+      }, 0);
     }
   }
 };

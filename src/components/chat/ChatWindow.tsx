@@ -1,9 +1,11 @@
-
 import React, { useEffect, useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
+import { supabaseService } from '@/services/supabaseService';
 import { useChat } from '@/hooks/useChat';
 import { toast } from 'sonner';
+
+// Import refactored components
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessages from '@/components/chat/ChatMessages';
 import ChatActions from '@/components/chat/ChatActions';
@@ -11,11 +13,10 @@ import UserModals from '@/components/chat/UserModals';
 import VipFeatures from '@/components/chat/VipFeatures';
 import ChatWindowContainer from '@/components/chat/ChatWindowContainer';
 import ChatInputHandlers from '@/components/chat/ChatInputHandlers';
-import ChatLoading from '@/components/chat/ChatLoading';
-import { ChatMessage } from '@/services/signalR/types';
+import { checkSupabaseConnection } from '@/lib/supabase';
 
-// Flag to use SignalR instead of Supabase
-const USE_SIGNALR = true;
+// Flag to use Supabase instead of SignalR
+const USE_SUPABASE = true;
 
 interface ChatWindowProps {
   user: {
@@ -35,25 +36,57 @@ interface ChatWindowProps {
 const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, isAdminView = false }) => {
   const { userRole } = useUser();
   const [isLoading, setIsLoading] = useState(true);
-  const [connectionReady, setConnectionReady] = useState(false);
   
-  // Use SignalR service
-  const service = signalRService;
-  
-  // Check SignalR connection on mount
+  // Effect to check Supabase connection on mount
   useEffect(() => {
-    console.log('ChatWindow: Initializing connection');
-    setIsLoading(true);
-    
-    // Simple timeout to simulate connection setup
-    const timer = setTimeout(() => {
-      console.log("Successfully connected to SignalR");
-      setConnectionReady(true);
+    if (USE_SUPABASE) {
+      setIsLoading(true);
+      checkSupabaseConnection()
+        .then(isConnected => {
+          if (!isConnected) {
+            console.error("Failed to connect to Supabase");
+            toast.error("Couldn't connect to chat backend. Please check your configuration.", {
+              duration: 6000,
+            });
+          } else {
+            console.log("Successfully connected to Supabase");
+          }
+          setIsLoading(false);
+        })
+        .catch((err) => {
+          console.error("Error connecting to chat service", err);
+          toast.error("Error connecting to chat service", { 
+            duration: 6000,
+          });
+          setIsLoading(false);
+        });
+    } else {
       setIsLoading(false);
-    }, 1000);
-    
-    return () => clearTimeout(timer);
+    }
   }, []);
+  
+  const service = USE_SUPABASE ? supabaseService : signalRService;
+  
+  // Force prefetch the user chat history to ensure connection is working
+  useEffect(() => {
+    if (!isLoading && USE_SUPABASE) {
+      console.log(`Prefetching chat history for user ${user.username} (ID: ${user.id})`);
+      const result = service.getChatHistory(user.id);
+      
+      if (result instanceof Promise) {
+        result
+          .then(messages => {
+            console.log(`Retrieved ${messages.length} messages for conversation with ${user.username}`);
+          })
+          .catch(err => {
+            console.error(`Error fetching chat history for ${user.username}:`, err);
+          });
+      } else {
+        // Handle synchronous result
+        console.log(`Retrieved ${result.length} messages for conversation with ${user.username}`);
+      }
+    }
+  }, [isLoading, user.id, user.username, service]);
   
   const {
     message,
@@ -118,7 +151,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
   } = useChat(user.id, userRole);
   
   if (isLoading) {
-    return <ChatLoading />;
+    return (
+      <div className="flex items-center justify-center h-screen w-full bg-white dark:bg-gray-800">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
   }
   
   return (
@@ -162,7 +199,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
         handleKeyDown={handleKeyDown}
         handleAddEmoji={handleAddEmoji}
         handleImageClick={handleImageClick}
-        isUserBlocked={false} // Mock this for local testing
+        isUserBlocked={service.isUserBlocked(user.id)}
         isVipUser={userRole === 'vip'}
         fileInputRef={fileInputRef}
         handleVoiceMessageClick={userRole === 'vip' || isAdminView ? handleVoiceMessageClick : undefined}

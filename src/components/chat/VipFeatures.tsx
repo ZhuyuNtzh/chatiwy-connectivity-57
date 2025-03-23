@@ -51,7 +51,7 @@ const VipFeatures: React.FC<VipFeaturesProps> = ({
   onConfirmVipUpgrade,
   isDeletionInProgress = false
 }) => {
-  console.log('Rendering VipFeatures, isDeleteDialogOpen:', isDeleteDialogOpen);
+  console.log('Rendering VipFeatures, isDeleteDialogOpen:', isDeleteDialogOpen, 'isDeletionInProgress:', isDeletionInProgress);
   
   const handleDeleteConfirm = () => {
     console.log('VipFeatures: handleDeleteConfirm called');
@@ -60,11 +60,19 @@ const VipFeatures: React.FC<VipFeaturesProps> = ({
   
   const handleDeleteCancel = () => {
     console.log('VipFeatures: handleDeleteCancel called');
-    onCancelDelete();
+    // Only allow cancel if not in progress
+    if (!isDeletionInProgress) {
+      onCancelDelete();
+    }
   };
   
   const handleDeleteDialogOpenChange = (open: boolean) => {
-    console.log('VipFeatures: Delete dialog open state changing to:', open);
+    console.log('VipFeatures: Delete dialog open state changing to:', open, 'isDeletionInProgress:', isDeletionInProgress);
+    // Prevent dialog state changes if deletion is in progress
+    if (isDeletionInProgress) {
+      console.log('VipFeatures: Preventing dialog state change while deletion is in progress');
+      return;
+    }
     setIsDeleteDialogOpen(open);
   };
 
