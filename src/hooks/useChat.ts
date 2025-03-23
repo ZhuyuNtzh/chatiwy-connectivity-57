@@ -11,6 +11,7 @@ import { useConversationManagement } from './useConversationManagement';
 import { useVipMessageFeatures } from './useVipMessageFeatures';
 import { useScrollManagement } from './useScrollManagement';
 import { useUser } from '@/contexts/UserContext';
+import { toast } from "sonner";
 
 export const useChat = (userId: number, userRole: string) => {
   const { currentUser } = useUser();
