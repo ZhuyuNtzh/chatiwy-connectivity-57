@@ -136,33 +136,33 @@ const UserManagement = ({ users, bannedUsers, onClose, onAddBot }: UserManagemen
   }, [users, searchTerm, activeTab, bannedUsers]);
 
   const handleBanUser = async (user: any) => {
-    const result = await banUser(user.id, user.username, "Violation of terms of service");
-    if (result.success) {
+    const result = await banUser(user.id);
+    if (result) {
       toast.success(`${user.username} has been banned`);
     }
   };
   
-  const handleUnbanUser = async (userId: number, username: string) => {
-    const result = await unbanUser(userId, username);
-    if (result.success) {
-      toast.success(`${username} has been unbanned`);
+  const handleUnbanUser = async (userId: number) => {
+    const result = await unbanUser(userId);
+    if (result) {
+      toast.success(`User has been unbanned`);
     }
   };
   
-  const handleKickUser = async (userId: number, username: string) => {
-    const result = await kickUser(userId, username);
-    if (result.success) {
-      toast.success(`${username} has been kicked from chat`);
+  const handleKickUser = async (userId: number) => {
+    const result = await kickUser(userId);
+    if (result) {
+      toast.success(`User has been kicked from chat`);
     }
   };
   
-  const handleMakeVipPermanent = async (userId: number, username: string) => {
-    const result = await upgradeToVIP(userId, username, 'yearly');
-    if (result.success) {
-      toast.success(`${username} has been granted permanent VIP status`);
+  const handleMakeVipPermanent = async (userId: number) => {
+    const result = await upgradeToVIP(userId, 'yearly');
+    if (result) {
+      toast.success(`User has been granted permanent VIP status`);
     }
   };
-  
+
   const handleMakeVipTemporary = (userId: number, username: string) => {
     setTempVipStatus(userId, username);
   };
@@ -550,7 +550,7 @@ const UserManagement = ({ users, bannedUsers, onClose, onAddBot }: UserManagemen
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => handleUnbanUser(user.id, user.username)}>
+                                <DropdownMenuItem onClick={() => handleUnbanUser(user.id)}>
                                   <UserCheck className="mr-2 h-4 w-4 text-green-500" />
                                   <span>Unban User</span>
                                 </DropdownMenuItem>

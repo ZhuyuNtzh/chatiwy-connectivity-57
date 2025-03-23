@@ -61,7 +61,7 @@ const AdminMonitoringDashboard: React.FC = () => {
   };
 
   // Function to format message timestamps
-  const formatMessageTime = (timestamp: string) => {
+  const formatMessageTime = (timestamp: Date | string) => {
     return new Date(timestamp).toLocaleTimeString();
   };
 

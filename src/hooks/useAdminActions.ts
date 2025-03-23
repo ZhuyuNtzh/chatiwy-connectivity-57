@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
@@ -21,12 +20,10 @@ export const useAdminActions = () => {
   const [bannedUsers, setBannedUsers] = useState<Set<number>>(new Set());
   const [kickedUsers, setKickedUsers] = useState<Map<number, Date>>(new Map());
 
-  // Load action logs from localStorage on component mount
   useEffect(() => {
     const storedLogs = localStorage.getItem('adminActionLogs');
     if (storedLogs) {
       try {
-        // Parse dates properly
         const parsedLogs = JSON.parse(storedLogs, (key, value) => {
           if (key === 'timestamp' || key === 'expiresAt') {
             return value ? new Date(value) : null;
@@ -35,7 +32,6 @@ export const useAdminActions = () => {
         });
         setActionLogs(parsedLogs);
         
-        // Setup initial banned and kicked users
         const bannedIds = new Set<number>();
         const kickedMap = new Map<number, Date>();
         
@@ -57,7 +53,6 @@ export const useAdminActions = () => {
     }
   }, []);
 
-  // Periodically check and clean up expired kicked users
   useEffect(() => {
     const checkExpiredKicks = () => {
       const now = new Date();
@@ -76,12 +71,11 @@ export const useAdminActions = () => {
       }
     };
     
-    const interval = setInterval(checkExpiredKicks, 60000); // Check every minute
+    const interval = setInterval(checkExpiredKicks, 60000);
     
     return () => clearInterval(interval);
   }, [kickedUsers]);
 
-  // Save action logs to localStorage when they change
   useEffect(() => {
     if (actionLogs.length > 0) {
       localStorage.setItem('adminActionLogs', JSON.stringify(actionLogs));
@@ -111,30 +105,24 @@ export const useAdminActions = () => {
     try {
       setPendingActions(prev => new Set(prev).add(userId));
       
-      // In a real implementation, this would make an API call
-      // Mock implementation with a delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Set kick expiration to 24 hours from now
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24);
       
-      // Get username from mock data
       const username = `User${userId}`;
       
-      // Log the action
       logAdminAction({
         action: 'kick',
         targetUserId: userId,
         targetUsername: username,
-        adminId: 999, // Mock admin ID
+        adminId: 999,
         adminName: 'Admin',
         timestamp: new Date(),
         duration: '24 hours',
         expiresAt
       });
       
-      // Update kicked users
       setKickedUsers(prev => {
         const newMap = new Map(prev);
         newMap.set(userId, expiresAt);
@@ -154,7 +142,7 @@ export const useAdminActions = () => {
     }
   };
 
-  const banUser = async (userId: number, reason: string): Promise<boolean> => {
+  const banUser = async (userId: number, reason: string = "Violation of terms of service"): Promise<boolean> => {
     if (pendingActions.has(userId)) {
       toast.error('Action already in progress for this user');
       return false;
@@ -163,25 +151,20 @@ export const useAdminActions = () => {
     try {
       setPendingActions(prev => new Set(prev).add(userId));
       
-      // In a real implementation, this would make an API call
-      // Mock implementation with a delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Get username from mock data
       const username = `User${userId}`;
       
-      // Log the action
       logAdminAction({
         action: 'ban',
         targetUserId: userId,
         targetUsername: username,
-        adminId: 999, // Mock admin ID
+        adminId: 999,
         adminName: 'Admin',
         timestamp: new Date(),
         reason
       });
       
-      // Update banned users
       setBannedUsers(prev => {
         const newSet = new Set(prev);
         newSet.add(userId);
@@ -210,24 +193,19 @@ export const useAdminActions = () => {
     try {
       setPendingActions(prev => new Set(prev).add(userId));
       
-      // In a real implementation, this would make an API call
-      // Mock implementation with a delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Get username from mock data
       const username = `User${userId}`;
       
-      // Log the action
       logAdminAction({
         action: 'unban',
         targetUserId: userId,
         targetUsername: username,
-        adminId: 999, // Mock admin ID
+        adminId: 999,
         adminName: 'Admin',
         timestamp: new Date()
       });
       
-      // Update banned users
       setBannedUsers(prev => {
         const newSet = new Set(prev);
         newSet.delete(userId);
@@ -256,11 +234,8 @@ export const useAdminActions = () => {
     try {
       setPendingActions(prev => new Set(prev).add(userId));
       
-      // In a real implementation, this would make an API call
-      // Mock implementation with a delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Calculate expiration date
       const expiresAt = new Date();
       if (duration === 'monthly') {
         expiresAt.setMonth(expiresAt.getMonth() + 1);
@@ -268,15 +243,13 @@ export const useAdminActions = () => {
         expiresAt.setFullYear(expiresAt.getFullYear() + 1);
       }
       
-      // Get username from mock data
       const username = `User${userId}`;
       
-      // Log the action
       logAdminAction({
         action: 'vip_upgrade',
         targetUserId: userId,
         targetUsername: username,
-        adminId: 999, // Mock admin ID
+        adminId: 999,
         adminName: 'Admin',
         timestamp: new Date(),
         duration,

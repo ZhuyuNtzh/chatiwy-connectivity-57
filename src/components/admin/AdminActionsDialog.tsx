@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
-import { Ban, Boot, Crown } from "lucide-react";
+import { Ban, Bot, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { useAdmin } from "@/contexts/AdminContext";
 
