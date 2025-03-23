@@ -288,7 +288,7 @@ const UserManagement = ({ users, bannedUsers, onClose, onAddBot }: UserManagemen
                                 <span>Permanent VIP</span>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleKickUser(user.id, user.username)}>
+                              <DropdownMenuItem onClick={() => handleKickUser(user.id)}>
                                 <CircleOff className="mr-2 h-4 w-4 text-orange-500" />
                                 <span>Kick User</span>
                               </DropdownMenuItem>
@@ -373,7 +373,7 @@ const UserManagement = ({ users, bannedUsers, onClose, onAddBot }: UserManagemen
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => handleKickUser(user.id, user.username)}>
+                              <DropdownMenuItem onClick={() => handleKickUser(user.id)}>
                                 <CircleOff className="mr-2 h-4 w-4 text-orange-500" />
                                 <span>Kick User</span>
                               </DropdownMenuItem>
@@ -469,7 +469,7 @@ const UserManagement = ({ users, bannedUsers, onClose, onAddBot }: UserManagemen
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => handleKickUser(user.id, user.username)}>
+                              <DropdownMenuItem onClick={() => handleKickUser(user.id)}>
                                 <CircleOff className="mr-2 h-4 w-4 text-orange-500" />
                                 <span>Disable Bot</span>
                               </DropdownMenuItem>

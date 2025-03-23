@@ -93,7 +93,7 @@ const AdminActionsDialog: React.FC<AdminActionsDialogProps> = ({
   };
 
   const actionIcons = {
-    kick: <Boot className="h-5 w-5 mr-2" />,
+    kick: <Bot className="h-5 w-5 mr-2" />,
     ban: <Ban className="h-5 w-5 mr-2" />,
     vip: <Crown className="h-5 w-5 mr-2" />
   };
