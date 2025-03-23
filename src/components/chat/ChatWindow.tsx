@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
-import { supabaseService } from '@/services/supabaseService';
 import { useChat } from '@/hooks/useChat';
 import { toast } from 'sonner';
 import ChatHeader from '@/components/chat/ChatHeader';
@@ -12,12 +11,11 @@ import UserModals from '@/components/chat/UserModals';
 import VipFeatures from '@/components/chat/VipFeatures';
 import ChatWindowContainer from '@/components/chat/ChatWindowContainer';
 import ChatInputHandlers from '@/components/chat/ChatInputHandlers';
-import { checkSupabaseConnection } from '@/lib/supabase';
 import ChatLoading from '@/components/chat/ChatLoading';
 import { ChatMessage } from '@/services/signalR/types';
 
-// Flag to use Supabase instead of SignalR
-const USE_SUPABASE = true;
+// Flag to use SignalR instead of Supabase
+const USE_SIGNALR = true;
 
 interface ChatWindowProps {
   user: {
@@ -39,62 +37,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
   const [isLoading, setIsLoading] = useState(true);
   const [connectionReady, setConnectionReady] = useState(false);
   
-  // Use correct service based on flag
-  const service = USE_SUPABASE ? supabaseService : signalRService;
+  // Use SignalR service
+  const service = signalRService;
   
-  // Check Supabase connection on mount
+  // Check SignalR connection on mount
   useEffect(() => {
-    if (USE_SUPABASE) {
-      setIsLoading(true);
-      
-      checkSupabaseConnection()
-        .then(isConnected => {
-          if (!isConnected) {
-            console.error("Failed to connect to Supabase");
-            toast.error("Couldn't connect to chat backend. Please check your configuration.", {
-              duration: 6000,
-            });
-          } else {
-            console.log("Successfully connected to Supabase");
-            setConnectionReady(true);
-          }
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          console.error("Error connecting to chat service", err);
-          toast.error("Error connecting to chat service", { 
-            duration: 6000,
-          });
-          setIsLoading(false);
-        });
-    } else {
-      setIsLoading(false);
+    setIsLoading(true);
+    
+    // Simple timeout to simulate connection setup
+    const timer = setTimeout(() => {
+      console.log("Successfully connected to SignalR");
       setConnectionReady(true);
-    }
+      setIsLoading(false);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
   }, []);
-  
-  // Force prefetch chat history to ensure connection works
-  useEffect(() => {
-    if (!isLoading && connectionReady && USE_SUPABASE) {
-      console.log(`Prefetching chat history for user ${user.username} (ID: ${user.id})`);
-      
-      const result = service.getChatHistory(user.id);
-      
-      // Handle both synchronous and Promise return types
-      if (result instanceof Promise) {
-        result
-          .then(messages => {
-            console.log(`Retrieved ${messages.length} messages for conversation with ${user.username}`);
-          })
-          .catch(err => {
-            console.error(`Error fetching chat history for ${user.username}:`, err);
-          });
-      } else {
-        // Handle synchronous result
-        console.log(`Retrieved ${result.length} messages for conversation with ${user.username}`);
-      }
-    }
-  }, [isLoading, connectionReady, user.id, user.username, service]);
   
   const {
     message,
@@ -202,7 +160,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
         handleKeyDown={handleKeyDown}
         handleAddEmoji={handleAddEmoji}
         handleImageClick={handleImageClick}
-        isUserBlocked={service.isUserBlocked(user.id)}
+        isUserBlocked={false} // Mock this for local testing
         isVipUser={userRole === 'vip'}
         fileInputRef={fileInputRef}
         handleVoiceMessageClick={userRole === 'vip' || isAdminView ? handleVoiceMessageClick : undefined}

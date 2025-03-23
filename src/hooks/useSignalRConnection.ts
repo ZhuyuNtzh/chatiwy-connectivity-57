@@ -2,18 +2,8 @@
 import { useEffect } from 'react';
 import { UserProfile } from '@/contexts/UserContext';
 import { signalRService } from '@/services/signalRService';
-import { supabaseService } from '@/services/supabaseService';
 import { toast } from 'sonner';
-import { updateUserOnlineStatus, registerUser } from '@/lib/supabase/users';
-import { initializeSupabase } from '@/lib/supabase/connection';
 import { useOnlineUsers } from './useOnlineUsers';
-import { 
-  setupUserPresence, 
-  broadcastUserStatus,
-  setupConnectionHeartbeat, 
-  enableRealtimeForChat 
-} from '@/lib/supabase/realtime';
-import { supabase } from '@/lib/supabase/client';
 
 /**
  * Hook to connect to SignalR and update user status
@@ -44,7 +34,6 @@ export const useSignalRConnection = (
     let isMounted = true;
     
     // Generate a proper UUID if we don't have one
-    // This is critical since Supabase expects UUIDs for the user IDs
     const userId = currentUser.id ? 
       (typeof currentUser.id === 'number' ? 
         crypto.randomUUID() : // Generate a UUID if we have a number
@@ -65,16 +54,6 @@ export const useSignalRConnection = (
           username
         );
         console.log('Successfully connected to SignalR');
-
-        // Also update the user's online status in Supabase
-        await updateUserOnlineStatus(userId, true);
-        
-        // Register user if needed - providing the required third argument
-        await registerUser(
-          userId, 
-          username, 
-          userRole
-        );
         
         // Set up connected users count change event
         if (setConnectedUsersCount && isMounted) {
@@ -88,78 +67,12 @@ export const useSignalRConnection = (
       }
     };
 
-    // Connect to Supabase realtime
-    const connectToSupabase = async () => {
-      try {
-        console.log('Connecting to Supabase realtime...');
-        // Initialize Supabase
-        const initSuccess = await initializeSupabase();
-        if (!initSuccess) {
-          console.error('Failed to initialize Supabase');
-          return null;
-        }
-        
-        // Enable realtime for all required tables
-        await enableRealtimeForChat();
-        
-        // Register user in Supabase - providing the required third argument
-        await registerUser(
-          userId,
-          username, 
-          userRole
-        );
-        
-        // Set up presence channel - passing username as the second argument
-        const presenceChannel = setupUserPresence(
-          userId,
-          username,
-          (changedUserId, isOnline) => {
-            console.log(`User ${changedUserId} is now ${isOnline ? 'online' : 'offline'}`);
-            // Update UI or perform actions when user status changes
-          }
-        );
-        
-        // Broadcast user's online status
-        await broadcastUserStatus(userId, true);
-        
-        // Set up heartbeat to keep connection alive
-        const stopHeartbeat = setupConnectionHeartbeat();
-        
-        // Initialize Supabase service with current user
-        await supabaseService.initialize(userId, username, userRole);
-        console.log('Successfully connected to Supabase realtime');
-        
-        // Return cleanup function
-        return () => {
-          if (presenceChannel) {
-            supabase.removeChannel(presenceChannel);
-          }
-          stopHeartbeat();
-        };
-      } catch (error) {
-        console.error('Error connecting to Supabase realtime:', error);
-        toast.error('Failed to connect to Supabase. Try refreshing the page.', {
-          duration: 5000,
-        });
-        return null;
-      }
-    };
-
-    // Connect to services
+    // Connect to service
     connectToSignalR();
-    let cleanup: (() => void) | null = null;
-    
-    // Connect to Supabase and store the cleanup function
-    connectToSupabase().then(cleanupFn => {
-      cleanup = cleanupFn;
-    });
 
     // Set up window beforeunload event to properly disconnect when page is closed
     const handleBeforeUnload = () => {
       signalRService.disconnect();
-      supabaseService.disconnect();
-      updateUserOnlineStatus(userId, false);
-      broadcastUserStatus(userId, false);
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -171,24 +84,9 @@ export const useSignalRConnection = (
       // Disconnect from SignalR
       signalRService.disconnect()
         .catch(err => console.error('Error disconnecting from SignalR:', err));
-        
-      // Disconnect from Supabase
-      supabaseService.disconnect()
-        .catch(err => console.error('Error disconnecting from Supabase:', err));
-        
-      // Update user status in database
-      updateUserOnlineStatus(userId, false)
-        .catch(err => console.error('Error updating user offline status:', err));
-        
-      // Broadcast offline status
-      broadcastUserStatus(userId, false)
-        .catch(err => console.error('Error broadcasting offline status:', err));
-        
+      
       // Remove event listener
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      
-      // Run any cleanup returned from connectToSupabase
-      if (cleanup) cleanup();
     };
   }, [currentUser, setConnectedUsersCount, onlineCount]);
 };
