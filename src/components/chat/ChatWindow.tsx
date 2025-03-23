@@ -42,6 +42,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
   
   // Check SignalR connection on mount
   useEffect(() => {
+    console.log('ChatWindow: Initializing connection');
     setIsLoading(true);
     
     // Simple timeout to simulate connection setup
@@ -112,7 +113,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
     confirmDeleteConversation,
     cancelDeleteConversation,
     replyToMessage,
-    unsendMessage
+    unsendMessage,
+    isDeletionInProgress
   } = useChat(user.id, userRole);
   
   if (isLoading) {
@@ -207,6 +209,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user, countryFlags, onClose, is
           setIsDeleteDialogOpen={setIsDeleteDialogOpen}
           onConfirmDelete={confirmDeleteConversation}
           onCancelDelete={cancelDeleteConversation}
+          isDeletionInProgress={isDeletionInProgress}
         />
       )}
     </ChatWindowContainer>

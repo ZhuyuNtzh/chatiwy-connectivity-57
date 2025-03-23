@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { signalRService } from '@/services/signalRService';
 import { ChatMessageService } from '@/services/ChatMessageService';
@@ -14,10 +13,8 @@ import { useScrollManagement } from './useScrollManagement';
 import { useUser } from '@/contexts/UserContext';
 
 export const useChat = (userId: number, userRole: string) => {
-  // Get current user info
   const { currentUser } = useUser();
   
-  // Use custom hooks to organize logic
   const {
     messages,
     setMessages,
@@ -90,7 +87,8 @@ export const useChat = (userId: number, userRole: string) => {
     setIsDeleteDialogOpen,
     deleteConversation,
     confirmDeleteConversation,
-    cancelDeleteConversation
+    cancelDeleteConversation,
+    isDeletionInProgress
   } = useConversationManagement();
 
   const {
@@ -112,9 +110,7 @@ export const useChat = (userId: number, userRole: string) => {
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const previousUserIdRef = useRef<number | null>(null);
 
-  // Load chat history when user changes
   useEffect(() => {
-    // Clear messages when switching users
     if (previousUserIdRef.current !== null && previousUserIdRef.current !== userId) {
       console.log(`Switching from user ${previousUserIdRef.current} to ${userId}, clearing messages`);
       setMessages([]);
@@ -122,7 +118,6 @@ export const useChat = (userId: number, userRole: string) => {
     
     previousUserIdRef.current = userId;
     
-    // Load messages for this user
     ChatMessageService.loadMessages(
       userId,
       isTranslationEnabled,
@@ -140,7 +135,6 @@ export const useChat = (userId: number, userRole: string) => {
     }
   }, [userId, userRole, isTranslationEnabled, selectedLanguage]);
 
-  // Set up message event handlers
   useEffect(() => {
     const handleNewMessage = (msg: ChatMessage) => {
       ChatMessageService.processNewMessage(
@@ -192,7 +186,6 @@ export const useChat = (userId: number, userRole: string) => {
     };
   }, [userId, userRole, isTranslationEnabled, selectedLanguage]);
 
-  // Custom message sending handler to properly handle replies
   const handleSendMessage = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
@@ -202,7 +195,6 @@ export const useChat = (userId: number, userRole: string) => {
       return;
     }
     
-    // Check if we're replying to a message
     if (replyingTo && userRole === 'vip') {
       const success = sendReplyMessage(message.trim(), userId, setMessages);
       if (success) {
@@ -211,17 +203,15 @@ export const useChat = (userId: number, userRole: string) => {
       }
     }
     
-    // Regular message sending
     const username = currentUser?.username || 'You';
     ChatMessageService.sendMessage(userId, message.trim(), username, setMessages);
     
-    // Clear input field and any reply state
     setMessage('');
     if (replyingTo) {
       clearReply(setMessages);
     }
   };
-  
+
   const toggleImageBlur = (messageId: string) => {
     ChatMessageService.toggleImageBlur(messageId, setMessages);
   };
@@ -238,7 +228,13 @@ export const useChat = (userId: number, userRole: string) => {
   };
   
   const handleConfirmDeleteConversation = () => {
-    confirmDeleteConversation(setMessages, setMediaGalleryItems);
+    console.log('useChat: handleConfirmDeleteConversation called');
+    try {
+      confirmDeleteConversation(setMessages, setMediaGalleryItems);
+    } catch (error) {
+      console.error('Error in handleConfirmDeleteConversation:', error);
+      toast.error('Failed to delete conversation');
+    }
   };
 
   const handleReplyToMessage = (messageId: string, messageText: string) => {
@@ -320,6 +316,7 @@ export const useChat = (userId: number, userRole: string) => {
     cancelDeleteConversation,
     replyToMessage: handleReplyToMessage,
     unsendMessage: handleUnsendMessage,
-    updateScrollPosition
+    updateScrollPosition,
+    isDeletionInProgress
   };
 };

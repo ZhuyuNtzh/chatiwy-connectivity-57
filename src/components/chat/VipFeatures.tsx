@@ -33,6 +33,7 @@ interface VipFeaturesProps {
     username: string;
   };
   onConfirmVipUpgrade?: (userId: number, username: string, expiryDate: Date) => void;
+  isDeletionInProgress?: boolean;
 }
 
 const VipFeatures: React.FC<VipFeaturesProps> = ({
@@ -47,8 +48,26 @@ const VipFeatures: React.FC<VipFeaturesProps> = ({
   isVipUpgradeDialogOpen,
   setIsVipUpgradeDialogOpen,
   vipUpgradeUser,
-  onConfirmVipUpgrade
+  onConfirmVipUpgrade,
+  isDeletionInProgress = false
 }) => {
+  console.log('Rendering VipFeatures, isDeleteDialogOpen:', isDeleteDialogOpen);
+  
+  const handleDeleteConfirm = () => {
+    console.log('VipFeatures: handleDeleteConfirm called');
+    onConfirmDelete();
+  };
+  
+  const handleDeleteCancel = () => {
+    console.log('VipFeatures: handleDeleteCancel called');
+    onCancelDelete();
+  };
+  
+  const handleDeleteDialogOpenChange = (open: boolean) => {
+    console.log('VipFeatures: Delete dialog open state changing to:', open);
+    setIsDeleteDialogOpen(open);
+  };
+
   return (
     <>
       <MediaGalleryDialog
@@ -60,9 +79,10 @@ const VipFeatures: React.FC<VipFeaturesProps> = ({
       
       <DeleteConfirmationDialog
         isOpen={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-        onConfirm={onConfirmDelete}
-        onCancel={onCancelDelete}
+        onOpenChange={handleDeleteDialogOpenChange}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        isLoading={isDeletionInProgress}
       />
 
       {onConfirmVipUpgrade && setIsVipUpgradeDialogOpen && vipUpgradeUser && (

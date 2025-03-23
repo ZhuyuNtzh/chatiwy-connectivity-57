@@ -8,6 +8,7 @@ export const useConversationManagement = () => {
   const [isDeletionInProgress, setIsDeletionInProgress] = useState(false);
 
   const deleteConversation = () => {
+    console.log('Delete conversation initiated');
     setIsDeleteDialogOpen(true);
   };
   
@@ -15,19 +16,38 @@ export const useConversationManagement = () => {
     setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
     setMediaGalleryItems: React.Dispatch<React.SetStateAction<any[]>>
   ) => {
-    // Clear the messages and media
-    setMessages([]);
-    setMediaGalleryItems([]);
-    
-    // Show success notification
-    toast.success('Conversation deleted');
-    
-    // Close the dialog
-    setIsDeleteDialogOpen(false);
+    console.log('Confirming conversation deletion...');
+    try {
+      // Start the deletion process
+      setIsDeletionInProgress(true);
+      
+      // Clear the messages and media
+      console.log('Clearing messages and media items');
+      setMessages([]);
+      setMediaGalleryItems([]);
+      
+      // Show success notification
+      console.log('Deletion completed, showing toast');
+      toast.success('Conversation deleted');
+      
+      // Complete the process and close the dialog
+      console.log('Closing delete dialog');
+      setIsDeletionInProgress(false);
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      console.error('Error during conversation deletion:', error);
+      toast.error('Failed to delete conversation. Please try again.');
+      setIsDeletionInProgress(false);
+    }
   };
   
   const cancelDeleteConversation = () => {
-    setIsDeleteDialogOpen(false);
+    console.log('Canceling conversation deletion');
+    try {
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      console.error('Error canceling delete dialog:', error);
+    }
   };
 
   return {
