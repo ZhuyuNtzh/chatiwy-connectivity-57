@@ -283,7 +283,7 @@ const UserManagement = ({ users, bannedUsers, onClose, onAddBot }: UserManagemen
                                 <Clock className="mr-2 h-4 w-4 text-amber-500" />
                                 <span>Temporary VIP</span>
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleMakeVipPermanent(user.id, user.username)}>
+                              <DropdownMenuItem onClick={() => handleMakeVipPermanent(user.id)}>
                                 <Crown className="mr-2 h-4 w-4 text-amber-500" />
                                 <span>Permanent VIP</span>
                               </DropdownMenuItem>
